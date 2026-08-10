@@ -5282,6 +5282,11 @@ function renderExportTab(){
         <div class="gh-row"><label>仓库名</label><input id="ghRepo" class="gh-in" value="${esc(ghCfg().repo)}" placeholder="cai-math-class"></div>
         <div class="gh-row"><label>数据文件路径</label><input id="ghPath" class="gh-in" value="${esc(ghCfg().path)}" placeholder="data/state.json"></div>
         <div class="gh-row"><label>个人访问令牌 PAT</label><input id="ghToken" class="gh-in" type="password" value="${esc(ghCfg().token)}" placeholder="ghp_xxx（仅本机保存）"></div>
+        <div class="gh-row" style="margin-top:8px"><label style="cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600">
+          <input type="checkbox" id="ghAutoSave" ${ghCfg().autoSave ? 'checked' : ''} onchange="ghPersist();ghStartAutoSave()"> 🔄 自动定时保存（每隔
+          <input type="number" id="ghAutoSaveMin" min="1" max="120" value="${ghCfg().autoSaveMin}" style="width:54px;padding:3px 4px;border:1.5px solid var(--border);border-radius:6px" onchange="ghPersist();ghStartAutoSave()"> 分钟）
+        </label></div>
+        <div class="hint" style="margin-top:4px">开启后，应用每隔 N 分钟自动把数据推到 GitHub 仓库；也可随时点「保存到云端」手动备份。关闭本开关即停止自动保存。</div>
       </div>
       <div class="gh-actions">
         <button class="btn" onclick="ghPersist();ghSave()">☁️ 保存到云端</button>
@@ -5290,6 +5295,17 @@ function renderExportTab(){
         <button class="btn" onclick="ghClearToken()">🗑️ 清除令牌</button>
       </div>
       <div id="ghStatus" class="hint" style="margin-top:10px"></div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <div class="card-title">📦 一键导入旧数据 <span style="font-size:12px;color:var(--text-muted);font-weight:600">（把旧链接里的数据搬到当前网址，无需书签）</span></div>
+      <div class="hint" style="margin-bottom:10px">填写你之前使用的旧链接（如 CloudStudio 临时链接），点按钮即可把该浏览器中旧链接的数据迁移到本网址。会一并迁移云同步配置。</div>
+      <div class="gh-form">
+        <div class="gh-row"><label>旧链接地址</label><input id="importSrc" class="gh-in" value="https://55d076b095374336853de1c37c772204.sh4.agentos-app.net" placeholder="https://旧链接地址"></div>
+      </div>
+      <div class="gh-actions">
+        <button class="btn" onclick="ghImportOld()">📥 一键导入旧数据</button>
+      </div>
+      <div id="importStatus" class="hint" style="margin-top:10px"></div>
     </div>`;
 }
 /* ==================================================================
@@ -6383,7 +6399,9 @@ function ghCfg(){
     user: c.user || '',
     repo: c.repo || 'cai-math-class',
     path: c.path || 'data/state.json',
-    token: c.token || ''
+    token: c.token || '',
+    autoSave: !!c.autoSave,
+    autoSaveMin: (typeof c.autoSaveMin === 'number' && c.autoSaveMin > 0) ? c.autoSaveMin : 5
   };
 }
 function ghPersist(){
@@ -6393,6 +6411,11 @@ function ghPersist(){
   c.path = (document.getElementById('ghPath').value || '').trim() || 'data/state.json';
   const tk = document.getElementById('ghToken').value || '';
   if (tk) c.token = tk;   // 仅在填写了新令牌时覆盖，避免误清空已有令牌
+  const asEl = document.getElementById('ghAutoSave');
+  c.autoSave = !!(asEl && asEl.checked);
+  const amEl = document.getElementById('ghAutoSaveMin');
+  const am = parseInt((amEl && amEl.value) || '5', 10);
+  c.autoSaveMin = (am > 0) ? am : 5;
   localStorage.setItem(GH_CFG_KEY, JSON.stringify(c));
 }
 function ghB64encode(str){
@@ -6420,11 +6443,11 @@ function ghContentUrl(){
   return 'https://api.github.com/repos/' + encodeURIComponent(c.user) + '/' + encodeURIComponent(c.repo) +
          '/contents/' + c.path.split('/').map(encodeURIComponent).join('/');
 }
-async function ghSave(){
+async function ghSave(silent){
   const c = ghCfg();
-  if (!c.user || !c.repo) return ghSetStatus('⚠️ 请先填写 GitHub 用户名和仓库名');
-  if (!c.token) return ghSetStatus('⚠️ 请填写个人访问令牌 PAT');
-  ghSetStatus('☁️ 正在保存到 GitHub…');
+  if (!c.user || !c.repo) { if (!silent) ghSetStatus('⚠️ 请先填写 GitHub 用户名和仓库名'); return; }
+  if (!c.token) { if (!silent) ghSetStatus('⚠️ 请填写个人访问令牌 PAT'); return; }
+  if (!silent) ghSetStatus('☁️ 正在保存到 GitHub…');
   try {
     const content = ghB64encode(JSON.stringify(state));
     let sha;
@@ -6441,11 +6464,24 @@ async function ghSave(){
       body: JSON.stringify(body)
     });
     if (!r2.ok) { const e = await r2.json().catch(()=>({})); throw new Error(e.message || ('HTTP ' + r2.status)); }
-    ghSetStatus('✅ 已保存到 GitHub 仓库（' + c.user + '/' + c.repo + ' · ' + c.path + '）');
-    toast('已保存到云端 ☁️');
+    ghSetStatus('✅ ' + (silent ? '自动' : '') + '已保存到 GitHub（' + c.user + '/' + c.repo + (silent ? ' · ' + new Date().toLocaleTimeString() : '') + '）');
+    if (!silent) toast('已保存到云端 ☁️');
   } catch(e){
-    ghSetStatus('❌ 保存失败：' + e.message + '（检查用户名 / 仓库 / PAT 是否正确，PAT 需有 repo 权限）');
+    const msg = '保存失败：' + e.message + '（检查用户名 / 仓库 / PAT 是否正确，PAT 需有 repo 权限）';
+    ghSetStatus((silent ? '⚠️ 自动' : '❌') + msg);
   }
+}
+let _ghAutoTimer = null;
+function ghStartAutoSave(){
+  if (_ghAutoTimer) { clearInterval(_ghAutoTimer); _ghAutoTimer = null; }
+  const c = ghCfg();
+  if (!c.autoSave || !c.user || !c.repo || !c.token) return;
+  const ms = Math.max(1, c.autoSaveMin) * 60 * 1000;
+  _ghAutoTimer = setInterval(() => {
+    const cc = ghCfg();
+    if (cc.autoSave && cc.user && cc.repo && cc.token) ghSave(true);
+  }, ms);
+  ghSetStatus('🔄 已开启自动保存（每 ' + c.autoSaveMin + ' 分钟），也可随时点「保存到云端」手动备份');
 }
 async function ghRestore(){
   const c = ghCfg();
@@ -6488,6 +6524,55 @@ function ghClearToken(){
   localStorage.setItem(GH_CFG_KEY, JSON.stringify(c));
   const el = document.getElementById('ghToken'); if (el) el.value = '';
   ghSetStatus('🗑️ 已清除本地保存的令牌');
+}
+
+/* -------- 一键导入旧数据（跨域 iframe + postMessage） -------- */
+let _importToken = null;
+function ghImportStatus(msg){ const el = document.getElementById('importStatus'); if (el) el.innerHTML = msg; }
+function ghImportOld(){
+  const src = (document.getElementById('importSrc') && document.getElementById('importSrc').value || '').trim();
+  if (!src) return ghImportStatus('⚠️ 请填写旧链接地址');
+  let origin;
+  try { origin = new URL(src).origin; } catch (e) { return ghImportStatus('⚠️ 链接格式不正确'); }
+  ghImportStatus('📦 正在从旧链接读取数据…（若浏览器拦截嵌入，请改用下方备用方案）');
+  const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  _importToken = token;
+  const sep = src.indexOf('?') >= 0 ? '&' : '?';
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = src + sep + 'wb_import=1';
+  let done = false;
+  const cleanup = () => { try { iframe.remove(); } catch (e) {} window.removeEventListener('message', onMsg); clearTimeout(timer); };
+  const onMsg = (ev) => {
+    if (ev.origin !== origin) return;
+    const d = ev.data;
+    if (!d || d.type !== 'WB_IMPORT_RES' || d.token !== token) return;
+    done = true; cleanup();
+    if (d.data && typeof d.data === 'string') {
+      try {
+        const parsed = JSON.parse(d.data);
+        if (!parsed || !Array.isArray(parsed.classes)) throw new Error('旧数据格式不正确');
+        if (!confirm('即将用旧链接的数据覆盖当前数据，确定继续？\n（建议先点「保存到云端」备份当前数据）')) return;
+        localStorage.setItem(STORAGE_KEY, d.data);
+        if (d.ghcfg) { try { JSON.parse(d.ghcfg); localStorage.setItem('wb_gh_cfg', d.ghcfg); } catch (e) {} }
+        state = parsed; normalizeState(); syncWeeklyExamStudents(); saveNow(true);
+        renderSidebar(); renderMain();
+        if (d.ghcfg) ghStartAutoSave();
+        ghImportStatus('✅ 已从旧链接导入数据（含云同步配置），页面已刷新');
+        toast('已导入旧数据 ✅');
+      } catch (e) { ghImportStatus('❌ 导入失败：' + e.message); }
+    } else {
+      ghImportStatus('ℹ️ 旧链接中未找到数据（可能该浏览器此前未录入过）');
+    }
+  };
+  window.addEventListener('message', onMsg);
+  const timer = setTimeout(() => {
+    if (done) return; cleanup();
+    ghImportStatus('⚠️ 无法自动读取旧链接（该站点可能禁止被嵌入或被浏览器拦截）。请改用备用方案：① 在旧链接点「☁️ 保存到云端」，再在本页点「📥 从云端恢复」；② 或用之前给的书签法（旧链接点①取数据 → 本页点②写入）。');
+  }, 9000);
+  iframe.onerror = () => { if (!done) { cleanup(); ghImportStatus('⚠️ 旧链接无法加载，请确认地址正确且可访问。'); } };
+  iframe.onload = () => { try { iframe.contentWindow.postMessage({ type: 'WB_IMPORT_REQ', token: token }, origin); } catch (e) {} };
+  document.body.appendChild(iframe);
 }
 
 /* -------- 图片导出 -------- */
@@ -6561,6 +6646,21 @@ window.addEventListener('beforeunload', () => {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
 });
 
+/* 被其他源（如 benji.中国 导入旧数据）以 iframe 嵌入时，响应数据导出请求。
+   仅当 URL 带 ?wb_import=1 时才回传，避免被普通嵌入滥取；token 握手防止混淆代理。 */
+window.addEventListener('message', (ev) => {
+  try {
+    const d = ev.data;
+    if (!d || d.type !== 'WB_IMPORT_REQ') return;
+    if (new URLSearchParams(location.search).get('wb_import') !== '1') return;
+    let data = null, ghcfg = null;
+    try { data = localStorage.getItem(STORAGE_KEY) || null; } catch (e) {}
+    try { ghcfg = localStorage.getItem('wb_gh_cfg') || null; } catch (e) {}
+    const src = ev.source;
+    if (src && src.postMessage) src.postMessage({ type: 'WB_IMPORT_RES', token: d.token, data: data, ghcfg: ghcfg }, { targetOrigin: ev.origin });
+  } catch (e) {}
+});
+
 (async function init(){
   updateSaveStatus('loading');
 
@@ -6589,6 +6689,9 @@ window.addEventListener('beforeunload', () => {
   // 3. 更新保存状态
   updateSaveStatus('saved');
   setTimeout(() => updateSaveStatus('synced'), 1400);
+
+  // 4. 若已开启云同步自动保存，则启动定时器
+  ghStartAutoSave();
 })();
 </script>
 </body>
