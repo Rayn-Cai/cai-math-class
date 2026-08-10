@@ -1070,6 +1070,26 @@ th.atc-d.we-sun small{color:var(--red)}
 .pets-card-points{display:flex;align-items:center;justify-content:center;gap:12px;font-size:13px;color:var(--text-secondary)}
 .pets-card-points b{font-size:18px;font-weight:800;color:#ea580c}
 .pets-card-level{font-size:11px;color:var(--text-muted)}
+/* 蛋态卡片：虚线+微光，引导点击领养 */
+.pets-card.is-egg{border-style:dashed;border-color:#d9b8ff;background:linear-gradient(180deg,#faf5ff,#fff)}
+.pets-card.is-egg:hover{box-shadow:0 8px 24px rgba(168,85,247,.18);border-color:#a855f7}
+.pets-card.is-egg .pets-card-avatar{background:linear-gradient(135deg,#f3e8ff,#fce7f3);border-color:#e9d5ff;animation:eggBob 2.4s ease-in-out infinite}
+@keyframes eggBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.pets-card.is-hatched .pets-card-avatar{box-shadow:0 4px 14px rgba(0,0,0,.08)}
+/* 蛋态领养 CTA */
+.egg-hint{display:inline-block;color:#fff;background:linear-gradient(135deg,#a855f7,#ec4899);font-weight:800;font-size:12.5px;padding:5px 14px;border-radius:20px;cursor:pointer;box-shadow:0 3px 10px rgba(168,85,247,.3)}
+.egg-hint:hover{filter:brightness(1.05)}
+/* 孵化态提示链接 */
+.pets-card-status .feed-link{color:#2563eb;cursor:pointer;font-weight:700;text-decoration:none}
+.pets-card-status .feed-link:hover{text-decoration:underline}
+/* 成长进度条 */
+.pet-prog{height:8px;background:var(--surface-alt);border-radius:6px;overflow:hidden;margin:6px 4px 4px}
+.pet-prog-bar{height:100%;border-radius:6px;transition:width .4s ease}
+.pet-prog-text{font-size:10.5px;color:var(--text-muted);margin-bottom:6px}
+.pet-egg-tip{font-size:11px;color:#a855f7;margin:6px 0 8px}
+/* 大厅顶部操作提示 */
+.pets-hint{padding:9px 16px;font-size:12.5px;color:var(--text-secondary);background:var(--accent-light);border-bottom:1px solid var(--border)}
+.pets-hint b{color:var(--accent-dark)}
 
 /* 宠物选择弹窗 */
 .pet-select-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:1600;display:flex;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto}
@@ -1404,6 +1424,17 @@ function getDefaultShopItems(){
 function petData(sid){
   const s = findStudent(sid);
   return s ? (s.pet || { type:'', name:'', level:1, exp:0, points:0, status:'egg', group:'', hatched:false }) : null;
+}
+/* 当前等级 → 下一级的经验进度（用于成长进度条） */
+function petLevelProgress(p){
+  const lv = p.level || 1;
+  const cur = expForLevel(lv);
+  const next = expForLevel(lv + 1);
+  const exp = p.exp || 0;
+  const have = Math.max(0, exp - cur);
+  const span = Math.max(1, next - cur);
+  const pct = Math.min(100, Math.round(have / span * 100));
+  return { pct, need: Math.max(0, next - exp) };
 }
 function clsPets(){ return (activeClass() && activeClass().pets) || { shopItems:[], exchangeLog:[], pointRules:[] }; }
 function addPetPoints(sid, amt, reason){
@@ -2891,6 +2922,12 @@ function findStudentById(id){
     if (s) return { s, c };
   }
   return null;
+}
+/* 按 ID 在当前班级查找学生，返回学生对象本身（宠物模块统一使用，区别于 findStudentById 包裹式返回值） */
+function findStudent(sid){
+  const cls = activeClass();
+  if (!cls || !cls.students) return null;
+  return cls.students.find(x => String(x.id) === String(sid)) || null;
 }
 /* 读取学生档案（独立于班级的全局数据源）。优先取全局 studentProfiles，
    老数据仍可回退到各班级内嵌的 c.profiles，保证兼容。 */
@@ -7050,25 +7087,37 @@ function renderPetHall(cls){
     const p = s.pet || { type:'', name:'', level:1, exp:0, points:0, status:'egg', group:'', hatched:false };
     const petInfo = p.hatched && p.type ? (PET_LIST.find(pt => pt.id === p.type) || { name:p.name||'守护神兽', emoji:'🐾' }) : null;
     const gs = getGrowthStatus(p.level);
-    const avatarCls = p.hatched ? 'hatched' : '';
+    const avatarCls = p.hatched ? 'hatched' : 'egg';
     const avatarContent = p.hatched ? (petInfo ? petInfo.emoji : '🐾') : PET_EGG;
-    const statusHtml = p.hatched
-      ? `<span class="feed-link" onclick="event.stopPropagation();openPetPtsModal('${s.id}')">点击加分</span>`
-      : `<span style="color:#9333ea;font-weight:700">等待孵化</span> <span class="feed-link" onclick="event.stopPropagation();openPetSelectModal('${s.id}')">点击喂养</span>`;
     const groupLabel = p.group || '未分组';
 
-    return `<div class="pets-card" onclick="openPetPtsModal('${s.id}')" oncontextmenu="event.preventDefault();showPetCardMenu(event,'${s.id}')">
+    /* 蛋态：整卡点击 → 领养；孵化态：整卡点击 → 加减积分 */
+    const cardClick = p.hatched ? `openPetPtsModal('${s.id}')` : `openPetSelectModal('${s.id}')`;
+    const statusHtml = p.hatched
+      ? `<span class="feed-link" onclick="event.stopPropagation();openPetPtsModal('${s.id}')">🐾 点击加减积分</span>`
+      : `<span class="egg-hint" onclick="event.stopPropagation();openPetSelectModal('${s.id}')">🥚 点击领养神兽</span>`;
+
+    /* 孵化态显示成长进度条；蛋态显示提示 */
+    const prog = petLevelProgress(p);
+    const footHtml = p.hatched
+      ? `<div class="pet-prog"><div class="pet-prog-bar" style="width:${prog.pct}%;background:${gs.color}"></div></div>
+         <div class="pet-prog-text">距 Lv.${p.level+1} 还需 ${prog.need} 经验</div>`
+      : `<div class="pet-egg-tip">孵化后即可养成升级 ✨</div>`;
+
+    return `<div class="pets-card ${p.hatched?'is-hatched':'is-egg'}" onclick="${cardClick}" oncontextmenu="event.preventDefault();showPetCardMenu(event,'${s.id}')">
       <div class="pets-card-menu" onclick="event.stopPropagation();showPetCardMenu(event,'${s.id}')">⋮</div>
       <div class="pets-card-avatar ${avatarCls}">${avatarContent}</div>
       <div class="pets-card-name">${esc(s.name)}</div>
       <div class="pets-card-petname">${p.hatched ? esc(petInfo?petInfo.name:'') : '神兽蛋'}</div>
       <div class="pets-card-group" onclick="event.stopPropagation()">${esc(groupLabel)} ▾</div>
       <div class="pets-card-status">${statusHtml}</div>
-      <div class="pets-card-points"><b>${p.points}</b> 🔥 <span class="pets-card-level">Lv.${p.level}</span></div>
+      ${footHtml}
+      <div class="pets-card-points"><b>${p.points}</b> 🔥 <span class="pets-card-level">Lv.${p.level} · ${gs.label}</span></div>
     </div>`;
   }).join('');
 
-  return toolbar + `<div class="pets-grid">${cards}</div>`;
+  const hint = `<div class="pets-hint">💡 <b>点击蛋 🥚 领养神兽</b>，点击已孵化宠物 🐾 <b>加减积分</b>；右键 ⋮ 可更换宠物 / 重置。</div>`;
+  return toolbar + hint + `<div class="pets-grid">${cards}</div>`;
 }
 
 /* ---- 宠物选择弹窗 ---- */
@@ -7126,7 +7175,7 @@ function openPetPtsModal(sid){
   const subRules = rules.filter(r => r.type === 'sub');
 
   const ruleCards = (list, clsName) => list.map(r =>
-    `<div class="pet-pts-rule ${r.type}-type" onclick="applyPetRule('${sid}','${r.id}')">
+    `<div class="pet-pts-rule ${r.type}-type" data-label="${esc((r.label||'')+' '+(r.cat||''))}" onclick="applyPetRule('${sid}','${r.id}')">
       <div class="pet-pts-rule-icon">${r.icon}</div>
       <div class="pet-pts-rule-name">${esc(r.label)}</div>
       <div class="pet-pts-rule-pts ${r.pts>=0?'pos':'neg'}">${r.pts>0?'+':''}${r.pts}🔥</div>
@@ -7140,7 +7189,7 @@ function openPetPtsModal(sid){
         <div class="pet-pts-title">给 <b style="color:#fbbf24">${esc(s.name)}</b> 加分/扣分</div>
       </div>
       <div class="pet-pts-body">
-        <input class="pet-pts-search" placeholder="🔍 搜索规则...">
+        <input class="pet-pts-search" placeholder="🔍 搜索规则（如：作业、迟到…）" oninput="filterPetPtsRules(this.value)">
         <div class="pet-pts-tabs">
           <button class="pet-pts-tab active" onclick="switchPtsTab(this,'add')">✨ 加分项</button>
           <button class="pet-pts-tab" onclick="switchPtsTab(this,'sub')">💔 扣分项</button>
@@ -7166,6 +7215,19 @@ function switchPtsTab(btn, type){
   btn.classList.add('active');
   document.getElementById('petPtsAddRules').style.display = type === 'add' ? '' : 'none';
   document.getElementById('petPtsSubRules').style.display = type === 'sub' ? '' : 'none';
+}
+
+/* 加分弹窗：按关键字实时过滤规则卡片（同时过滤加分/扣分两组） */
+function filterPetPtsRules(kw){
+  kw = (kw || '').trim().toLowerCase();
+  ['petPtsAddRules', 'petPtsSubRules'].forEach(id => {
+    const box = document.getElementById(id);
+    if (!box) return;
+    box.querySelectorAll('.pet-pts-rule').forEach(el => {
+      const text = (el.getAttribute('data-label') || '').toLowerCase();
+      el.style.display = (!kw || text.includes(kw)) ? '' : 'none';
+    });
+  });
 }
 
 function applyPetPts(sid, amt, reason){
