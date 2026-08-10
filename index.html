@@ -1035,6 +1035,145 @@ th.atc-d.we-sun small{color:var(--red)}
 .gh-in{flex:1;min-width:0;border:1.5px solid var(--border);border-radius:9px;padding:8px 10px;font-size:13px;background:#fff;color:var(--text-primary)}
 .gh-in:focus{outline:none;border-color:var(--accent)}
 .gh-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+/* ============ 班级宠物系统样式 ============ */
+/* 宠物大厅工具栏 */
+.pets-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.pets-search{flex:1;min-width:140px;max-width:260px;border:1.5px solid var(--border);border-radius:20px;padding:7px 14px;font-size:13px;background:#fff;color:var(--text-primary)}
+.pets-search:focus{outline:none;border-color:var(--accent)}
+.pets-search::placeholder{color:var(--text-muted)}
+.pets-tb-btn{padding:6px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:12.5px;font-weight:700;background:#fff;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:4px}
+.pets-tb-btn:hover{border-color:var(--accent);color:var(--accent-dark)}
+.pets-tb-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark)}
+.pets-tb-select{border:1.5px solid var(--border);border-radius:9px;padding:6px 8px;font-size:12.5px;background:#fff;color:var(--text-primary)}
+.pets-subnav{display:flex;gap:4px;padding:8px 16px 0;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto}
+.pets-subnav .pets-sub-btn{padding:7px 14px;border-radius:12px 12px 0 0;font-size:13px;font-weight:700;color:var(--text-muted);background:transparent;border:none;cursor:pointer;white-space:nowrap}
+.pets-subnav .pets-sub-btn:hover{color:var(--accent-dark);background:var(--surface-alt)}
+.pets-subnav .pets-sub-btn.active{color:var(--accent-dark);background:var(--accent-light);border-bottom:2px solid var(--accent)}
+
+/* 宠物卡片网格 */
+.pets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;padding:16px}
+.pets-card{background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:16px;text-align:center;position:relative;transition:transform .15s,box-shadow .15s;cursor:pointer}
+.pets-card:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.pets-card.selected{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.pets-card-menu{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;background:var(--surface-alt);border:1px solid var(--border);font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted)}
+.pets-card-menu:hover{background:var(--accent-light);color:var(--accent-dark)}
+.pets-card-avatar{width:90px;height:90px;margin:0 auto 10px;border-radius:50%;background:linear-gradient(135deg,#f0e6ff,#fff5f5);display:flex;align-items:center;justify-content:center;font-size:42px;border:3px solid #f0e0ff}
+.pets-card-avatar.hatched{background:linear-gradient(135deg,#fff9e6,#f0fff4);border-color:#e0f0d0}
+.pets-card-name{font-size:16px;font-weight:800;color:var(--text-primary);margin-bottom:4px}
+.pets-card-petname{font-size:11px;color:var(--text-muted);margin-bottom:8px}
+.pets-card-group{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:var(--surface-alt);color:var(--text-secondary);margin-bottom:8px;cursor:pointer;border:1px solid transparent}
+.pets-card-group:hover{border-color:var(--accent)}
+.pets-card-status{font-size:12px;margin-bottom:8px}
+.pets-card-status .feed-link{color:#9333ea;cursor:pointer;font-weight:700;text-decoration:none}
+.pets-card-status .feed-link:hover{text-decoration:underline}
+.pets-card-points{display:flex;align-items:center;justify-content:center;gap:12px;font-size:13px;color:var(--text-secondary)}
+.pets-card-points b{font-size:18px;font-weight:800;color:#ea580c}
+.pets-card-level{font-size:11px;color:var(--text-muted)}
+
+/* 宠物选择弹窗 */
+.pet-select-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:1600;display:flex;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto}
+.pet-select-panel{background:#fff;border-radius:18px;width:92%;max-width:900px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;margin:0 auto 40px;animation:petSlideIn .25s ease-out}
+@keyframes petSlideIn{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+.pet-select-header{background:linear-gradient(135deg,#3b82f6,#06b6d4);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pet-select-title{color:#fff;font-size:17px;font-weight:800}
+.pet-select-count{color:rgba(255,255,255,.85);font-size:12px;background:rgba(255,255,255,.2);padding:3px 10px;border-radius:12px}
+.pet-select-close{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.25);color:#fff;border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.pet-select-close:hover{background:rgba(255,255,255,.4)}
+.pet-select-body{padding:16px;overflow-y:auto;flex:1}
+.pet-select-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:12px}
+.pet-select-item{border:2px solid #e5e7eb;border-radius:14px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .15s;background:#fff}
+.pet-select-item:hover{border-color:#3b82f6;transform:scale(1.05);box-shadow:0 4px 12px rgba(59,130,246,.2)}
+.pet-select-item.selected{border-color:#3b82f6;background:#eff6ff;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.pet-select-item-emoji{font-size:36px;margin-bottom:6px}
+.pet-select-item-name{font-size:11.5px;font-weight:600;color:var(--text-primary);line-height:1.3}
+
+/* 加分/扣分弹窗 */
+.pet-pts-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:1600;display:flex;align-items:center;justify-content:center;padding:20px}
+.pet-pts-panel{background:#fff;border-radius:18px;width:96%;max-width:700px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;animation:petSlideIn .25s ease-out}
+.pet-pts-header{background:linear-gradient(135deg,#3b82f6,#6366f1);padding:16px 20px;text-align:center;flex-shrink:0}
+.pet-pts-title{color:#fff;font-size:18px;font-weight:800}
+.pet-pts-stuname{color:rgba(255,255,255,.85);font-size:13px;margin-top:4px}
+.pet-pts-body{padding:16px;overflow-y:auto;flex:1}
+.pet-pts-search{width:100%;border:2px solid #e5e7eb;border-radius:12px;padding:10px 14px;font-size:14px;margin-bottom:12px;box-sizing:border-box}
+.pet-pts-tabs{display:flex;gap:8px;margin-bottom:12px}
+.pet-pts-tab{padding:7px 16px;border-radius:20px;font-size:13px;font-weight:700;border:1.5px solid #e5e7eb;background:#fff;cursor:pointer;color:var(--text-secondary)}
+.pet-pts-tab.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.pet-pts-rules{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pet-pts-rule{border:2px solid #e5e7eb;border-radius:14px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .15s;background:#fff}
+.pet-pts-rule:hover{border-color:#3b82f6;transform:translateY(-2px);box-shadow:0 4px 12px rgba(59,130,246,.15)}
+.pet-pts-rule.add-type:hover{border-color:#16a34a;background:#f0fdf4}
+.pet-pts-rule.sub-type:hover{border-color:#ef4444;background:#fef2f2}
+.pet-pts-rule-icon{font-size:28px;margin-bottom:6px}
+.pet-pts-rule-name{font-size:12px;font-weight:600;color:var(--text-primary);line-height:1.3;margin-bottom:4px}
+.pet-pts-rule-pts{font-size:14px;font-weight:800}
+.pet-pts-rule-pts.pos{color:#16a34a}
+.pet-pts-rule-pts.neg{color:#ef4444}
+.pet-pts-custom{margin-top:16px;padding:14px;border:2px dashed #e5e7eb;border-radius:14px;text-align:center}
+.pet-pts-custom input{width:80px;border:2px solid #e5e7eb;border-radius:10px;padding:8px;text-align:center;font-size:16px;font-weight:800;margin:0 8px}
+.pet-pts-custom input:focus{outline:none;border-color:#3b82f6}
+
+/* 升级弹窗 */
+.pet-levelup-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1800;display:flex;align-items:center;justify-content:center;animation:luFadeIn .3s ease-out}
+@keyframes luFadeIn{from{opacity:0}to{opacity:1}}
+.pet-levelup-card{background:#fff;border-radius:24px;width:340px;text-align:center;overflow:hidden;animation:luPopIn .4s cubic-bezier(.175,.885,.32,1.275)}
+@keyframes luPopIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+.pet-lu-header{background:linear-gradient(135deg,#fbbf24,#f97316);padding:30px 20px 50px;position:relative}
+.pet-lu-avatar{width:110px;height:110px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.8);margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:52px;box-shadow:0 8px 24px rgba(0,0,0,.15);position:relative;z-index:1}
+.pet-lu-crown{position:absolute;top:10px;right:calc(50% - 70px);width:38px;height:38px;background:rgba(255,255,255,.9);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.pet-lu-title{font-size:30px;font-weight:900;color:#ea580c;margin-top:-20px;position:relative;z-index:1}
+.pet-lu-sub{font-size:16px;color:var(--text-muted);margin-top:4px;margin-bottom:20px}
+.pet-lu-stats{display:flex;gap:12px;padding:0 24px;margin-bottom:24px}
+.pet-lu-stat{flex:1;background:#fefce8;border-radius:14px;padding:12px 8px}
+.pet-lu-label{font-size:11px;color:var(--text-muted);margin-bottom:4px}
+.pet-lu-val{font-size:22px;font-weight:900}
+.pet-lu-btn{display:block;width:calc(100% - 32px);margin:0 16px 20px;padding:14px;border:none;border-radius:14px;font-size:16px;font-weight:800;background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#fff;cursor:pointer}
+.pet-lu-btn:hover{opacity:.9}
+
+/* 小卖部（商店） */
+.shop-layout{display:flex;gap:0;min-height:calc(100vh - 120px)}
+.shop-sidebar{width:200px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:16px 12px}
+.shop-sidebar-title{font-size:14px;font-weight:800;color:var(--text-primary);margin-bottom:12px}
+.shop-sidebar-desc{font-size:11px;color:var(--text-muted);margin-bottom:14px;line-height:1.4}
+.shop-cat{display:block;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:600;color:var(--text-secondary);cursor:pointer;border:1.5px solid transparent;margin-bottom:4px}
+.shop-cat:hover{background:var(--surface-alt)}
+.shop-cat.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.shop-cat-count{font-size:11px;float:right;color:var(--text-muted)}
+.shop-cat.active .shop-cat-count{color:rgba(255,255,255,.7)}
+.shop-main{flex:1;padding:16px 20px;overflow-y:auto}
+.shop-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.shop-header-title{font-size:16px;font-weight:800;color:var(--text-primary)}
+.shop-add-btn{padding:7px 14px;border-radius:10px;font-size:12.5px;font-weight:700;background:#3b82f6;color:#fff;border:none;cursor:pointer}
+.shop-add-btn:hover{opacity:.9}
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+.shop-item{border:1.5px solid var(--border);border-radius:16px;padding:14px;text-align:center;transition:all .15s;background:#fff;position:relative}
+.shop-item:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.shop-item-icon{font-size:36px;margin-bottom:8px}
+.shop-item-name{font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:6px;line-height:1.3}
+.shop-item-price{font-size:14px;font-weight:800;color:#ea580c;margin-bottom:4px}
+.shop-item-meta{display:flex;justify-content:center;gap:8px;font-size:10.5px;color:var(--text-muted);margin-bottom:10px}
+.shop-item-tag{padding:1px 6px;border-radius:6px;background:var(--surface-alt)}
+.shop-item-stock{color:var(--text-muted)}
+.shop-item-buy{display:block;width:100%;padding:7px;border-radius:10px;font-size:12.5px;font-weight:700;background:#3b82f6;color:#fff;border:none;cursor:pointer}
+.shop-item-buy:hover{opacity:.9}
+.shop-item-buy:disabled{background:#ccc;cursor:not-allowed}
+.shop-log-section{margin-top:24px}
+.shop-log-title{font-size:14px;font-weight:800;color:var(--text-primary);margin-bottom:10px}
+.shop-log-empty{color:var(--text-muted);font-size:13px;text-align:center;padding:30px}
+.shop-log-list{max-height:200px;overflow-y:auto}
+.shop-log-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px}
+.shop-log-time{color:var(--text-muted);flex:0 0 auto;font-size:11px}
+.shop-log-desc{flex:1;color:var(--text-primary)}
+.shop-log-cost{color:#ea580c;font-weight:700;flex:0 0 auto}
+
+/* 光荣榜 / 排行榜 */
+.rank-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+.rank-table th{background:var(--surface-alt);padding:10px 12px;text-align:left;font-weight:800;font-size:12px;color:var(--text-muted);border-bottom:2px solid var(--border);position:sticky;top:0;z-index:2}
+.rank-table td{padding:10px 12px;border-bottom:1px solid var(--border)}
+.rank-table tr:hover td{background:var(--surface-alt)}
+.rank-rank{font-size:15px;font-weight:900;width:40px;text-align:center}
+.rank-rank.gold{color:#f59e0b}.rank-rank.silver{color:#9ca3af}.rank-rank.bronze{color:#d97706}
+.rank-avatar{width:36px;height:36px;border-radius:50%;background:var(--surface-alt);display:inline-flex;align-items:center;justify-content:center;font-size:20px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -1147,7 +1286,163 @@ const TABS = [
   { key:'weekly',    label:'周测月考',   icon:'📆' },
   { key:'summary',   label:'成绩汇总',   icon:'🗂️' },
   { key:'export',    label:'导出报告',   icon:'📤' },
+  { key:'pets',      label:'班级宠物',   icon:'🐾' },
 ];
+
+/* ==================================================================
+   班级宠物系统 —— 常量与默认数据
+   ================================================================== */
+/* 101只守护神兽（用emoji模拟，后续可替换为图片URL） */
+const PET_LIST = [
+  { id:1, name:'Q版迪迦', emoji:'🦸' }, { id:2, name:'三花', emoji:'🐈' }, { id:3, name:'三花-2', emoji:'🐈‍⬛' },
+  { id:4, name:'中华田园犬', emoji:'🐕' }, { id:5, name:'乌龟', emoji:'🐢' }, { id:6, name:'九尾狐', emoji:'🦊' },
+  { id:7, name:'仓鼠', emoji:'🐹' }, { id:8, name:'企鹅', emoji:'🐧' }, { id:9, name:'冰晶恐龙', emoji:'🧊' },
+  { id:10, name:'刺猬', emoji:'🦔' }, { id:11, name:'加菲猫', emoji:'🐱' }, { id:12, name:'加菲猫-2', emoji:'😺' },
+  { id:13, name:'博美', emoji:'🐕‍🦺' }, { id:14, name:'卡皮巴拉', emoji:'🥔' }, { id:15, name:'变色龙', emoji:'🦎' },
+  { id:16, name:'吉娃娃', emoji:'🐶' }, { id:17, name:'哈士奇', emoji:'🐺' }, { id:18, name:'大猩猩', emoji:'🦍' },
+  { id:19, name:'大白熊', emoji:'🐻‍❄️' }, { id:20, name:'大象', emoji:'🐘' }, { id:21, name:'奶牛猫', emoji:'🐈' },
+  { id:22, name:'小兔子', emoji:'🐰' }, { id:23, name:'小猪仔', emoji:'🐷' }, { id:24, name:'小羊羔', emoji:'🐑' },
+  { id:25, name:'小黄鸡', emoji:'🐤' }, { id:26, name:'布偶', emoji:'😺' }, { id:27, name:'布偶-2', emoji:'😸' },
+  { id:28, name:'幻想兔', emoji:'🐇' }, { id:29, name:'恐龙', emoji:'🦖' }, { id:30, name:'拉布拉多', emoji:'🐕' },
+  { id:31, name:'拉布拉多-2', emoji:'🐩' }, { id:32, name:'暗潮鲨鱼', emoji:'🦈' }, { id:33, name:'暗黑穷奇', emoji:'👻' },
+  { id:34, name:'暹罗猫', emoji:'😼' }, { id:35, name:'暹罗猫-2', emoji:'😽' }, { id:36, name:'松鼠', emoji:'🐿️' },
+  { id:37, name:'柯基', emoji:'🐶' }, { id:38, name:'柯基-2', emoji:'🐕' }, { id:39, name:'柴犬', emoji:'🐕' },
+  { id:40, name:'柴犬-2', emoji:'🐩' }, { id:41, name:'梅花鹿', emoji:'🦌' }, { id:42, name:'森林乌龟', emoji:'🐢' },
+  { id:43, name:'橘猫', emoji:'🐱' }, { id:44, name:'橘猫-2', emoji:'😺' }, { id:45, name:'比熊', emoji:'🐁' },
+  { id:46, name:'比熊-2', emoji:'🐭' }, { id:47, name:'水墨白泽', emoji:'👻' }, { id:48, name:'法斗', emoji:'🐶' },
+  { id:49, name:'法斗-2', emoji:'🐕' }, { id:50, name:'泰迪', emoji:'🐩' }, { id:51, name:'泰迪-2', emoji:'🦮' },
+  { id:52, name:'流体腓蛇', emoji:'🐍' }, { id:53, name:'测试动态', emoji:'🎮' }, { id:54, name:'浮世绘青龙', emoji:'🐉' },
+  { id:55, name:'海豚', emoji:'🐬' }, { id:56, name:'火凤凰', emoji:'🔥' }, { id:57, name:'熊猫', emoji:'🐼' },
+  { id:58, name:'狐狸', emoji:'🦊' }, { id:59, name:'狐狸-2', emoji:'🦊‍☠️' }, { id:60, name:'狮子', emoji:'🦁' },
+  { id:61, name:'狸花猫', emoji:'🐱' }, { id:62, name:'猴子', emoji:'🐵' }, { id:63, name:'白猫', emoji:'🐈‍⬛' },
+  { id:64, name:'白猫-2', emoji:'🐈' }, { id:65, name:'羊驼', emoji:'🦙' }, { id:66, name:'老虎', emoji:'🐯' },
+  { id:67, name:'荷兰猪', emoji:'🐹' }, { id:68, name:'萨摩耶', emoji:'🐕' }, { id:69, name:'萨摩耶-2', emoji:'🐩' },
+  { id:70, name:'蓝猫', emoji:'🐱' }, { id:71, name:'蓝猫-2', emoji:'😺' }, { id:72, name:'虎斑', emoji:'🐆' },
+  { id:73, name:'虎斑-2', emoji:'🐅' }, { id:74, name:'蜥蜴', emoji:'🦎' }, { id:75, name:'蝴蝶', emoji:'🦋' },
+  { id:76, name:'西高地', emoji:'🐕' }, { id:77, name:'豹子', emoji:'🐆' }, { id:78, name:'赛博玄武', emoji:'🐢' },
+  { id:79, name:'边牧', emoji:'🐕‍🦺' }, { id:80, name:'边牧-2', emoji:'🐶' }, { id:81, name:'迪迦', emoji:'🦸' },
+  { id:82, name:'金丝猴', emoji:'🐒' }, { id:83, name:'金毛', emoji:'🐕' }, { id:84, name:'金毛-2', emoji:'🐩' },
+  { id:85, name:'金渐层', emoji:'😺' }, { id:86, name:'金渐层-2', emoji:'😸' }, { id:87, name:'金鱼', emoji:'🐠' },
+  { id:88, name:'银渐层', emoji:'🐱' }, { id:89, name:'银渐层-2', emoji:'😺' }, { id:90, name:'阿拉斯加', emoji:'🐕' },
+  { id:91, name:'雪瑞纳', emoji:'🐕' }, { id:92, name:'霸王龙', emoji:'🦖' }, { id:93, name:'青蛙', emoji:'🐸' },
+  { id:94, name:'马', emoji:'🐴' }, { id:95, name:'鳄鱼', emoji:'🐊' }, { id:96, name:'鸭子', emoji:'🦆' },
+  { id:97, name:'鹦鹉', emoji:'🦜' }, { id:98, name:'麒麟', emoji:'🦌' }, { id:99, name:'黑猫', emoji:'🐈‍⬛' },
+  { id:100, name:'黑猫-2', emoji:'🐈' }, { id:101, name:'龙猫', emoji:'🐹' },
+];
+
+/* 宠物蛋emoji（未孵化时显示） */
+const PET_EGG = '🥚';
+
+/* 等级配置：每级所需经验值（累积） */
+function expForLevel(lv){ return lv * lv * 10; }
+function levelFromExp(exp){
+  let lv = 1;
+  while (exp >= expForLevel(lv + 1) && lv < 99) lv++;
+  return lv;
+}
+
+/* 成长状态文案 */
+const GROWTH_STATUS = [
+  { minLv:1,  maxLv:3,  label:'幼年期', color:'#90cdf4' },
+  { minLv:4,  maxLv:7,  label:'成长期', color:'#68d391' },
+  { minLv:8,  maxLv:14, label:'青春期', color:'#f6e05e' },
+  { minLv:15, maxLv:24, label:'成熟期', color:'#ed8936' },
+  { minLv:25, maxLv:99, label:'可毕业', color:'#e53e3e' },
+];
+function getGrowthStatus(lv){
+  return GROWTH_STATUS.find(g => lv >= g.minLv && lv <= g.maxLv) || GROWTH_STATUS[GROWTH_STATUS.length - 1];
+}
+
+/* 默认积分规则（加分/扣分） */
+function getDefaultPointRules(){
+  return [
+    /* 加分项 */
+    { id:'p1',  type:'add',  icon:'💡', label:'回答问题',           pts:1,  cat:'课堂' },
+    { id:'p2',  type:'add',  icon:'✏️',  label:'上台回答问题/讲题',   pts:5,  cat:'课堂' },
+    { id:'p3',  type:'add',  icon:'😊',  label:'准时上课不请假',     pts:3,  cat:'考勤' },
+    { id:'p4',  type:'add',  icon:'🏅',  label:'优秀笔记',           pts:5,  cat:'作业' },
+    { id:'p5',  type:'add',  icon:'🏠',  label:'保持课室卫生全体+2', pts:2,  cat:'纪律' },
+    { id:'p6',  type:'add',  icon:'👍',  label:'进门小测/测试6分以上',pts:1, cat:'测试' },
+    { id:'p7',  type:'add',  icon:'🔥',  label:'一个月全勤+5分',     pts:5,  cat:'考勤' },
+    { id:'p8',  type:'add',  icon:'📝',  label:'按时完成作业并打卡+1', pts:1,  cat:'作业' },
+    { id:'p9',  type:'add',  icon:'📖',  label:'作业全对+5',         pts:5,  cat:'作业' },
+    { id:'p10', type:'add',  icon:'✨',  label:'作业≥6分+1分',       pts:1,  cat:'作业' },
+    /* 扣分项 */
+    { id:'m1',  type:'sub',  icon:'😴',  label:'上课睡觉',           pts:-2, cat:'纪律' },
+    { id:'m2',  type:'sub',  icon:'📱',  label:'上课玩手机',         pts:-3, cat:'纪律' },
+    { id:'m3',  type:'sub',  icon:'🗣️',  label:'上课讲话',           pts:-1, cat:'纪律' },
+    { id:'m4',  type:'sub',  icon:'❌',  label:'未完成作业',         pts:-2, cat:'作业' },
+    { id:'m5',  type:'sub',  icon:'📍',  label:'迟到',               pts:-1, cat:'考勤' },
+    { id:'m6',  type:'sub',  icon:'🚫',  label:'旷课',               pts:-5, cat:'考勤' },
+  ];
+}
+
+/* 默认商店商品 */
+function getDefaultShopItems(){
+  return [
+    { id:'s1',  name:'免惩罚卡',       icon:'🎃', price:300,  cat:'全部商品', tag:'消耗', stock:-1 },
+    { id:'s2',  name:'现金红包30元',   icon:'🧧', price:600,  cat:'初三',   tag:'消耗', stock:5 },
+    { id:'s3',  name:'精美学习用品一份',icon:'✨', price:450,  cat:'初一',   tag:'消耗', stock:-1 },
+    { id:'s4',  name:'零食大礼包',     icon:'🧇', price:450,  cat:'初一',   tag:'消耗', stock:-1 },
+    { id:'s5',  name:'零食小礼包',     icon:'🥯', price:300,  cat:'初一',   tag:'消耗', stock:-1 },
+    { id:'s6',  name:'奶茶券（大）',   icon:'☕', price:300,  cat:'初一',   tag:'消耗', stock:-1 },
+    { id:'s7',  name:'奶茶券（小）',   icon:'☕', price:200,  cat:'初一',   tag:'消耗', stock:-1 },
+    { id:'s8',  name:'柠檬水一杯',     icon:'🍋', price:100,  cat:'初一',   tag:'消耗', stock:-1 },
+    { id:'s9',  name:'免写作业卡',     icon:'📖', price:300,  cat:'初一',   tag:'消耗', stock:-1 },
+    { id:'s10', name:'抽奖1次',        icon:'🎁', price:1,    cat:'初一',   tag:'特殊', stock:-1 },
+    { id:'s11', name:'表扬券',         icon:'⭐', price:200,  cat:'全部商品', tag:'特权', stock:-1 },
+    { id:'s12', name:'万能券',         icon:'🌟', price:500,  cat:'全部商品', tag:'特权', stock:-1 },
+    { id:'s13', name:'座位自选权(一天)',icon:'💺', price:150,  cat:'全部商品', tag:'特权', stock:-1 },
+    { id:'s14', name:'同桌选择权(一天)',icon:'👥', price:150,  cat:'全部商品', tag:'特权', stock:-1 },
+    { id:'s15', name:'音乐点播权',     icon:'🎵', price:100,  cat:'全部商品', tag:'特权', stock:-1 },
+    { id:'s16', name:'免值日一次',     icon:'🧹', price:250,  cat:'全部商品', tag:'特权', stock:-1 },
+    { id:'s17', name:'神秘盲盒',       icon:'❓', price:400,  cat:'全部商品', tag:'特殊', stock:-1 },
+  ];
+}
+
+/* 宠物系统辅助函数 */
+function petData(sid){
+  const s = findStudent(sid);
+  return s ? (s.pet || { type:'', name:'', level:1, exp:0, points:0, status:'egg', group:'', hatched:false }) : null;
+}
+function clsPets(){ return (activeClass() && activeClass().pets) || { shopItems:[], exchangeLog:[], pointRules:[] }; }
+function addPetPoints(sid, amt, reason){
+  const s = findStudent(sid); if (!s) return;
+  if (!s.pet) s.pet = { type:'', name:'', level:1, exp:0, points:0, status:'egg', group:'', hatched:false };
+  const oldLv = s.pet.level;
+  s.pet.points = Math.max(0, s.pet.points + amt);
+  s.pet.exp += Math.abs(amt);
+  s.pet.level = levelFromExp(s.pet.exp);
+  /* 记录日志 */
+  if (!s.pet.ptsLog) s.pet.ptsLog = [];
+  s.pet.ptsLog.unshift({ t:Date.now(), amt, reason, bal:s.pet.points });
+  if (s.pet.ptsLog.length > 200) s.pet.ptsLog = s.pet.ptsLog.slice(0, 200);
+  save();
+  /* 升级检测 */
+  if (s.pet.level > oldLv && s.pet.hatched) showLevelUp(s);
+}
+function showLevelUp(s){
+  const p = s.pet;
+  const gs = getGrowthStatus(p.level);
+  const petInfo = PET_LIST.find(pt => pt.id === p.type) || { name:p.name||'守护神兽', emoji:'🐾' };
+  const html = `
+  <div class="pet-levelup-overlay" onclick="this.remove()">
+    <div class="pet-levelup-card" onclick="event.stopPropagation()">
+      <div class="pet-lu-header">
+        <div class="pet-lu-avatar">${p.hatched ? petInfo.emoji : PET_EGG}</div>
+        <div class="pet-lu-crown">👑</div>
+      </div>
+      <div class="pet-lu-title">升级啦！</div>
+      <div class="pet-lu-sub">晋升 ${p.level} 级</div>
+      <div class="pet-lu-stats">
+        <div class="pet-lu-stat"><div class="pet-lu-label">当前等级</div><div class="pet-lu-val">Lv.${p.level}</div></div>
+        <div class="pet-lu-stat"><div class="pet-lu-label">成长状态</div><div class="pet-lu-val" style="color:${gs.color}">${gs.label}</div></div>
+      </div>
+      <button class="pet-lu-btn" onclick="this.closest('.pet-levelup-overlay').remove()">✓ 太棒了</button>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
 
 /* ==================================================================
    二、默认数据（可自定义：班级 / 学生名单 / 颜色）
@@ -1347,7 +1642,13 @@ function normalizeState(){
       s.spentPoints = s.spentPoints || 0;
       s.manualPts = s.manualPts || 0;
       s.ptsLog = s.ptsLog || [];
+      /* 班级宠物系统：每名学生一只守护神兽 */
+      s.pet = s.pet || { type:'', name:'', level:1, exp:0, points:0, status:'egg', group:'', hatched:false };
     });
+    /* 宠物系统班级级数据 */
+    c.pets = c.pets || { shopItems:[], exchangeLog:[], pointRules:[] };
+    if (!c.pets.shopItems.length) c.pets.shopItems = getDefaultShopItems();
+    if (!c.pets.pointRules.length) c.pets.pointRules = getDefaultPointRules();
   });
   /* 学生档案：独立于班级的全局数据源（sid -> {id,name,school,class,remark,custom}）。
      班级新增学生自动进入档案；从班级删除学生，档案保留不变；档案仅可由管理员在「学生档案」页删除。 */
@@ -2028,6 +2329,7 @@ function renderTopbar(){
     weekly:'周测月考 · 阶段测验记录',
     summary:'成绩汇总 · 全量数据总览',
     export:'导出报告 · 数据备份与恢复',
+    pets:'班级宠物 · 守护神兽养成与积分',
   };
   document.getElementById('topbar').innerHTML = `
     <div class="top-title">
@@ -2108,6 +2410,7 @@ function renderMain(){
     roster: renderRoster, attend: renderAttend, trend: renderTrend, checkin: renderCheckin,
     profile: renderProfile, exam: renderExam, files: renderFiles,
     weekly: renderWeekly, summary: renderSummary, export: renderExportTab,
+    pets: renderPets,
   };
   const fn = map[state.activeTab] || renderRoster;
   c.innerHTML = fn();
@@ -6693,6 +6996,405 @@ window.addEventListener('message', (ev) => {
   // 4. 若已开启云同步自动保存，则启动定时器
   ghStartAutoSave();
 })();
+
+/* ==================================================================
+   班级宠物系统 —— 渲染与交互
+   ================================================================== */
+/* 宠物子页面状态 */
+let _petSubPage = 'hall'; /* hall | shop | rank */
+let _petSearch = '';
+let _petShopCat = '全部商品';
+let _petSelectedSids = new Set();
+
+function renderPets(){
+  const cls = activeClass();
+  if (!cls || !cls.students || !cls.students.length) {
+    return `<div class="blank-state"><div class="bs-icon">🐾</div><div class="bs-title">班级宠物</div>
+    <div class="bs-desc">请先创建班级并添加学生，<br>每位学生将获得一只专属的守护神兽。</div></div>`;
+  }
+  /* 子导航 */
+  let subNav = `<div class="pets-subnav">
+    <button class="pets-sub-btn ${_petSubPage==='hall'?'active':''}" onclick="_petSubPage='hall';renderMain()">🏠 宠物大厅</button>
+    <button class="pets-sub-btn ${_petSubPage==='shop'?'active':''}" onclick="_petSubPage='shop';renderMain()">🏪 小卖部</button>
+    <button class="pets-sub-btn ${_petSubPage==='rank'?'active':''}" onclick="_petSubPage='rank';renderMain()">🏆 光荣榜</button>
+  </div>`;
+  if (_petSubPage === 'hall') return subNav + renderPetHall(cls);
+  if (_petSubPage === 'shop') return subNav + renderPetShop(cls);
+  if (_petSubPage === 'rank') return subNav + renderPetRank(cls);
+  return subNav + renderPetHall(cls);
+}
+
+/* ---- 宠物大厅 ---- */
+function renderPetHall(cls){
+  const students = cls.students;
+  const q = _petSearch.trim().toLowerCase();
+  const filtered = q ? students.filter(s => s.name.toLowerCase().includes(q)) : students;
+
+  let toolbar = `<div class="pets-toolbar">
+    <input class="pets-search" placeholder="🔍 搜索姓名..." value="${esc(_petSearch)}" oninput="_petSearch=this.value;renderMain()">
+    <button class="pets-tb-btn" onclick="petBatchPoints(${JSON.stringify(filtered.map(s=>s.id)).replace(/"/g,'&quot;')},'add')">➕ 批量加分</button>
+    <button class="pets-tb-btn" onclick="petBatchPoints(${JSON.stringify(filtered.map(s=>s.id)).replace(/"/g,'&quot;')},'sub')">➖ 批量扣分</button>
+    <span style="flex:1"></span>
+    <select class="pets-tb-select" onchange="alert('分组功能开发中')">
+      <option>👥 分组</option><option>未分组</option><option>随机分组</option>
+    </select>
+    <button class="pets-tb-btn" onclick="alert('排序功能开发中')">↕ 排序</button>
+  </div>`;
+
+  if (!filtered.length) {
+    toolbar += `<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">没有匹配的学生</div>`;
+    return toolbar;
+  }
+
+  let cards = filtered.map(s => {
+    const p = s.pet || { type:'', name:'', level:1, exp:0, points:0, status:'egg', group:'', hatched:false };
+    const petInfo = p.hatched && p.type ? (PET_LIST.find(pt => pt.id === p.type) || { name:p.name||'守护神兽', emoji:'🐾' }) : null;
+    const gs = getGrowthStatus(p.level);
+    const avatarCls = p.hatched ? 'hatched' : '';
+    const avatarContent = p.hatched ? (petInfo ? petInfo.emoji : '🐾') : PET_EGG;
+    const statusHtml = p.hatched
+      ? `<span class="feed-link" onclick="event.stopPropagation();openPetPtsModal('${s.id}')">点击加分</span>`
+      : `<span style="color:#9333ea;font-weight:700">等待孵化</span> <span class="feed-link" onclick="event.stopPropagation();openPetSelectModal('${s.id}')">点击喂养</span>`;
+    const groupLabel = p.group || '未分组';
+
+    return `<div class="pets-card" onclick="openPetPtsModal('${s.id}')" oncontextmenu="event.preventDefault();showPetCardMenu(event,'${s.id}')">
+      <div class="pets-card-menu" onclick="event.stopPropagation();showPetCardMenu(event,'${s.id}')">⋮</div>
+      <div class="pets-card-avatar ${avatarCls}">${avatarContent}</div>
+      <div class="pets-card-name">${esc(s.name)}</div>
+      <div class="pets-card-petname">${p.hatched ? esc(petInfo?petInfo.name:'') : '神兽蛋'}</div>
+      <div class="pets-card-group" onclick="event.stopPropagation()">${esc(groupLabel)} ▾</div>
+      <div class="pets-card-status">${statusHtml}</div>
+      <div class="pets-card-points"><b>${p.points}</b> 🔥 <span class="pets-card-level">Lv.${p.level}</span></div>
+    </div>`;
+  }).join('');
+
+  return toolbar + `<div class="pets-grid">${cards}</div>`;
+}
+
+/* ---- 宠物选择弹窗 ---- */
+function openPetSelectModal(sid){
+  const s = findStudent(sid); if (!s) return;
+  const p = s.pet || { type:'', name:'', level:1, exp:0, points:0, status:'egg', group:'', hatched:false };
+  const grid = PET_LIST.map(pt => {
+    const sel = p.type === pt.id ? 'selected' : '';
+    return `<div class="pet-select-item ${sel}" onclick="selectPet('${sid}',${pt.id})">
+      <div class="pet-select-item-emoji">${pt.emoji}</div>
+      <div class="pet-select-item-name">${esc(pt.name)}</div>
+    </div>`;
+  }).join('');
+
+  const html = `<div class="pet-select-overlay" onclick="if(event.target===this)this.remove()">
+    <div class="pet-select-panel">
+      <div class="pet-select-header">
+        <div><div class="pet-select-title">选择守护神兽</div>
+        <div style="color:rgba(255,255,255,.75);font-size:12px;margin-top:2px">为 <b>${esc(s.name)}</b> 选择一只可爱的神兽吧</div></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="pet-select-count">共 ${PET_LIST.length} 只神兽</span>
+          <button class="pet-select-close" onclick="this.closest('.pet-select-overlay').remove()">✕</button>
+        </div>
+      </div>
+      <div class="pet-select-body"><div class="pet-select-grid">${grid}</div></div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function selectPet(sid, petId){
+  const s = findStudent(sid); if (!s) return;
+  if (!s.pet) s.pet = { type:'', name:'', level:1, exp:0, points:0, status:'egg', group:'', hatched:false };
+  const pt = PET_LIST.find(p => p.id === petId);
+  if (!pt) return;
+  s.pet.type = petId;
+  s.pet.name = pt.name;
+  s.pet.hatched = true;
+  s.pet.status = 'alive';
+  save();
+  /* 关闭弹窗并刷新 */
+  const overlay = document.querySelector('.pet-select-overlay');
+  if (overlay) overlay.remove();
+  renderMain();
+  toast(`🎉 ${esc(s.name)} 的守护神兽是【${pt.name}】！`);
+}
+
+/* ---- 加分/扣分弹窗 ---- */
+function openPetPtsModal(sid){
+  const s = findStudent(sid); if (!s) return;
+  const p = s.pet || { type:'', name:'', level:1, exp:0, points:0, status:'egg', group:'', hatched:false };
+  const cp = clsPets();
+  const rules = (cp.pointRules && cp.pointRules.length) ? cp.pointRules : getDefaultPointRules();
+  const addRules = rules.filter(r => r.type === 'add');
+  const subRules = rules.filter(r => r.type === 'sub');
+
+  const ruleCards = (list, clsName) => list.map(r =>
+    `<div class="pet-pts-rule ${r.type}-type" onclick="applyPetRule('${sid}','${r.id}')">
+      <div class="pet-pts-rule-icon">${r.icon}</div>
+      <div class="pet-pts-rule-name">${esc(r.label)}</div>
+      <div class="pet-pts-rule-pts ${r.pts>=0?'pos':'neg'}">${r.pts>0?'+':''}${r.pts}🔥</div>
+    </div>`
+  ).join('');
+
+  const html = `<div class="pet-pts-overlay" onclick="if(event.target===this)this.remove()">
+    <div class="pet-pts-panel" onclick="event.stopPropagation()">
+      <div class="pet-pts-header">
+        <div style="font-size:22px;margin-bottom:4px">⭕ 选择项目</div>
+        <div class="pet-pts-title">给 <b style="color:#fbbf24">${esc(s.name)}</b> 加分/扣分</div>
+      </div>
+      <div class="pet-pts-body">
+        <input class="pet-pts-search" placeholder="🔍 搜索规则...">
+        <div class="pet-pts-tabs">
+          <button class="pet-pts-tab active" onclick="switchPtsTab(this,'add')">✨ 加分项</button>
+          <button class="pet-pts-tab" onclick="switchPtsTab(this,'sub')">💔 扣分项</button>
+        </div>
+        <div id="petPtsAddRules">${ruleCards(addRules, 'add-type')}</div>
+        <div id="petPtsSubRules" style="display:none">${ruleCards(subRules, 'sub-type')}</div>
+        <div class="pet-pts-custom">
+          <span>或自定义：</span>
+          <input type="number" id="petCustomAmt" placeholder="0" min="-99" max="99">
+          <span>🔥</span>
+          <input type="text" id="petCustomReason" placeholder="原因" style="width:140px;border:2px solid #e5e7eb;border-radius:10px;padding:8px;font-size:13px">
+          <button class="btn primary" style="padding:8px 16px;border-radius:10px" onclick="applyPetCustom('${sid}')">确认</button>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">💡 点击项目直接操作</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function switchPtsTab(btn, type){
+  document.querySelectorAll('.pet-pts-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('petPtsAddRules').style.display = type === 'add' ? '' : 'none';
+  document.getElementById('petPtsSubRules').style.display = type === 'sub' ? '' : 'none';
+}
+
+function applyPetPts(sid, amt, reason){
+  addPetPoints(sid, amt, reason);
+  const s = findStudent(sid);
+  toast(`${amt > 0 ? '➕' : '➖'} ${esc(s?.name||'')} ${amt > 0 ? '+' : ''}${amt} 🔥（${reason}）`);
+}
+
+function applyPetPtsFromModal(sid, ruleId){
+  const cp = clsPets();
+  const rules = (cp.pointRules && cp.pointRules.length) ? cp.pointRules : getDefaultPointRules();
+  const rule = rules.find(r => r.id === ruleId);
+  if (!rule) return;
+  applyPetPts(sid, rule.pts, rule.label);
+}
+
+/* 用全局函数名供onclick调用（避免闭包问题） */
+window.applyPetRule = function(sid, ruleId){ applyPetPtsFromModal(sid, ruleId); };
+
+function applyPetCustom(sid){
+  const amtInput = document.getElementById('petCustomAmt');
+  const reasonInput = document.getElementById('petCustomReason');
+  if (!amtInput || !reasonInput) return;
+  const amt = parseInt(amtInput.value) || 0;
+  const reason = reasonInput.value.trim() || '自定义';
+  if (amt === 0) { toast('请输入积分金额'); return; }
+  applyPetPts(sid, amt, reason);
+}
+
+/* 批量操作 */
+function petBatchPoints(sidsJson, type){
+  try {
+    const sids = JSON.parse(sidsJson);
+    if (!sids.length) return;
+    const firstSid = sids[0];
+    openPetPtsModal(firstSid);
+    /* 标记为批量模式：后续可扩展 */
+  } catch(e) {}
+}
+
+/* ---- 小卖部 ---- */
+function renderPetShop(cls){
+  const cp = clsPets();
+  const items = (cp.shopItems && cp.shopItems.length) ? cp.shopItems : getDefaultShopItems();
+  const cats = [...new Set(items.map(i => i.cat))];
+  const activeCat = _petShopCat;
+  const filtered = activeCat === '全部商品' ? items : items.filter(i => i.cat === activeCat);
+
+  const catBtns = cats.map(c => {
+    const cnt = items.filter(i => i.cat === c).length;
+    return `<button class="shop-cat ${c===activeCat?'active':''}" onclick="_petShopCat='${c}';renderMain()">${esc(c)}<span class="shop-cat-count">(${cnt})</span></button>`;
+  }).join('');
+
+  const itemCards = filtered.map(item => {
+    const stockText = item.stock > 0 ? `剩${item.stock}` : '';
+    return `<div class="shop-item">
+      <div class="shop-item-icon">${item.icon}</div>
+      <div class="shop-item-name">${esc(item.name)}</div>
+      <div class="shop-item-price">🪙 ${item.price}</div>
+      <div class="shop-item-meta">
+        <span class="shop-item-tag">${item.tag}</span>
+        ${stockText ? `<span class="shop-item-stock">${stockText}</span>` : ''}
+      </div>
+      <button class="shop-item-buy" onclick="shopBuy('${item.id}')">立即兑换</button>
+    </div>`;
+  }).join('');
+
+  const exchangeLog = (cp.exchangeLog || []).slice(0, 20);
+  const logHtml = exchangeLog.length
+    ? `<div class="shop-log-list">${exchangeLog.map(log => {
+        const d = new Date(log.t);
+        return `<div class="shop-log-item"><span class="shop-log-time">${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</span><span class="shop-log-desc">${esc(log.desc)}</span><span class="shop-log-cost">-${log.cost}🪙</span></div>`;
+      }).join('')}</div>`
+    : `<div class="shop-log-empty">暂无兑换记录</div>`;
+
+  return `<div class="shop-layout">
+    <div class="shop-sidebar">
+      <div class="shop-sidebar-title">小卖部分类</div>
+      <div class="shop-sidebar-desc">手机端可左右滑动切换</div>
+      ${catBtns}
+      <div class="shop-log-section" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        <div class="shop-log-title">兑换记录</div>
+        ${logHtml}
+      </div>
+    </div>
+    <div class="shop-main">
+      <div class="shop-header">
+        <div class="shop-header-title">📦 小卖部 · ${esc(activeCat)}</div>
+        <button class="shop-add-btn" onclick="alert('添加商品功能开发中')">＋ 添加商品</button>
+      </div>
+      <div class="shop-grid">${itemCards}</div>
+    </div>
+  </div>`;
+}
+
+function shopBuy(itemId){
+  const cls = activeClass(); if (!cls) return;
+  const cp = clsPets();
+  const items = (cp.shopItems && cp.shopItems.length) ? cp.shopItems : getDefaultShopItems();
+  const item = items.find(i => i.id === itemId);
+  if (!item) { toast('商品不存在'); return; }
+
+  /* 弹出学生选择器：选谁用积分兑换 */
+  const students = cls.students.filter(s => {
+    const p = s.pet || { points:0 };
+    return p.points >= item.price;
+  });
+
+  if (!students.length) {
+    toast(`😢 没有学生的积分足够兑换【${item.name}】(需要${item.price}🪙)`); return;
+  }
+
+  const options = students.map(s => {
+    const p = s.pet || { points:0 };
+    return `<option value="${s.id}">${esc(s.name)} (${p.points}🪙)</option>`;
+  }).join('');
+
+  const html = `<div class="pet-pts-overlay" onclick="if(event.target===this)this.remove()">
+    <div class="pet-pts-panel" onclick="event.stopPropagation()" style="max-width:420px">
+      <div class="pet-pts-header" style="background:linear-gradient(135deg,#f59e0b,#ea580c)">
+        <div class="pet-pts-title">确认兑换</div>
+        <div class="pet-pts-stuname">${item.icon} ${esc(item.name)} — ${item.price} 🪙</div>
+      </div>
+      <div class="pet-pts-body" style="text-align:center">
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">选择使用积分的学生：</p>
+        <select id="shopBuyerSel" style="width:100%;padding:10px;border-radius:10px;font-size:14px;border:2px solid #e5e7eb;margin-bottom:16px">${options}</select>
+        <button class="btn primary" style="padding:12px 32px;border-radius:12px;font-size:15px;font-weight:800" onclick="confirmShopBuy('${itemId}')">确认兑换</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function confirmShopBuy(itemId){
+  const sel = document.getElementById('shopBuyerSel');
+  if (!sel) return;
+  const sid = sel.value;
+  const s = findStudent(sid); if (!s) return;
+  const cls = activeClass();
+  const cp = clsPets();
+  const items = (cp.shopItems && cp.shopItems.length) ? cp.shopItems : getDefaultShopItems();
+  const item = items.find(i => i.id === itemId);
+  if (!item) return;
+
+  const p = s.pet || { points:0 };
+  if (p.points < item.price) { toast('积分不足'); return; }
+
+  /* 扣积分 */
+  p.points -= item.price;
+  /* 记录日志 */
+  if (!cp.exchangeLog) cp.exchangeLog = [];
+  cp.exchangeLog.unshift({ t:Date.now(), sid:s.id, sname:s.name, itemId:item.id, iname:item.name, cost:item.price });
+  if (cp.exchangeLog.length > 100) cp.exchangeLog = cp.exchangeLog.slice(0, 100);
+  /* 减库存 */
+  if (item.stock > 0) item.stock--;
+  save();
+
+  const overlay = document.querySelector('.pet-pts-overlay');
+  if (overlay) overlay.remove();
+  renderMain();
+  toast(`🎁 ${esc(s.name)} 兑换了【${item.name}】，消耗 ${item.price} 🪙`);
+}
+
+/* ---- 光荣榜 / 排行榜 ---- */
+function renderPetRank(cls){
+  const students = (cls.students || []).map(s => {
+    const p = s.pet || { points:0, level:1, exp:0, hatched:false };
+    const petInfo = p.hatched && p.type ? (PET_LIST.find(pt => pt.id === p.type) || null) : null;
+    return { ...s, _p:p, _pi:petInfo };
+  }).sort((a,b) => b._p.points - a._p.points);
+
+  const rows = students.map((s, idx) => {
+    const p = s._p;
+    const pi = s._pi;
+    const rankCls = idx === 0 ? 'gold' : (idx === 1 ? 'silver' : (idx === 2 ? 'bronze' : ''));
+    const avatarEmoji = p.hatched ? (pi ? pi.emoji : '🐾') : PET_EGG;
+    const gs = getGrowthStatus(p.level);
+    return `<tr>
+      <td><span class="rank-rank ${rankCls}">${idx + 1}</span></td>
+      <td><span class="rank-avatar">${avatarEmoji}</span></td>
+      <td><b>${esc(s.name)}</b>${p.hatched ? '<br><small style="color:var(--text-muted)">'+esc(pi?pi.name:'')+'</small>' : ''}</td>
+      <td>Lv.${p.level}</td>
+      <td style="color:${gs.color};font-weight:700">${gs.label}</td>
+      <td><b style="color:#ea580c;font-size:15px">${p.points}</b> 🪙</td>
+      <td style="color:var(--text-muted);font-size:11.5px">${p.exp} EXP</td>
+    </tr>`;
+  }).join('');
+
+  return `<div style="padding:16px 20px">
+    <h3 style="margin:0 0 14px;font-size:17px">🏆 积分排行榜</h3>
+    <table class="rank-table">
+      <thead><tr><th>排名</th><th>守护神兽</th><th>学生</th><th>等级</th><th>状态</th><th>积分</th><th>经验</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+/* ---- 卡片右键菜单 ---- */
+function showPetCardMenu(e, sid){
+  e.preventDefault();
+  const s = findStudent(sid); if (!s) return;
+  const p = s.pet || {};
+  const menu = document.createElement('div');
+  menu.style.cssText = 'position:fixed;z-index:1700;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);padding:6px 0;min-width:160px';
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 180) + 'px';
+  menu.style.top = Math.min(e.clientY, window.innerHeight - 200) + 'px';
+  menu.innerHTML = `
+    <div style="padding:8px 16px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--surface-alt)'" onmouseout="this.style.background=''" onclick="openPetSelectModal('${sid}');this.parentElement.remove()">
+      🎨 更换宠物</div>
+    <div style="padding:8px 16px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--surface-alt)'" onmouseout="this.style.background=''" onclick="openPetPtsModal('${sid}');this.parentElement.remove()">
+      ✏️ 加减积分</div>
+    ${p.hatched ? `<div style="padding:8px 16px;font-size:12.5px;color:#ef4444;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background=''" onclick="if(confirm('确定要让 ${esc(s.name)} 的宠物回到蛋的状态吗？')){resetPet('${sid}');this.parentElement.remove()}">
+        🔄 重置为蛋</div>` : ''}
+    <div style="height:1px;background:var(--border);margin:4px 0"></div>
+    <div style="padding:8px 16px;font-size:12px;color:var(--text-muted);cursor:pointer;text-align:center" onclick="this.parentElement.remove()">取消</div>`;
+  document.body.appendChild(menu);
+  setTimeout(() => {
+    document.addEventListener('click', function fn(){ menu.remove(); document.removeEventListener('click', fn); }, {once:true});
+  }, 10);
+}
+
+function resetPet(sid){
+  const s = findStudent(sid); if (!s) return;
+  if (!s.pet) s.pet = {};
+  s.pet.type = ''; s.pet.name = ''; s.pet.hatched = false; s.pet.status = 'egg';
+  s.pet.level = 1; s.pet.exp = 0; /* 积分不清零 */
+  save(); renderMain();
+  toast(`🥚 ${esc(s.name)} 的宠物已重置为蛋`);
+}
 </script>
 </body>
 </html>
