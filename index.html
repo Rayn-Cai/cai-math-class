@@ -579,6 +579,12 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .ta-seg button{border:none;background:var(--input-bg);color:var(--text-muted);font-size:12px;font-weight:700;padding:5px 11px;cursor:pointer}
 .ta-seg button.on{background:var(--accent);color:#fff}
 .ta-pass{width:64px;padding:5px 8px;font-size:13px}
+/* 顶部主视图切换（走势图 / 排名榜）—— 醒目区分于其他小分段控件 */
+.view-switch{display:flex;gap:0;border:2px solid var(--accent);border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(37,99,235,.12)}
+.view-switch button{border:none;background:#fff;color:var(--accent);font-size:15px;font-weight:800;padding:10px 22px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s,color .15s}
+.view-switch button:hover{background:#eef3ff}
+.view-switch button.on{background:var(--accent);color:#fff}
+.view-switch .vs-ico{font-size:17px}
 
 /* 排名榜 */
 .rank-sum{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
@@ -4168,19 +4174,19 @@ function renderRank(){
 }
 function renderTrend(){
   const view = state.trendView || 'trend';
-  const viewToggle = `<span class="ta-seg">
-      <button class="${view==='trend'?'on':''}" onclick="setTrendView('trend')">走势图</button>
-      <button class="${view==='rank'?'on':''}" onclick="setTrendView('rank')">排名榜</button>
-    </span>`;
+  const viewSwitch = `<div class="card" style="padding:10px 14px"><div class="row" style="flex-wrap:wrap;gap:12px;align-items:center">
+      <span class="ta-label">查看方式</span>
+      <span class="view-switch">
+        <button class="${view==='trend'?'on':''}" onclick="setTrendView('trend')"><span class="vs-ico">📈</span>走势图</button>
+        <button class="${view==='rank'?'on':''}" onclick="setTrendView('rank')"><span class="vs-ico">🏆</span>排名榜</button>
+      </span>
+      <span class="muted">切换可查看「个人成绩走势」或「全班级 / 指定班级排名」</span>
+    </div></div>`;
   if (view === 'rank') {
-    return `<div class="card"><div class="row" style="flex-wrap:wrap;gap:10px;align-items:center">
-        <span class="ta-label">视图</span>${viewToggle}
-      </div></div>` + renderRank();
+    return viewSwitch + renderRank();
   }
   const cls = activeClass();
-  if (!cls.students.length) return `<div class="card"><div class="row" style="flex-wrap:wrap;gap:10px;align-items:center">
-        <span class="ta-label">视图</span>${viewToggle}
-      </div></div>` + '<div class="empty"><span class="ico">📈</span>本班还没有学生</div>';
+  if (!cls.students.length) return viewSwitch + '<div class="empty"><span class="ico">📈</span>本班还没有学生</div>';
   if (!state.trendStudentId || !cls.students.some(s => String(s.id) === String(state.trendStudentId))) {
     state.trendStudentId = cls.students[0].id;
   }
@@ -4214,7 +4220,7 @@ function renderTrend(){
     <span class="ta-label">达标分</span><input class="inp ta-pass" type="number" min="0" max="${base}" step="1" value="${pass}" onchange="setTrendPass(this.value)">`;
 
   if (!dates.length) {
-    return `<div class="card"><div class="row" style="flex-wrap:wrap;gap:10px;align-items:center">
+    return viewSwitch + `<div class="card"><div class="row" style="flex-wrap:wrap;gap:10px;align-items:center">
         <span><b>选择学生：</b>${sel}</span>
         <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">分析范围 ${scopeBtns}　${scaleInputs}</span>
       </div></div>
@@ -4278,9 +4284,8 @@ function renderTrend(){
     </div>`;
   }).join('');
 
-  return `
+  return viewSwitch + `
     <div class="card"><div class="row" style="flex-wrap:wrap;gap:10px;align-items:center">
-      <span class="ta-label">视图</span>${viewToggle}
       <span style="margin-left:8px"><b>选择学生：</b>${sel}</span>
       <span class="muted">共 ${dates.length} 天有成绩记录（${dates[0]} ~ ${dates[dates.length - 1]}）</span>
       <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
