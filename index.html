@@ -473,6 +473,15 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .score-in.s-y{background:var(--yellow-light);border-color:#e8d98a;color:var(--yellow)}
 .score-in.s-r{background:var(--red-light);border-color:#f0b6b6;color:var(--red)}
 .hw-done-group{display:inline-flex;gap:4px}
+.hw-score-wrap{display:inline-flex;align-items:center;gap:2px}
+.hw-full{font-size:11px;color:var(--text-muted);font-weight:700}
+.hw-det-btn{width:28px;height:28px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:13px;line-height:1;transition:.15s}
+.hw-det-btn:hover{border-color:var(--accent);background:var(--accent-light)}
+.hw-det-btn.on{background:var(--accent-light);border-color:var(--accent)}
+.hw-det-badge{display:inline-block;margin-left:3px;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:800;vertical-align:middle}
+.hw-det-badge.hw-done{background:var(--green-light);color:var(--green)}
+.hw-det-badge.hw-partial{background:#fff3d6;color:#b7791f}
+.hw-det-badge.hw-none{background:var(--red-light);color:var(--red)}
 .hw-btn{width:30px;height:30px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:14px;font-weight:800;color:var(--text-muted);transition:.15s}
 .hw-btn:hover{border-color:var(--accent)}
 .hw-btn.on{background:var(--green-light);border-color:#a7e0b8;color:var(--green)}
@@ -1599,7 +1608,7 @@ function findStudentByKey(key){
 function rec(student, date){
   student.records = student.records || {};
   if (!student.records[date]) {
-    student.records[date] = { attendance:'present', quiz:'', homework:'', hwRating:'', behavior:[], absorption:[] };
+    student.records[date] = { attendance:'present', quiz:'', homework:'', hwRating:'', behavior:[], absorption:[], hwDetail:null };
   }
   const r = student.records[date];
   if (!Array.isArray(r.behavior)) r.behavior = [];
@@ -1675,6 +1684,11 @@ function normalizeState(){
       s.ptsLog = s.ptsLog || [];
       /* 班级宠物系统：每名学生一只守护神兽 */
       s.pet = s.pet || { type:'', name:'', level:1, exp:0, points:0, status:'egg', group:'', hatched:false };
+      /* 家庭作业详情字段自愈：已有记录补 hwDetail，兼容旧数据 */
+      Object.keys(s.records || {}).forEach(d => {
+        const rr = s.records[d];
+        if (rr && rr.hwDetail === undefined) rr.hwDetail = null;
+      });
     });
     /* 宠物系统班级级数据 */
     c.pets = c.pets || { shopItems:[], exchangeLog:[], pointRules:[] };
@@ -1775,6 +1789,10 @@ function normalizeState(){
   if (state.trendPass == null || isNaN(+state.trendPass)) state.trendPass = 60;
   else if (+state.trendPass <= 10) state.trendPass = +state.trendPass * 10;
   if (!state.trendScope) state.trendScope = 'both';
+  /* 测试分析图「图表满分基准」：纵轴 0–trendScale、达标线都按此基准，默认 100（可改 120/150 等） */
+  if (!state.trendScale || isNaN(+state.trendScale) || +state.trendScale <= 0) state.trendScale = 100;
+  /* 家庭作业满分基准：趋势图无单次满分时按此折算，默认 10（可全局改），单次作业可在详情里覆盖 */
+  if (!state.hwScale || isNaN(+state.hwScale) || +state.hwScale <= 0) state.hwScale = 10;
   /* 工作台名称：首次或旧数据缺省时用出厂值 */
   if (!state.teacherName || typeof state.teacherName !== 'string' || !state.teacherName.trim())
     state.teacherName = TEACHER_NAME;
@@ -2791,6 +2809,23 @@ function multiBtnHtml(s, d, field){
   return `<button class="multi-btn" id="mb-${field}-${s.id}" onclick="openMulti(event,${s.id},'${field}')">${inner}</button>`;
 }
 
+/* 家庭作业单元格：分数输入/完成模式 + 📝 详情按钮 + 完成情况徽标 */
+function renderHwCell(s, r, h){
+  const d = hwDetailOf(r);
+  const badge = d ? `<span class="hw-det-badge hw-${d.status || 'done'}">${hwStatusLabel(d.status)}</span>` : '';
+  const detBtn = `<button class="hw-det-btn ${d ? 'on' : ''}" title="作业详情（完成时间/得分/本次满分/完成情况）" onclick="openHwDetail(${s.id})">📝</button>`;
+  if (state.hwMode === 'done') {
+    return `<span class="hw-done-group">
+        <button class="hw-btn ${r.hwDone ? 'on' : ''}" onclick="setHwDone(${s.id},true)" title="标记完成">✓</button>
+        <button class="hw-btn ${r.hwDone === false ? 'on-miss' : ''}" onclick="setHwDone(${s.id},false)" title="标记未完成">✕</button>
+      </span>${detBtn}${badge}`;
+  }
+  const fullTxt = (d && d.full) ? `<span class="hw-full">/${d.full}</span>` : '';
+  return `<span class="hw-score-wrap"><input class="score-in ${scoreClass(h)}" id="in-homework-${s.id}" value="${esc(r.homework)}"
+        inputmode="decimal" max="${state.hwScale || 10}" placeholder="-"
+        oninput="setScore(${s.id},'homework',this.value)" onchange="renderMain()">${fullTxt}</span>${detBtn}${badge}`;
+}
+
 function renderRoster(){
   const cls = activeClass();
   if (!cls) return '<div class="empty">暂无班级</div>';
@@ -2826,14 +2861,7 @@ function renderRoster(){
       <td class="c"><input class="score-in ${quizScoreClass(q)}" id="in-quiz-${s.id}" value="${esc(r.quiz)}"
           inputmode="decimal" max="${state.quizScale || 100}" placeholder="-"
           oninput="setScore(${s.id},'quiz',this.value)" onchange="renderMain()"></td>
-      <td class="c">${state.hwMode === 'done'
-        ? `<span class="hw-done-group">
-             <button class="hw-btn ${r.hwDone ? 'on' : ''}" onclick="setHwDone(${s.id},true)" title="标记完成">✓</button>
-             <button class="hw-btn ${r.hwDone === false ? 'on-miss' : ''}" onclick="setHwDone(${s.id},false)" title="标记未完成">✕</button>
-           </span>`
-        : `<input class="score-in ${scoreClass(h)}" id="in-homework-${s.id}" value="${esc(r.homework)}"
-          inputmode="decimal" placeholder="-"
-          oninput="setScore(${s.id},'homework',this.value)" onchange="renderMain()">`}</td>
+      <td class="c">${renderHwCell(s, r, h)}</td>
       <td class="c"><input class="rate-in" id="in-hwrate-${s.id}" value="${esc(r.hwRating || '')}" maxlength="6" placeholder="—" title="家庭作业评级（如 A+、B）" oninput="setHwRating(${s.id},this.value)"></td>
       <td>${multiBtnHtml(s, d, 'behavior')}</td>
       <td>${multiBtnHtml(s, d, 'absorption')}</td>
@@ -3072,7 +3100,7 @@ function openStudentCard(sid){
     <tr${rest ? ' class="sc-rest"' : ''}>
       <td class="c">${mdShort(d)}${rest ? ' <span class="sc-rest-tag">休</span>' : ''}</td>
       <td class="c ${quizScoreClass(num(r.quiz))}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
-      <td class="c ${state.hwMode === 'done' ? (r.hwDone ? 'v-g' : (r.hwDone === false ? 'v-r' : '')) : scoreClass(num(r.homework))}">${state.hwMode === 'done' ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '—')) : (num(r.homework) != null ? num(r.homework) : '—')}</td>
+      <td class="c ${state.hwMode === 'done' ? (r.hwDone ? 'v-g' : (r.hwDone === false ? 'v-r' : '')) : scoreClass(num(r.homework))}">${state.hwMode === 'done' ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '—')) : (() => { const d = hwDetailOf(r); if (d && d.full) return `${num(r.homework) != null ? num(r.homework) : '—'}<span class="hw-full">/${d.full}</span>`; return num(r.homework) != null ? num(r.homework) : '—'; })()}</td>
       <td class="c rate-cell">${esc(r.hwRating || '—')}</td>
       <td class="c muted">${rest ? '不计入' : dayPoints(r)}</td>
     </tr>`;
@@ -3177,7 +3205,7 @@ function setAttendance(id, key){
 function setScore(id, field, val){
   const f = findStudentById(id); if (!f) return;
   let v = String(val).replace(/[^0-9.]/g, '');
-  const MAX = field === 'quiz' ? (state.quizScale || 100) : 10;
+  const MAX = field === 'quiz' ? (state.quizScale || 100) : (state.hwScale || 10);
   if (v !== '' && parseFloat(v) > MAX) v = String(MAX);
   const r = rec(f.s, state.activeDate);
   r[field] = v;
@@ -3211,6 +3239,55 @@ function setHwRating(id, val){
   const r = rec(f.s, state.activeDate);
   r.hwRating = (String(val || '').replace(/[<>"']/g, '') || '').slice(0, 6);
   save();
+}
+/* ===== 家庭作业详情（完成时间 / 得分 / 本次满分 / 完成情况 / 备注）===== */
+function hwDetailOf(r){ return (r && r.hwDetail) ? r.hwDetail : null; }
+function hwStatusLabel(st){ return ({ done:'完成', partial:'部分完成', none:'未完成', '':'—' })[st] || '—'; }
+function openHwDetail(id){
+  const f = findStudentById(id); if (!f) return;
+  const r = rec(f.s, state.activeDate);
+  const d = hwDetailOf(r) || { time:'', score: r.homework || '', full: r.hwFull || state.hwScale || 10, status:'done', note:'' };
+  const body = `
+    <div class="hint">为 <b>${esc(f.s.name)}</b> 记录 ${state.activeDate} 的家庭作业情况。可自定义「本次满分」（如 10 / 100 / 120），趋势图与统计将按实际满分折算。</div>
+    <div class="form-row"><label>完成时间</label><input class="inp" id="hwTime" type="time" value="${esc(d.time || '')}"></div>
+    <div class="form-row"><label>得分</label><input class="inp" id="hwScore" type="number" min="0" step="0.5" value="${esc(d.score === '' ? '' : d.score)}" placeholder="本次实得"></div>
+    <div class="form-row"><label>本次满分</label><input class="inp" id="hwFull" type="number" min="1" step="0.5" value="${esc(d.full === '' ? '' : d.full)}" placeholder="如 10 / 100 / 120"></div>
+    <div class="form-row"><label>完成情况</label>
+      <select class="inp" id="hwStatus">
+        <option value="done" ${d.status === 'done' ? 'selected' : ''}>完成</option>
+        <option value="partial" ${d.status === 'partial' ? 'selected' : ''}>部分完成</option>
+        <option value="none" ${d.status === 'none' ? 'selected' : ''}>未完成</option>
+      </select>
+    </div>
+    <div class="form-row"><label>备注</label><textarea class="inp" id="hwNote" rows="2" placeholder="如：书写工整、订正及时…">${esc(d.note || '')}</textarea></div>`;
+  const foot = `<button class="btn primary" onclick="saveHwDetail(${id})">保存</button>
+                <button class="btn" onclick="closeModal()">取消</button>`;
+  openModal('📚 家庭作业详情 · ' + esc(f.s.name), body, foot);
+}
+function applyHwDetail(r, d){
+  r.hwDetail = {
+    time:   d.time   || '',
+    score:  d.score  === '' || d.score  === undefined ? '' : (+d.score),
+    full:   d.full   === '' || d.full   === undefined ? '' : (+d.full),
+    status: d.status || 'done',
+    note:   d.note   || ''
+  };
+  r.homework = (d.score === '' || d.score === undefined) ? '' : String(+d.score);  // 同步，供趋势/平均分兼容
+  r.hwFull   = (d.full  === '' || d.full  === undefined) ? '' : (+d.full);
+}
+function saveHwDetail(id){
+  const f = findStudentById(id); if (!f) return;
+  const r = rec(f.s, state.activeDate);
+  const d = {
+    time:   (document.getElementById('hwTime')  || {}).value || '',
+    score:  (document.getElementById('hwScore') || {}).value,
+    full:   (document.getElementById('hwFull')  || {}).value,
+    status: (document.getElementById('hwStatus')|| {}).value || 'done',
+    note:   (document.getElementById('hwNote')  || {}).value || ''
+  };
+  applyHwDetail(r, d);
+  save(); closeModal(); renderMain();
+  toast('已保存家庭作业详情');
 }
 /* 修改「小测 / 家庭作业」列名（日常反馈表表头点击） */
 function openLabelEditor(k){
@@ -3855,9 +3932,21 @@ function exportAttendCSV(){
    Tab 3：测试分析 (trend)
    ================================================================== */
 function setTrendScope(v){ state.trendScope = v; save(); renderMain(); }
-function setTrendPass(v){ const n = parseFloat(v); state.trendPass = isNaN(n) ? 60 : Math.max(0, Math.min(100, n)); save(); renderMain(); }
-/* 把序列原始分折算到 0-100 图表百分比坐标：作业×10（10 分制→百分制）；小测按 quizScale 折算为百分比，满分 10 与 100 都能正确反映 */
-function plotVal(key, v){ return key === 'homework' ? v * 10 : (state.quizScale ? v / state.quizScale * 100 : v); }
+function setTrendPass(v){ const n = parseFloat(v); const mx = state.trendScale || 100; state.trendPass = isNaN(n) ? 60 : Math.max(0, Math.min(mx, n)); save(); renderMain(); }
+function setHwScale(v){ const n = parseFloat(v); state.hwScale = isNaN(n) || n <= 0 ? 10 : n; save(); renderMain(); }
+function setTrendScale(v){ const n = parseFloat(v); if (isNaN(n) || n <= 0) return toast('请输入有效的满分基准'); state.trendScale = n; if (state.trendPass > n) state.trendPass = n; save(); renderMain(); toast('图表满分基准已设为 ' + n); }
+/* 作业有效得分与满分：优先用每次详情里的「本次满分」，其次记录级 hwFull，最后退回全局 hwScale */
+function hwScore(r){ return num(r.homework); }
+function hwFullOf(r){ return (r.hwDetail && r.hwDetail.full) ? +r.hwDetail.full : (r.hwFull ? +r.hwFull : (state.hwScale || 10)); }
+function fullOf(key, r){ return key === 'quiz' ? (state.quizScale || 100) : hwFullOf(r); }
+/* 折线图纵坐标：按各序列自身满分折算成「满分基准 trendScale」坐标（满分→顶点，与百分制一致，但基准可自定义） */
+function plotVal(key, r){
+  const v = key === 'homework' ? hwScore(r) : num(r[key]);
+  if (v === null) return null;
+  const f = fullOf(key, r);
+  if (!f || f <= 0) return null;
+  return Math.max(0, v / f) * (state.trendScale || 100);
+}
 function renderTrend(){
   const cls = activeClass();
   if (!cls.students.length) return '<div class="empty"><span class="ico">📈</span>本班还没有学生</div>';
@@ -3865,14 +3954,15 @@ function renderTrend(){
     state.trendStudentId = cls.students[0].id;
   }
   const stu = cls.students.find(s => String(s.id) === String(state.trendStudentId));
-  const pass = Math.max(0, Math.min(100, +state.trendPass || 60));
+  const base = state.trendScale || 100;
+  const pass = Math.max(0, Math.min(base, +state.trendPass || 60));
   const scope = state.trendScope || 'both';
   const allSeries = [
     { key:'quiz', color:'#2563eb', label:LBL('quiz') + '（满分 ' + (state.quizScale || 100) + '）' },
-    { key:'homework', color:'#16a34a', label:LBL('homework') + '（满分 10，×10 折算）' },
+    { key:'homework', color:'#16a34a', label:LBL('homework') + '（满分 ' + (state.hwScale || 10) + '，或每次实际满分）' },
   ];
   const series = allSeries.filter(se => scope === 'both' || scope === se.key);
-  const sval = (r, key) => key === 'homework' ? hwEffective(r) : num(r[key]);
+  const sval = (r, key) => key === 'homework' ? hwScore(r) : num(r[key]);
 
   const dates = Object.keys(stu.records || {})
     .filter(d => series.some(se => sval(stu.records[d], se.key) !== null))
@@ -3888,11 +3978,14 @@ function renderTrend(){
       <button class="${scope === 'homework' ? 'on' : ''}" onclick="setTrendScope('homework')">仅${esc(LBL('homework'))}</button>
     </span>`;
 
+  const scaleInputs = `<span class="ta-label">作业满分基准</span><input class="inp ta-pass" type="number" min="1" step="1" value="${state.hwScale || 10}" onchange="setHwScale(this.value)">
+    <span class="ta-label">图表满分基准</span><input class="inp ta-pass" type="number" min="1" step="1" value="${base}" onchange="setTrendScale(this.value)">
+    <span class="ta-label">达标分</span><input class="inp ta-pass" type="number" min="0" max="${base}" step="1" value="${pass}" onchange="setTrendPass(this.value)">`;
+
   if (!dates.length) {
     return `<div class="card"><div class="row" style="flex-wrap:wrap;gap:10px;align-items:center">
         <span><b>选择学生：</b>${sel}</span>
-        <span style="margin-left:auto">分析范围 ${scopeBtns}　达标分（百分制）
-          <input class="inp ta-pass" type="number" min="0" max="100" step="1" value="${pass}" onchange="setTrendPass(this.value)"></span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">分析范围 ${scopeBtns}　${scaleInputs}</span>
       </div></div>
       <div class="empty"><span class="ico">📉</span>${esc(stu.name)} 在所选范围内还没有成绩记录</div>`;
   }
@@ -3901,12 +3994,13 @@ function renderTrend(){
   const PL = 44, PR = 24, PT = 20, PB = 46;
   const iw = W - PL - PR, ih = H - PT - PB;
   const x = i => PL + (dates.length === 1 ? iw / 2 : (iw * i / (dates.length - 1)));
-  const y = v => PT + ih - (v / 100) * ih;   // 0-100 百分制纵轴
+  const y = v => PT + ih - (v / base) * ih;   // 0→base 纵轴（基准可自定义）
 
   let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
-  for (let v = 0; v <= 100; v += 20) {
+  for (let k = 0; k <= 5; k++) {
+    const v = base * k / 5;
     svg += `<line x1="${PL}" y1="${y(v)}" x2="${W - PR}" y2="${y(v)}" stroke="#e2ecf9" stroke-width="1"/>`;
-    svg += `<text x="${PL - 9}" y="${y(v) + 4}" font-size="11" fill="#8a94a6" text-anchor="end">${v}</text>`;
+    svg += `<text x="${PL - 9}" y="${y(v) + 4}" font-size="11" fill="#8a94a6" text-anchor="end">${Math.round(v)}</text>`;
   }
   svg += `<line x1="${PL}" y1="${y(pass)}" x2="${W - PR}" y2="${y(pass)}" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="6 4" opacity=".7"/>`;
   svg += `<text x="${W - PR - 2}" y="${y(pass) - 6}" font-size="10.5" fill="#16a34a" text-anchor="end">达标线 ${pass} 分</text>`;
@@ -3914,13 +4008,13 @@ function renderTrend(){
     svg += `<text x="${x(i)}" y="${H - PB + 20}" font-size="10.5" fill="#8a94a6" text-anchor="middle">${d.slice(5)}</text>`;
   });
   series.forEach(se => {
-    const pts = dates.map((d, i) => ({ i, v: sval(stu.records[d], se.key) })).filter(p => p.v !== null);
+    const pts = dates.map((d, i) => ({ i, v: sval(stu.records[d], se.key), rec: stu.records[d] })).filter(p => p.v !== null);
     if (pts.length > 1) {
       svg += `<polyline fill="none" stroke="${se.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"
-        points="${pts.map(p => `${x(p.i)},${y(plotVal(se.key, p.v))}`).join(' ')}"/>`;
+        points="${pts.map(p => `${x(p.i)},${y(plotVal(se.key, p.rec))}`).join(' ')}"/>`;
     }
     pts.forEach(p => {
-      const py = y(plotVal(se.key, p.v));
+      const py = y(plotVal(se.key, p.rec));
       svg += `<circle cx="${x(p.i)}" cy="${py}" r="4.5" fill="#fff" stroke="${se.color}" stroke-width="2.5"/>`;
       svg += `<text x="${x(p.i)}" y="${py - 11}" font-size="10.5" font-weight="700" fill="${se.color}" text-anchor="middle">${p.v}</text>`;
     });
@@ -3933,18 +4027,19 @@ function renderTrend(){
     const vs = dates.map(d => sval(stu.records[d], key)).filter(v => v !== null);
     return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null;
   };
-  /* 达标率：小测原值、作业×10 后与 pass（百分制）比较 */
+  /* 达标率：按各自满分折算到「基准」坐标后，与达标分比较 */
   const passRate = key => {
-    const vs = dates.map(d => sval(stu.records[d], key)).filter(v => v !== null);
+    const vs = dates.map(d => plotVal(key, stu.records[d])).filter(v => v !== null);
     if (!vs.length) return null;
-    return Math.round(vs.filter(v => plotVal(key, v) >= pass).length / vs.length * 100);
+    return Math.round(vs.filter(v => v >= pass).length / vs.length * 100);
   };
   const cards = series.map(se => {
     const a = avgOf(se.key);
     const pr = passRate(se.key);
     const cnt = dates.map(d => sval(stu.records[d], se.key)).filter(v => v !== null).length;
-    /* 颜色按「百分比」判定：小测按 quizScale 折算，作业×10，与图表纵轴一致 */
-    const aPct = a === null ? null : (se.key === 'quiz' ? a / (state.quizScale || 100) * 100 : a * 10);
+    /* 颜色按「百分比」判定：原始分 / 满分 ×100，与图表纵轴一致 */
+    const pcts = dates.map(d => { const rr = stu.records[d]; const v = sval(rr, se.key); if (v === null) return null; const f = fullOf(se.key, rr); return f > 0 ? v / f * 100 : null; }).filter(p => p !== null);
+    const aPct = pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null;
     return `<div class="avg-card">
       <div class="ac-l">${se.label}平均分</div>
       <div class="ac-v ${a !== null ? valClass(aPct) : ''}">${a !== null ? fmt1(a) : '—'}</div>
@@ -3958,17 +4053,16 @@ function renderTrend(){
       <span class="muted">共 ${dates.length} 天有成绩记录（${dates[0]} ~ ${dates[dates.length - 1]}）</span>
       <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="ta-label">分析范围</span>${scopeBtns}
-        <span class="ta-label">达标分（百分制）</span>
-        <input class="inp ta-pass" type="number" min="0" max="100" step="1" value="${pass}" onchange="setTrendPass(this.value)">
+        ${scaleInputs}
       </span>
     </div></div>
     <div class="chart-box">
       <div class="legend">
         ${series.map(s => `<span><i style="background:${s.color}"></i>${s.label}</span>`).join('')}
-        <span><i style="background:#16a34a;opacity:.6"></i>${pass} 分达标线</span>
+        <span><i style="background:#16a34a;opacity:.6"></i>${pass} 分达标线（基准 ${base}）</span>
       </div>
       ${svg}
-      <div class="hint" style="margin-top:6px">💡 纵轴为百分制（0–100）；家庭作业分数已×10 折算后与小测同图对比，方便看相对走势。</div>
+      <div class="hint" style="margin-top:6px">💡 纵轴为「满分基准」（默认 100，可改成 120/150 等），分数按各自满分折算后与小测同图对比；作业满分可在每次详情里单独设定。</div>
     </div>
     <div class="avg-cards">${cards}</div>`;
 }
