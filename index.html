@@ -618,6 +618,48 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .view-switch .vs-ico{font-size:17px}
 
 /* 排名榜 */
+
+/* 概览首页 + 预警名单 */
+.ov-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.ov-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
+.ov-card .ov-ico{font-size:18px}
+.ov-card .ov-v{font-size:26px;font-weight:800;line-height:1.2;margin-top:4px}
+.ov-card .ov-l{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+.ov-card.green{background:linear-gradient(135deg,#ecfdf5,#d1fae5);border-color:#a7f3d0}
+.ov-card.green .ov-v{color:var(--green)}
+.ov-card.red{background:linear-gradient(135deg,#fef2f2,#fee2e2);border-color:#fecaca}
+.ov-card.red .ov-v{color:var(--red)}
+.ov-card.amber{background:linear-gradient(135deg,#fffbeb,#fef3c7);border-color:#fde68a}
+.ov-card.amber .ov-v{color:#b45309}
+.ov-card.blue{background:linear-gradient(135deg,#eff6ff,#dbeafe);border-color:#bfdbfe}
+.ov-card.blue .ov-v{color:var(--accent-dark)}
+.ov-sec{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.ov-sec-t{font-weight:800;font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.ov-pets{display:flex;gap:10px;flex-wrap:wrap}
+.ov-pet{display:flex;align-items:center;gap:8px;background:var(--surface-alt);border-radius:10px;padding:6px 10px}
+.ov-pet .em{font-size:20px}
+.ov-pet .nm{font-weight:700;font-size:13px}
+.ov-pet .pt{font-size:12px;color:var(--text-muted)}
+.ov-warn{display:flex;flex-direction:column;gap:8px}
+.ov-warn-row{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1px solid #fed7aa;border-radius:10px;padding:8px 12px}
+.ov-warn-row .wico{font-size:18px}
+.ov-warn-row .wnm{font-weight:700;min-width:64px}
+.ov-warn-row .wrs{font-size:12.5px;color:#9a3412;display:flex;gap:6px;flex-wrap:wrap}
+.ov-warn-row .wtag{background:#fff;border:1px solid #fdba74;border-radius:999px;padding:1px 8px;font-size:11.5px}
+.ov-empty{color:var(--text-muted);font-size:13px;padding:8px 2px}
+.ov-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+
+/* 批量录入 */
+.batch-bar{display:flex;align-items:center;gap:10px;margin:10px 0;flex-wrap:wrap}
+.batch-tbl{width:100%}
+.batch-tbl th,.batch-tbl td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:center}
+.batch-tbl .bnm{text-align:left;font-weight:700;min-width:90px}
+.batch-tbl input{max-width:90px;text-align:center}
+.batch-tip{font-size:12px;color:var(--text-muted)}
+
+/* 家长只读视图 */
+.pv-banner{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--accent-dark)}
+.pv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
 .rank-sum{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
 .rs{flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;text-align:center}
 .rs-l{font-size:12px;color:var(--text-muted);font-weight:700}
@@ -1080,6 +1122,14 @@ th.atc-d.we-sun small{color:var(--red)}
 .sc-pf{background:#fff;border:1px solid var(--border);border-radius:9px;padding:9px 11px;display:flex;flex-direction:column;gap:3px}
 .sc-pf-l{font-size:11px;font-weight:800;color:var(--text-muted)}
 .sc-pf-v{font-size:13.5px;font-weight:700;color:var(--text)}
+.sc-radar-metrics{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.sc-radar-metrics div{display:flex;justify-content:space-between;gap:18px;min-width:200px}
+.sc-radar-metrics span{color:var(--text-muted)}
+.sc-radar-metrics b{color:var(--text);font-weight:800}
+/* 家长只读模式：隐藏工作台导航，仅呈现学生档案 */
+.parent-mode .topbar, .parent-mode #sidebar, .parent-mode #tabs, .parent-mode .save-status { display: none !important; }
+.parent-mode .wrap{ max-width: 760px; padding: 12px; }
+.parent-mode .pv-banner{ font-size: 14px; }
 .sc-actions{display:flex;gap:10px;margin-top:6px}
 .sc-actions .btn{flex:1;justify-content:center}
 .sc-ck-summary{font-size:12.5px;font-weight:600;color:var(--text-secondary);background:#fff;border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:9px}
@@ -1309,7 +1359,34 @@ th.atc-d.we-sun small{color:var(--red)}
 .rank-rank{font-size:15px;font-weight:900;width:40px;text-align:center}
 .rank-rank.gold{color:#f59e0b}.rank-rank.silver{color:#9ca3af}.rank-rank.bronze{color:#d97706}
 .rank-avatar{width:36px;height:36px;border-radius:50%;background:var(--surface-alt);display:inline-flex;align-items:center;justify-content:center;font-size:20px;vertical-align:middle}
-</style>
+
+/* ============ 移动端适配（手机录入更顺手） ============ */
+@media (max-width: 720px){
+  :root{ --maxw: 100%; }
+  body{ font-size: 14px; }
+  .wrap{ padding: 8px; }
+  .topbar{ flex-wrap: wrap; gap: 8px; padding: 8px 10px; }
+  .topbar .tabs-scroll{ order: 3; width: 100%; }
+  #tabs{ flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+  #tabs .tab{ flex: 0 0 auto; padding: 7px 10px; font-size: 12.5px; }
+  .modal{ max-width: 100% !important; width: 100%; margin: 0; border-radius: 14px 14px 0 0; align-self: flex-end; max-height: 92vh; }
+  .overlay{ align-items: flex-end; }
+  .score-in, .rate-in, .inp, .sel, .batch-inp{ min-height: 40px; font-size: 15px; }
+  .att-group button, .hw-btn, .batch-tbl select, .batch-tbl input{ min-height: 40px; font-size: 14px; }
+  .btn, .nav-btn, .topic-btn, .ck-att-btn{ min-height: 40px; }
+  .tbl-wrap{ overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table{ font-size: 13px; }
+  .ov-grid{ grid-template-columns: repeat(2, 1fr); }
+  .pv-grid{ grid-template-columns: repeat(2, 1fr); }
+  .sc-stats{ grid-template-columns: repeat(3, 1fr); }
+  .row{ flex-wrap: wrap; }
+  .datenav{ flex-wrap: wrap; }
+}
+@media (max-width: 420px){
+  .ov-grid, .pv-grid, .sc-stats{ grid-template-columns: repeat(2, 1fr); }
+  .ov-card .ov-v{ font-size: 22px; }
+}
+
 </head>
 <body>
 <div class="app" id="app">
@@ -1411,6 +1488,7 @@ const LD_SEGMENTS = [
 ];
 
 const TABS = [
+  { key:'overview',  label:'概览',         icon:'🏠' },
   { key:'roster',    label:'日常反馈表',   icon:'📋' },
   { key:'attend',    label:'出勤统计',   icon:'🗓️' },
   { key:'trend',     label:'测试分析',   icon:'📈' },
@@ -1641,6 +1719,7 @@ const ui = {
   attFrom: '', attTo: '', attRangeInit: false, attStudentId: '', attScope: 'cur',
   trendMode: 'student', trendType: 'all', trendSchool: '',
   ckMonth: '',   // 打卡登记当前查看的月份（YYYY-MM），空则跟随当前日期
+  rosterBatch: false, // 日常反馈表：批量录入模式
 };
 
 function todayStr(d){
@@ -2543,6 +2622,8 @@ function renderMain(){
     document.getElementById('tabs').innerHTML = renderTabs();
     if (state.activeTab === 'profile') {
       c.innerHTML = renderProfile();
+    } else if (state.activeTab === 'overview') {
+      c.innerHTML = renderOverview();
     } else {
       c.innerHTML = `
       <div class="blank-state">
@@ -2561,7 +2642,7 @@ function renderMain(){
     return;
   }
   const map = {
-    roster: renderRoster, attend: renderAttend, trend: renderTrend, checkin: renderCheckin,
+    overview: renderOverview, roster: renderRoster, attend: renderAttend, trend: renderTrend, checkin: renderCheckin,
     profile: renderProfile, exam: renderExam, files: renderFiles,
     weekly: renderWeekly, summary: renderSummary, export: renderExportTab,
     pets: renderPets,
@@ -2572,6 +2653,98 @@ function renderMain(){
   if (state.activeTab === 'checkin') hydrateCheckinDocs();
   if (state.activeTab === 'attend') hydrateAttDocs();
   if (state.activeTab === 'trend') { /* svg inline */ }
+}
+/* ==================================================================
+   概览首页 + 需关注名单（预警）
+   ================================================================== */
+function buildWarnings(cls){
+  const pass = (state.quizThresholds && state.quizThresholds.pass) || (state.quizScale || 100) * 0.6;
+  const last7 = [];
+  for (let i = 0; i < 7; i++) last7.push(shiftDate(state.activeDate, -i));
+  const out = [];
+  cls.students.forEach(s => {
+    const reasons = [];
+    // 1) 连续 2 次小测低于达标线
+    const qDates = Object.keys(s.records || {}).filter(d => !cls.attendanceOff || !cls.attendanceOff[d])
+      .sort((a, b) => b.localeCompare(a));
+    let lowStreak = 0;
+    for (const d of qDates) {
+      const q = num(s.records[d].quiz);
+      if (q === null) break;
+      if (q < pass) { lowStreak++; if (lowStreak >= 2) { reasons.push('连续 ' + lowStreak + ' 次小测低于达标线'); break; } }
+      else break;
+    }
+    // 2) 近一周缺勤/迟到 ≥ 2 次
+    let absentCnt = 0;
+    last7.forEach(d => {
+      if (cls.attendanceOff && cls.attendanceOff[d]) return;
+      const a = (s.records && s.records[d] && s.records[d].attendance) || 'present';
+      if (a === 'absent' || a === 'late') absentCnt++;
+    });
+    if (absentCnt >= 2) reasons.push('近一周缺勤/迟到 ' + absentCnt + ' 次');
+    // 3) 作业连续未完成（done 模式 hwDone===false；分数模式取最近 hwDetail.status==='none'）
+    let hwStreak = 0;
+    for (const d of qDates) {
+      const r = s.records[d];
+      let none = false;
+      if (state.hwMode === 'done') none = r.hwDone === false;
+      else if (r.hwDetail && r.hwDetail.status === 'none') none = true;
+      if (none) { hwStreak++; if (hwStreak >= 2) { reasons.push('连续 ' + hwStreak + ' 次作业未完成'); break; } }
+      else break;
+    }
+    if (reasons.length) out.push({ s, reasons });
+  });
+  return out;
+}
+function renderOverview(){
+  const cls = activeClass();
+  if (!cls) return '<div class="empty"><span class="ico">🏠</span>还没有班级，先去「日常反馈表」新建班级与学生吧</div>';
+  const d = state.activeDate;
+  const dayRest = !!(cls.attendanceOff && cls.attendanceOff[d]);
+  let present = 0, late = 0, leave = 0, absent = 0;
+  cls.students.forEach(s => {
+    const a = rec(s, d).attendance;
+    if (a === 'present') present++; else if (a === 'late') late++;
+    else if (a === 'leave') leave++; else absent++;
+  });
+  const qs = statsOf(cls, d, 'quiz');
+  const hs = statsOf(cls, d, 'homework');
+  const quizTodo = cls.students.filter(s => { const r = rec(s, d); return (num(r.quiz) === null); }).length;
+  const hwTodo = cls.students.filter(s => { const r = rec(s, d); return (state.hwMode === 'done' ? (r.hwDone === undefined || r.hwDone === null) : hwEffective(r) === null); }).length;
+  const petTop = cls.students.slice().sort((a, b) => availablePoints(b) - availablePoints(a)).slice(0, 3);
+  const warns = buildWarnings(cls);
+  const card = (ico, v, l, cls2) => `<div class="ov-card ${cls2 || ''}"><div class="ov-ico">${ico}</div><div class="ov-v">${v}</div><div class="ov-l">${l}</div></div>`;
+  const head = `<div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <div><div class="datenav">
+        <button class="nav-btn" onclick="setDate('${shiftDate(d, -1)}')">‹</button>
+        <span class="cur-date">${d} <span class="muted" style="font-size:12px">${fmtDateCN(d)}</span></span>
+        <button class="nav-btn" onclick="setDate('${shiftDate(d, 1)}')">›</button>
+        <button class="btn sm" onclick="setDate('${todayStr()}')">今天</button>
+      </div></div>
+      <div class="muted">当前班级：<b>${esc(cls.name)}</b></div>
+    </div>`;
+  const statCards = `<div class="ov-grid">
+      ${card('✅', present, '今日出勤', 'green')}
+      ${card('🟡', late, '迟到', 'amber')}
+      ${card('🌴', leave, '请假', 'blue')}
+      ${card('❌', absent, '缺勤', absent ? 'red' : '')}
+      ${card('📊', qs ? fmt1(qs.avg) : '—', '今日小测均分' + (qs ? '（' + qs.n + '人）' : ''), qs ? 'blue' : '')}
+      ${card('📚', hs ? fmt1(hs.avg) : '—', '今日作业均分' + (hs ? '（' + hs.n + '人）' : ''), hs ? 'blue' : '')}
+      ${card('📝', quizTodo, '小测待录入', quizTodo ? 'amber' : '')}
+      ${card('🗒️', hwTodo, '作业待录入', hwTodo ? 'amber' : '')}
+    </div>`;
+  const petsHtml = petTop.length ? `<div class="ov-sec"><div class="ov-sec-t">🐾 宠物积分榜 · 前三</div>
+      <div class="ov-pets">${petTop.map((s, i) => `<div class="ov-pet"><span class="em">${['🥇','🥈','🥉'][i]}</span>
+        <span><span class="nm">${esc(s.name)}</span><br><span class="pt">${availablePoints(s)} 分</span></span></div>`).join('')}</div></div>` : '';
+  const warnHtml = `<div class="ov-sec"><div class="ov-sec-t">🔔 需关注名单（自动预警）</div>
+      ${warns.length ? `<div class="ov-warn">${warns.map(w => `<div class="ov-warn-row">
+          <span class="wico">⚠️</span><span class="wnm">${esc(w.s.name)}</span>
+          <span class="wrs">${w.reasons.map(r => `<span class="wtag">${esc(r)}</span>`).join('')}</span>
+        </div>`).join('')}</div>
+        <div class="ov-actions"><button class="btn sm" onclick="switchTab('roster')">📋 去日常反馈表处理</button></div>`
+      : `<div class="ov-empty">🎉 暂无预警，孩子们状态都不错～</div>`}
+    </div>`;
+  return `${head}${statCards}${petsHtml}${warnHtml}`;
 }
 /* ==================================================================
    Tab 1：日常反馈表 (roster)
@@ -3031,7 +3204,13 @@ function renderRoster(){
 
   <div class="stat-row" id="statRow">${statRowHtml(cls, d)}</div>
 
-  <div class="tbl-wrap">
+  <div class="batch-bar">
+    <button class="btn ${ui.rosterBatch ? 'primary' : ''}" onclick="toggleRosterBatch()">⚡ ${ui.rosterBatch ? '退出批量录入' : '批量录入'}</button>
+    <span class="batch-tip">${ui.rosterBatch ? '紧凑模式：姓名·出勤·小测·作业，回车跳到下一格，改完自动保存' : '需要快速录全班？点「批量录入」进入紧凑表格'}</span>
+  </div>
+  ${ui.rosterBatch ? renderBatchTable(cls, d) : ''}
+
+  <div class="tbl-wrap" style="display:${ui.rosterBatch ? 'none' : 'block'}">
     <table>
       <thead><tr>
         <th class="c" style="width:56px">排名</th>
@@ -3059,6 +3238,38 @@ function renderRoster(){
     <button class="btn primary" onclick="addStudent()">＋ 添加学生</button>
     <button class="btn" onclick="batchAddStudents()">📋 批量添加</button>
     <span class="hint">批量添加：用逗号分隔多个姓名，例如「张三,李四,王五」</span>
+  </div>`;
+}
+function toggleRosterBatch(){ ui.rosterBatch = !ui.rosterBatch; renderMain(); }
+const BATCH_NAV = "if(event.key==='Enter'){event.preventDefault();var a=document.querySelectorAll('.batch-inp');var i=[].indexOf.call(a,this);if(i>=0&&i<a.length-1)a[i+1].focus();else this.blur();}";
+/* 批量录入紧凑表：仅 出勤/小测/作业，回车在 .batch-inp 间顺序跳格，改完即存 */
+function renderBatchTable(cls, d){
+  const rows = cls.students.map(s => {
+    const r = rec(s, d); const q = num(r.quiz); const h = hwEffective(r);
+    const avg = (q !== null && h !== null) ? (q + h) / 2 : (q !== null ? q : (h !== null ? h : null));
+    const attSel = `<select class="inp batch-inp" onchange="setAttendance(${s.id},this.value)" onkeydown="${BATCH_NAV}">${ATTENDANCE_OPTS.map(o =>
+      `<option value="${o.key}" ${r.attendance === o.key ? 'selected' : ''}>${o.label}</option>`).join('')}</select>`;
+    const hwInput = state.hwMode === 'done'
+      ? `<select class="inp batch-inp" onchange="setHwDone(${s.id}, this.value==='true'?true:(this.value==='false'?false:undefined))" onkeydown="${BATCH_NAV}">
+           <option value="" ${r.hwDone === undefined || r.hwDone === null ? 'selected' : ''}>—</option>
+           <option value="true" ${r.hwDone === true ? 'selected' : ''}>✓完成</option>
+           <option value="false" ${r.hwDone === false ? 'selected' : ''}>✕未完成</option></select>`
+      : `<input class="score-in batch-inp ${scoreClass(h)}" value="${esc(r.homework)}" inputmode="decimal" max="${state.hwScale || 10}"
+           oninput="setScore(${s.id},'homework',this.value)" onchange="renderMain()" onkeydown="${BATCH_NAV}">`;
+    return `<tr>
+      <td class="bnm"><button class="stu-link" onclick="openStudentCard(${s.id})">${esc(s.name)}</button></td>
+      <td class="c">${attSel}</td>
+      <td class="c"><input class="score-in batch-inp ${quizScoreClass(q)}" value="${esc(r.quiz)}" inputmode="decimal" max="${state.quizScale || 100}"
+        oninput="setScore(${s.id},'quiz',this.value)" onchange="renderMain()" onkeydown="${BATCH_NAV}"></td>
+      <td class="c">${hwInput}</td>
+      <td class="c"><span class="avg-val ${valClass(avg)}">${avg !== null ? fmt1(avg) : '—'}</span></td>
+    </tr>`;
+  }).join('');
+  return `<div class="tbl-wrap"><table class="batch-tbl">
+    <thead><tr><th class="bnm">姓名</th><th class="c">出勤</th><th class="c">${esc(LBL('quiz'))}</th><th class="c">${esc(LBL('homework'))}</th><th class="c">均分</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="5" class="empty">还没有学生</td></tr>'}</tbody>
+  </table>
+  <div class="batch-tip" style="margin-top:8px">💡 在此表格里按 <b>回车</b> 可跳到下一个输入框，专注快速录全班；详细表现/吸收等仍在「完整表格」里（点「退出批量录入」）。</div>
   </div>`;
 }
 
@@ -3165,11 +3376,36 @@ function saveTagEditor(){
 }
 
 /* -------- 学生档案弹窗 -------- */
-function openStudentCard(sid){
+/* 学生成长档案：五维雷达图（出勤 / 小测 / 作业 / 打卡 / 宠物积分），各维 0-100 */
+function studentRadar(m){
+  const axes = [['出勤', m.attend || 0], ['小测', m.quiz || 0], ['作业', m.homework || 0], ['打卡', m.checkin || 0], ['宠物', m.pet || 0]];
+  const cx = 92, cy = 94, R = 64, n = axes.length;
+  const ang = i => -Math.PI / 2 + i * 2 * Math.PI / n;
+  const ring = lvl => axes.map((_, i) => { const a = ang(i), r = R * lvl; return (cx + r * Math.cos(a)).toFixed(1) + ',' + (cy + r * Math.sin(a)).toFixed(1); }).join(' ');
+  const pt = (i, val) => { const a = ang(i), r = R * Math.max(0, Math.min(100, val)) / 100; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
+  const rings = [0.25, 0.5, 0.75, 1].map(l => `<polygon points="${ring(l)}" fill="none" stroke="#e5e7eb" stroke-width="1"/>`).join('');
+  const labels = axes.map((ax, i) => {
+    const a = ang(i), lx = cx + (R + 13) * Math.cos(a), ly = cy + (R + 13) * Math.sin(a);
+    const anchor = Math.abs(Math.cos(a)) < 0.3 ? 'middle' : (Math.cos(a) > 0 ? 'start' : 'end');
+    return `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" font-size="10.5" fill="#475569" text-anchor="${anchor}">${ax[0]}</text>`
+      + `<text x="${lx.toFixed(1)}" y="${(ly + 14).toFixed(1)}" font-size="9.5" fill="#2563eb" text-anchor="${anchor}">${ax[1]}</text>`;
+  }).join('');
+  const dataPts = axes.map((ax, i) => pt(i, ax[1]).map(v => v.toFixed(1)).join(',')).join(' ');
+  return `<svg viewBox="0 0 184 200" width="210" height="228" style="max-width:100%">
+    ${rings}
+    <polygon points="${dataPts}" fill="rgba(59,111,224,0.16)" stroke="#3b6fe0" stroke-width="2"/>
+    ${axes.map((ax, i) => { const p = pt(i, ax[1]); return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="#3b6fe0"/>`; }).join('')}
+    ${labels}
+  </svg>`;
+}
+
+function openStudentCard(sid, readOnly){
   const p = profileOf(sid); if (!p) return toast('未找到该学生档案');
   const id = String(sid);
   let present = 0, late = 0, leave = 0, makeup = 0, days = 0;
+  let qSum = 0, qN = 0, hSum = 0, hN = 0;
   const recs = [];
+  const timeline = [];
   const examRowsAll = [];
   let firstName = null, firstCid = null, firstSid = null, zk = {}, fs = null;
   state.classes.forEach(c => {
@@ -3180,6 +3416,13 @@ function openStudentCard(sid){
       if (c.attendanceOff && c.attendanceOff[d]) return;   // 休息日不计入考勤统计
       days++; const st = attStatus(s, d);
       if (st === 'present') present++; else if (st === 'late') late++; else if (st === 'leave') leave++; else if (st === 'makeup') makeup++;
+    });
+    Object.entries(s.records || {}).forEach(([d, r]) => {
+      if (!(c.attendanceOff && c.attendanceOff[d])) {
+        const q = num(r.quiz); if (q !== null) { qSum += q; qN++; }
+        const h = hwEffective(r); if (h !== null) { hSum += h; hN++; }
+      }
+      timeline.push([d, r]);
     });
     Object.entries(s.records || {})
       .filter(([d, r]) => num(r.quiz) != null || hwEffective(r) != null)
@@ -3210,6 +3453,31 @@ function openStudentCard(sid){
     });
   });
   const ckRate = ckNeed ? Math.round(ckDone / ckNeed * 100) : 0;
+  // —— 五维指标（用于雷达图，各维 0-100）——
+  const qAvg = qN ? qSum / qN : null;
+  const hAvg = hN ? hSum / hN : null;
+  const radarM = {
+    attend: rate,
+    quiz: qAvg != null ? Math.round(qAvg / (state.quizScale || 100) * 100) : 0,
+    homework: hAvg != null ? Math.round(hAvg / (state.hwScale || 10) * 100) : 0,
+    checkin: ckRate,
+  };
+  let petMax = 1;
+  if (inClass) { const cc = state.classes.find(c => c.id === firstCid); if (cc) petMax = Math.max(1, ...cc.students.map(x => availablePoints(x))); }
+  radarM.pet = Math.round(Math.min(100, pt / petMax * 100));
+  const radarSec = qN || hN || days || ckNeed ? `
+    <div class="sc-sec"><div class="sc-sec-t">📡 成长雷达（各维度满分 100）</div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        ${studentRadar(radarM)}
+        <div class="sc-radar-metrics">
+          <div><span>📊 小测均分</span><b>${qAvg != null ? fmt1(qAvg) + ' / ' + (state.quizScale || 100) : '—'}</b></div>
+          <div><span>📚 作业均分</span><b>${hAvg != null ? fmt1(hAvg) + ' / ' + (state.hwScale || 10) : '—'}</b></div>
+          <div><span>📈 出勤率</span><b>${rate}%</b></div>
+          <div><span>✅ 打卡率</span><b>${ckRate}%</b></div>
+          <div><span>🐾 宠物积分</span><b>${pt}（班内${petMax <= 1 ? '独有' : '最高 ' + petMax}）</b></div>
+        </div>
+      </div>
+    </div>` : '';
   const attCard = (ico, lbl, v, color) => `<div class="sc-stat" style="--c:${color}"><div class="sc-ico">${ico}</div><div class="sc-v" style="color:${color}">${v}</div><div class="sc-l">${lbl}</div></div>`;
   const restSet = fs ? studentRestDays(fs) : new Set();
   const recRows = recs.length ? recs.map(([d, r]) => {
@@ -3248,6 +3516,7 @@ function openStudentCard(sid){
       ${attCard('❌','缺卡', ckMiss, 'var(--red)')}
       ${attCard('📈','打卡率', ckRate + '%', 'var(--accent-dark)')}
     </div>
+    ${radarSec}
     ${ckNeed > 0
       ? `<div class="sc-sec"><div class="sc-sec-t">✅ 打卡登记（${ckMonthStr}）</div>
         <div class="sc-ck-summary">应打卡 <b>${ckNeed}</b> 天 · 已完成 <b>${ckDone}</b> 天 · 补卡 <b>${ckMakeup}</b> 天 · 缺卡 <b class="ck-red">${ckMiss}</b> 天 · 完成率 <b>${ckRate}%</b></div>
@@ -3259,6 +3528,21 @@ function openStudentCard(sid){
     ${recs.length ? `<div class="sc-sec"><div class="sc-sec-t">📝 最近小测 / 作业（最新 ${recs.length} 条）</div>
       <table class="sc-tbl"><thead><tr><th>日期</th><th class="c">${esc(LBL('quiz'))}</th><th class="c">${esc(LBL('homework'))}</th><th class="c">评级</th><th class="c">当日分</th></tr></thead>
         <tbody>${recRows}</tbody></table></div>` : ''}
+    ${timeline.length ? `<div class="sc-sec"><div class="sc-sec-t">🗂️ 全部日常记录时间线（共 ${timeline.length} 天）</div>
+      <div style="max-height:230px;overflow:auto">
+      <table class="sc-tbl"><thead><tr><th>日期</th><th class="c">出勤</th><th class="c">${esc(LBL('quiz'))}</th><th class="c">${esc(LBL('homework'))}</th><th class="c">评级</th></tr></thead>
+        <tbody>${timeline.slice().sort((a, b) => a[0].localeCompare(b[0])).map(([d, r]) => {
+          const rest = restSet.has(d);
+          const att = r.attendance === 'present' ? '出勤' : r.attendance === 'late' ? '迟到' : r.attendance === 'leave' ? '请假' : r.attendance === 'absent' ? '缺勤' : '出勤';
+          const hv = state.hwMode === 'done' ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '—')) : (num(r.homework) != null ? num(r.homework) : '—');
+          return `<tr${rest ? ' class="sc-rest"' : ''}>
+            <td class="c">${mdShort(d)}${rest ? ' <span class="sc-rest-tag">休</span>' : ''}</td>
+            <td class="c">${att}</td>
+            <td class="c ${quizScoreClass(num(r.quiz))}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
+            <td class="c ${state.hwMode === 'done' ? (r.hwDone ? 'v-g' : (r.hwDone === false ? 'v-r' : '')) : scoreClass(num(r.homework))}">${esc(hv)}</td>
+            <td class="c rate-cell">${esc(r.hwRating || '—')}</td>
+          </tr>`;
+        }).join('')}</tbody></table></div></div>` : ''}
     ${examHtml ? `<div class="sc-sec"><div class="sc-sec-t">🎓 考试成绩</div>${examHtml}${zkHtml}</div>` : ''}
     ${(() => {
       const items = [['🏫 学校', p.school], ['📚 班级', p.class], ['📝 备注', p.remark]]
@@ -3269,16 +3553,20 @@ function openStudentCard(sid){
         <div class="sc-profile">${items.filter(it => it[1]).map(it =>
           `<div class="sc-pf"><span class="sc-pf-l">${it[0]}</span><span class="sc-pf-v">${esc(it[1])}</span></div>`).join('')}</div></div>`;
     })()}
-    ${inClass ? `<div class="sc-actions">
+    ${inClass && !readOnly ? `<div class="sc-actions">
       <button class="btn" onclick="scToLucky('${firstCid}','${firstSid}')">🎰 用该生抽奖</button>
       <button class="btn" onclick="scToPoints('${firstCid}','${firstSid}')">📊 看积分明细</button>
+      <button class="btn" onclick="openParentLink('${firstCid}','${firstSid}')">🔗 生成家长链接</button>
       <button class="btn primary" onclick="openProfileEditor('${firstSid}')">✏️ 编辑档案</button>
+    </div>` : (inClass ? `<div class="sc-actions">
+      <button class="btn primary" onclick="openParentLink('${firstCid}','${firstSid}')">🔗 复制家长查看链接</button>
     </div>` : `<div class="sc-actions">
       <button class="btn primary" onclick="openProfileEditor('${firstSid}')">✏️ 编辑档案</button>
       <span class="muted">该生未编入任何班级，无法关联抽奖 / 积分（仅展示档案）。</span>
-    </div>`}
+    </div>`)}
   `;
   window.__scShotName = name;
+  if (readOnly) return body;   // 家长只读模式：直接返回内容，由调用方内联渲染
   openModal('👤 学生档案', `<div id="studentCardShot">${body}</div>`,
     `<button class="btn primary" onclick="captureStudentCard()">📸 截图保存</button>
      <button class="btn" onclick="closeModal()">关闭</button>`, 680);
@@ -3314,6 +3602,68 @@ async function captureStudentCard(){
     document.body.appendChild(a); a.click(); a.remove();
     toast('截图已保存 📸');
   } catch (e) { console.error(e); holder.remove(); toast('截图失败：' + (e && e.message ? e.message : e)); }
+}
+/* 生成家长只读查看链接（数据来自已云同步的公开仓库，家长只看到该生） */
+function openParentLink(cid, sid){
+  const base = location.origin + location.pathname;
+  const url = base + '?s=' + encodeURIComponent(sid) + '&c=' + encodeURIComponent(cid);
+  const cfg = ghCfg();
+  openModal('🔗 家长查看链接', `
+    <p class="muted" style="margin:0 0 10px">把下面链接发给孩子家长，家长打开后<b>只能看到该学生本人</b>的日常表现、考勤、积分与考试，<b>看不到其他同学</b>。</p>
+    <div class="gh-row"><label>查看链接</label><input id="pvLink" class="gh-in" readonly value="${esc(url)}" onfocus="this.select()"></div>
+    <div class="bat" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+      <button class="btn primary" onclick="const i=document.getElementById('pvLink');i.select();document.execCommand('copy');toast('链接已复制')">📋 复制链接</button>
+      <button class="btn" onclick="window.open('${esc(url)}','_blank')">🔍 预览</button>
+    </div>
+    <div class="hint" style="margin-top:10px">⚠️ 前提：你已在本机「导出报告 → ☁️ GitHub 云同步」中<b>至少同步过一次</b>，家长看到的是那次同步后的数据。每次更新后请重新同步，家长刷新链接即可看到最新。</div>
+    <div class="hint">当前同步仓库：<b>${esc(cfg.user)}/${esc(cfg.repo)}</b> · 路径 <b>${esc(cfg.path)}</b></div>
+  `, `<button class="btn primary" onclick="closeModal()">关闭</button>`, 540);
+}
+/* 家长只读视图：检测 ?s=&c= 参数，从公开仓库拉取该生数据并内联渲染（无需本地数据） */
+async function parentLoad(sid, cid){
+  const c = document.getElementById('content');
+  if (c) c.innerHTML = '<div class="empty"><span class="ico">⏳</span>正在加载该学生的成长档案…</div>';
+  const cfg = ghCfg();
+  const url = 'https://api.github.com/repos/' + encodeURIComponent(cfg.user) + '/' + encodeURIComponent(cfg.repo) +
+    '/contents/' + cfg.path.split('/').map(encodeURIComponent).join('/');
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const data = JSON.parse(ghB64decode(j.content));
+    const cls = (data.classes || []).find(x => String(x.id) === String(cid));
+    if (!cls) throw new Error('未找到对应班级');
+    const stu = cls.students.find(x => String(x.id) === String(sid));
+    if (!stu) throw new Error('未找到对应学生');
+    // 用拉取到的数据临时驱动渲染（仅查看，不写回）
+    const saved = state; state = data;
+    state.activeClassId = cls.id;
+    // 取该生最近一条有记录（非休息日）的日期作为展示基准
+    let last = null;
+    Object.keys(stu.records || {}).forEach(d => { if (!(cls.attendanceOff && cls.attendanceOff[d])) { if (!last || d > last) last = d; } });
+    state.activeDate = last || (data.activeDate || todayStr());
+    const body = openStudentCard(sid, true);
+    state = saved;
+    if (c) c.innerHTML = `<div class="pv-banner">👀 家长查看模式 · 仅展示 <b>${esc(stu.name)}</b> 的成长档案（数据来自老师最近一次云同步）。本页面为只读，无法修改。</div>
+      <div class="card" style="padding:16px">${body}</div>`;
+  } catch (e) {
+    if (c) c.innerHTML = `<div class="empty"><span class="ico">🔗</span>暂时无法加载该学生的数据。<br>
+      可能原因：老师尚未进行「GitHub 云同步」，或网络受限。<br>
+      <span class="muted">${esc(e && e.message ? e.message : e)}</span></div>`;
+  }
+}
+function maybeParentView(){
+  try {
+    const p = new URLSearchParams(location.search);
+    const sid = p.get('s'), cid = p.get('c');
+    if (sid && cid) {
+      ui.parentView = true;
+      document.body.classList.add('parent-mode');
+      parentLoad(sid, cid);
+      return true;
+    }
+  } catch (e) {}
+  return false;
 }
 function setAttendance(id, key){
   const f = findStudentById(id); if (!f) return;
@@ -7460,6 +7810,8 @@ window.addEventListener('message', (ev) => {
   // 1. 先从 localStorage 加载（加载失败也要跑一次规整，保证 activeDate 等字段有值）
   const hasLocal = loadFromStorage();
   if (!hasLocal) normalizeState();
+  // 家长只读视图（?s=&c=）：检测到参数则内联渲染该生档案并跳过普通工作台
+  if (maybeParentView()) return;
   renderSidebar();
   renderMain();
 
