@@ -360,6 +360,37 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .att-opt:hover{border-color:var(--accent);background:var(--surface-alt)}
 .att-opt-t{font-size:14px;font-weight:800;color:var(--text)}
 .att-opt-d{font-size:11.5px;color:var(--text-muted);margin-top:3px}
+/* 考勤日历（上课日 / 休息日 自定义） */
+.att-cal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.att-cal-title{font-size:15px;font-weight:800;color:var(--text)}
+.att-cal-nav{display:flex;gap:6px}
+.att-cal-nav button{border:1px solid var(--border);background:var(--surface);border-radius:8px;width:32px;height:32px;
+  font-size:16px;font-weight:800;cursor:pointer;color:var(--text);transition:.15s}
+.att-cal-nav button:hover{border-color:var(--accent);color:var(--accent)}
+.att-cal-presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.att-cal-presets .att-opt{flex:1 1 auto;min-width:120px;margin-bottom:0;padding:9px 11px;border-radius:9px}
+.att-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.att-cal-dow{text-align:center;font-size:11px;font-weight:800;color:var(--text-muted);padding:4px 0}
+.att-cal-dow.we{color:#c98a2a}
+.att-cal-cell{position:relative;border:1px solid var(--border);border-radius:9px;background:var(--surface);
+  min-height:46px;padding:6px 4px 4px;cursor:pointer;transition:.12s;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+.att-cal-cell:hover{border-color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.att-cal-cell .d-num{font-size:13px;font-weight:800;color:var(--text);line-height:1.2}
+.att-cal-cell.we{background:#f6f8fb}
+.att-cal-cell.rest{background:#fff4e8;border-color:#f2cfa2}
+.att-cal-cell.rest .d-num{color:#b9742a}
+.att-cal-cell .d-tag{margin-top:3px;font-size:10px;font-weight:800;padding:1px 7px;border-radius:10px}
+.att-cal-cell.rest .d-tag{background:#f2cfa2;color:#fff}
+.att-cal-cell.cls .d-tag{background:#eafaf0;color:#1f8a4c;border:1px solid #a7e0b8}
+.att-cal-cell.today{border-color:var(--accent);box-shadow:0 0 0 2px rgba(59,130,246,.18)}
+.att-cal-cell.today .d-num::after{content:"";display:block;width:4px;height:4px;border-radius:50%;background:var(--accent);margin:2px auto 0}
+.att-cal-cell.empty{background:transparent;border:none;cursor:default;box-shadow:none}
+.att-cal-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap}
+.att-cal-legend{display:flex;gap:12px;font-size:11.5px;color:var(--text-muted);align-items:center}
+.att-cal-legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:4px;vertical-align:-1px}
+.att-cal-sum{font-size:12.5px;font-weight:700;color:var(--text)}
+.att-cal-sum b.cls{color:#1f8a4c}
+.att-cal-sum b.rest{color:#b9742a}
 .ck-quick{margin-bottom:10px}
 .ck-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
 .ck-chip{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:88px;
@@ -2993,9 +3024,8 @@ function renderRoster(){
     <div class="ck-attend">
       <span class="ck-attend-t">🗓️ 考勤要求</span>
       <button class="ck-att-btn ${dayRest ? 'rest' : 'class'}" onclick="attToggleDay('${d}')">${d}：${dayRest ? '休息日' : '上课日'}</button>
-      <button class="ck-att-btn" onclick="openAttendModal('week')">本周批量</button>
-      <button class="ck-att-btn" onclick="openAttendModal('month')">本月批量</button>
-      <span class="ck-att-hint">仅影响日常反馈（不考勤/不计分）· 不影响打卡 · 可先选日期再设本日</span>
+      <button class="ck-att-btn" onclick="openAttendCal()">📅 考勤日历</button>
+      <span class="ck-att-hint">仅影响日常反馈（不考勤/不计分）· 不影响打卡 · 点日历格子即可自定义上课/休息日</span>
     </div>
   </div>
 
@@ -4415,43 +4445,109 @@ function attToggleDay(date){
   save(); renderMain();
   toast(`${fmtDateCN(date)} 已设为${rest ? '休息日（日常反馈不统计）' : '上课日（正常考勤）'}`);
 }
-function openAttendModal(scope){
+/* 考勤日历：以月历形式自定义上课日 / 休息日（仅影响日常反馈） */
+function openAttendCal(){
   const c = activeClass(); if (!c) return;
-  const ref = state.activeDate || todayStr();
-  const dates = scope === 'week' ? weekDates(ref) : ckDays(ref.slice(0, 7));
-  let rest = 0, cls = 0;
-  dates.forEach(dt => { (c.attendanceOff && c.attendanceOff[dt]) ? rest++ : cls++; });
-  const label = scope === 'week' ? '本周（周一至周日）' : '本月';
-  openModal(`🗓️ ${label}考勤要求（日常反馈）`, `
-    <p class="muted" style="margin:0 0 12px">为 <b>${label}</b> 统一设置上课 / 休息安排（当前：上课 ${cls} 天 · 休息 ${rest} 天）。<b>此设置仅影响日常反馈表</b>（不考勤、不计积分等），不影响每日打卡，打卡请在「每日打卡」单独设置。</p>
-    <div class="att-opt" onclick="applyAttend('${scope}','weekday')">
-      <div class="att-opt-t">📅 工作日上课 · 周末休息</div>
-      <div class="att-opt-d">周一至周五为上课日，周六周日为休息日（最常用）</div>
-    </div>
-    <div class="att-opt" onclick="applyAttend('${scope}','allClass')">
-      <div class="att-opt-t">🟢 全部上课日</div>
-      <div class="att-opt-d">该范围内每一天都正常考勤、计入统计（如春秋季连续上课）</div>
-    </div>
-    <div class="att-opt" onclick="applyAttend('${scope}','allRest')">
-      <div class="att-opt-t">☕ 全部休息日</div>
-      <div class="att-opt-d">该范围内每一天都不考勤、不计入统计（如寒暑假）</div>
-    </div>`,
-    `<button class="btn" onclick="closeModal()">取消</button>`, 500);
+  ui.attCalMonth = (state.activeDate || todayStr()).slice(0, 7);
+  openModal('🗓️ 考勤日历 · 上课日 / 休息日',
+    `<p class="muted" style="margin:0 0 12px">为 <b>${esc(c.name)}</b> 自定义上课 / 休息日。<b>此设置仅影响日常反馈表</b>（不考勤、不计积分等），不影响每日打卡。点某天即可在「上课 / 休息」之间切换；也可用上方快捷方案一次性铺满整月。</p>
+     <div id="attCalBody">${attCalBodyHtml()}</div>`,
+    `<button class="btn" onclick="closeModal()">完成</button>`, 600);
 }
-function applyAttend(scope, pattern){
+function attCalStep(delta){
+  if (!ui.attCalMonth) return;
+  const [y, m] = ui.attCalMonth.split('-').map(Number);
+  let ny = y, nm = m + delta;
+  if (nm < 1) { nm = 12; ny--; } else if (nm > 12) { nm = 1; ny++; }
+  ui.attCalMonth = `${ny}-${String(nm).padStart(2, '0')}`;
+  renderAttCal();
+}
+function attCalBodyHtml(){
+  const c = activeClass(); if (!c) return '';
+  c.attendanceOff = c.attendanceOff || {};
+  const [y, m] = ui.attCalMonth.split('-').map(Number);
+  const first = new Date(y, m - 1, 1);
+  const startDow = (first.getDay() + 6) % 7;            // 周一=0 … 周日=6
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(`${ui.attCalMonth}-${String(d).padStart(2, '0')}`);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const dows = ['一', '二', '三', '四', '五', '六', '日'];
+  let rest = 0, cls = 0;
+  cells.forEach(dt => { if (dt) (c.attendanceOff[dt]) ? rest++ : cls++; });
+  const grid = cells.map(dt => {
+    if (!dt) return `<div class="att-cal-cell empty"></div>`;
+    const wd = new Date(dt + 'T00:00:00').getDay();
+    const isWe = (wd === 0 || wd === 6);
+    const isRest = !!c.attendanceOff[dt];
+    const isToday = dt === todayStr();
+    const clsName = ['att-cal-cell'];
+    if (isWe) clsName.push('we');
+    clsName.push(isRest ? 'rest' : 'cls');
+    if (isToday) clsName.push('today');
+    const num = +dt.slice(8, 10);
+    return `<div class="${clsName.join(' ')}" onclick="attCalToggle('${dt}')" title="${esc(fmtDateCN(dt))}">
+        <span class="d-num">${num}</span><span class="d-tag">${isRest ? '休' : '课'}</span></div>`;
+  }).join('');
+  return `
+    <div class="att-cal-head">
+      <div class="att-cal-title">${y} 年 ${m} 月</div>
+      <div class="att-cal-nav">
+        <button onclick="attCalStep(-1)" title="上一月">‹</button>
+        <button onclick="attCalStep(1)" title="下一月">›</button>
+      </div>
+    </div>
+    <div class="att-cal-presets">
+      <div class="att-opt" onclick="attCalPreset('weekday')">
+        <div class="att-opt-t">📅 工作日上课·周末休息</div>
+        <div class="att-opt-d">周一到周五上课，周六周日休息</div>
+      </div>
+      <div class="att-opt" onclick="attCalPreset('allClass')">
+        <div class="att-opt-t">🟢 全部上课日</div>
+        <div class="att-opt-d">本月每天正常考勤</div>
+      </div>
+      <div class="att-opt" onclick="attCalPreset('allRest')">
+        <div class="att-opt-t">☕ 全部休息日</div>
+        <div class="att-opt-d">本月全部不考勤</div>
+      </div>
+    </div>
+    <div class="att-cal-grid">
+      ${dows.map((d, i) => `<div class="att-cal-dow ${i >= 5 ? 'we' : ''}">${d}</div>`).join('')}
+      ${grid}
+    </div>
+    <div class="att-cal-foot">
+      <div class="att-cal-legend">
+        <span><i style="background:#eafaf0;border:1px solid #a7e0b8"></i>上课日</span>
+        <span><i style="background:#fff4e8;border:1px solid #f2cfa2"></i>休息日</span>
+      </div>
+      <div class="att-cal-sum">本月：<b class="cls">上课 ${cls} 天</b> · <b class="rest">休息 ${rest} 天</b></div>
+    </div>`;
+}
+function renderAttCal(){
+  const box = document.getElementById('attCalBody');
+  if (box) box.innerHTML = attCalBodyHtml();
+}
+function attCalToggle(date){
   const c = activeClass(); if (!c) return;
   c.attendanceOff = c.attendanceOff || {};
-  const ref = state.activeDate || todayStr();
-  const dates = scope === 'week' ? weekDates(ref) : ckDays(ref.slice(0, 7));
-  dates.forEach(dt => {
+  if (c.attendanceOff[date]) delete c.attendanceOff[date]; else c.attendanceOff[date] = true;
+  save(); renderAttCal();
+}
+function attCalPreset(pattern){
+  const c = activeClass(); if (!c) return;
+  c.attendanceOff = c.attendanceOff || {};
+  ckDays(ui.attCalMonth).forEach(dt => {
     const wd = new Date(dt + 'T00:00:00').getDay();
     const isWeekend = (wd === 0 || wd === 6);
     if (pattern === 'allClass') delete c.attendanceOff[dt];
     else if (pattern === 'allRest') c.attendanceOff[dt] = true;
     else { if (isWeekend) c.attendanceOff[dt] = true; else delete c.attendanceOff[dt]; }
   });
-  save(); closeModal(); renderMain();
-  toast(scope === 'week' ? '本周考勤要求已应用' : '本月考勤要求已应用');
+  save(); renderAttCal();
+  const msg = { weekday: '已按「工作日上课·周末休息」铺满整月',
+                allClass: '本月已设为全部上课日', allRest: '本月已设为全部休息日' }[pattern];
+  toast(msg || '已应用');
 }
 function ckAllDone(date){
   const c = activeClass(); if (!c || !c.students.length) return;
