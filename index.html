@@ -126,6 +126,11 @@ input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;outlin
 .side-action{display:flex;align-items:center;gap:9px;width:100%;padding:10px 12px;border-radius:var(--radius-sm);
   background:rgba(255,255,255,.16);font-weight:700;font-size:13.5px;transition:.16s}
 .side-action:hover{background:rgba(255,255,255,.3);transform:translateX(2px)}
+.side-action .tr-cnt{margin-left:auto;background:#fee2e2;color:#dc2626;border-radius:999px;font-size:11px;font-weight:800;padding:1px 8px;line-height:1.5}
+/* 回收站：恢复列表 */
+.tr-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;background:var(--surface-alt)}
+.tr-row .tr-name{font-weight:700;font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tr-row .tr-time{font-size:11px;flex:0 0 auto}
 .todo-box{background:rgba(255,255,255,.14);border-radius:var(--radius-sm);padding:10px;display:flex;flex-direction:column;gap:8px}
 .todo-input-row{display:flex;gap:5px}
 .todo-input-row input{flex:1;min-width:0;border:none;border-radius:8px;padding:7px 8px;font-size:12px;background:rgba(255,255,255,.92);color:#333}
@@ -642,6 +647,18 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .ov-warn-row .wtag{background:#fff;border:1px solid #fdba74;border-radius:999px;padding:1px 8px;font-size:11.5px}
 .ov-empty{color:var(--text-muted);font-size:13px;padding:8px 2px}
 .ov-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+/* 概览：今日待办收口 */
+.todo-cnt{margin-left:auto;font-size:11.5px;font-weight:700;background:var(--yellow-light);color:var(--yellow);border-radius:999px;padding:2px 10px}
+.todo-cnt.ok{background:var(--green-light);color:var(--green)}
+.todo-row{display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed var(--border);align-items:flex-start}
+.todo-row:last-child{border-bottom:none}
+.todo-ico{font-size:16px;line-height:1.7}
+.todo-main{flex:1;min-width:0}
+.todo-t{font-size:12.5px;font-weight:700;margin-bottom:4px}
+.todo-t b{color:var(--accent-dark)}
+.todo-names{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.todo-chip{background:var(--surface-alt);border:1px solid var(--border);border-radius:999px;padding:1px 9px;font-size:11.5px;color:var(--text)}
+.todo-more{font-size:11.5px;color:var(--text-muted)}
 /* 概览：进步/退步对比 */
 .ov-prog{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:640px){.ov-prog{grid-template-columns:1fr}}
@@ -1366,6 +1383,44 @@ const WARN_RULES_DEFAULT = { lowStreak: 2, absentCnt: 2, hwStreak: 2 };
 function WARNRULES(){ return (state.warnRules && Object.keys(state.warnRules).length) ? state.warnRules : WARN_RULES_DEFAULT; }
 function PHRASES(){ return (Array.isArray(state.phraseBank) && state.phraseBank.length) ? state.phraseBank : PHRASE_BANK_DEFAULT; }
 
+/* 家庭作业评级配置：等级（k）、分数百分比下限（min，如 A=90 即 ≥90% 为 A）、徽章颜色。
+   评级列点击弹出等级选择；作业有分且未手填评级时按百分比自动建议等级。可在「评级设置」中自定义。 */
+const HW_RATING_CFG_DEFAULT = [
+  { k:'A+', min:95, color:'#16a34a' },
+  { k:'A',  min:90, color:'#22c55e' },
+  { k:'B+', min:85, color:'#65a30d' },
+  { k:'B',  min:80, color:'#ca8a04' },
+  { k:'C+', min:75, color:'#ea7c1c' },
+  { k:'C',  min:70, color:'#ea7c1c' },
+  { k:'D',  min:0,  color:'#dc2626' },
+];
+function HWRATING(){ return (Array.isArray(state.hwRatingCfg) && state.hwRatingCfg.length) ? state.hwRatingCfg : HW_RATING_CFG_DEFAULT; }
+function hwRatingColor(k){
+  return (HWRATING().find(x => x.k === k) || {}).color || '#64748b';
+}
+/* 作业评级自动建议：按得分百分比匹配等级。已手填评级不覆盖；无分数返回原值。 */
+function autoHwRating(r){
+  const cur = String(r.hwRating || '').trim();
+  if (cur) return cur;
+  const v = num(r.homework); if (v === null) return cur;
+  let full = (r.hwDetail && r.hwDetail.full) || state.hwScale || 10;
+  if (!(+full > 0)) full = state.hwScale || 10;
+  const pct = v / (+full) * 100;
+  const hit = HWRATING().slice().sort((a, b) => b.min - a.min).find(x => pct >= x.min);
+  return hit ? hit.k : cur;
+}
+
+/* 家庭作业订正状态：'na'=无需订正 / 'pending'=待订正 / 'done'=已订正（作业闭环：未完成+未订正进预警） */
+const HW_CORRECT_OPTS = [
+  { key:'na',      label:'无需订正' },
+  { key:'pending', label:'待订正' },
+  { key:'done',    label:'已订正' },
+];
+function hwCorrectLabel(st){ return ({ na:'无需订正', pending:'待订正', done:'已订正' })[st] || ''; }
+
+/* 学生个性标签（档案卡 / 档案列表展示）：常用预设 + 档案内自定义 */
+const PROFILE_TAGS_DEFAULT = ['数学之星','进步之星','作业标兵','纪律之星','需鼓励'];
+
 const EXAM_PERIODS = ['七上期中','七上期末','七下期中','七下期末','八上期中','八上期末','八下期中','八下期末','九上期中','九上期末','九下期中'];
 const ZHONGKAO_SUBJECTS = ['语文','数学','英语','理化','道法','历史'];
 
@@ -1435,6 +1490,7 @@ let state = {
   behaviorOpts: null, absorptionOpts: null, lottery: null, points: null, tabOrder: null,
   teacherName: null, profileOptions: null,
   warnRules: null, phraseBank: null,   // 预警规则自定义 / 常用评语库（normalizeState 补默认）
+  hwRatingCfg: null,                   // 家庭作业评级配置（normalizeState 补默认）
 };
 
 /* 临时 UI 状态（不持久化） */
@@ -1448,6 +1504,7 @@ const ui = {
   trendMode: 'student', trendType: 'all', trendSchool: '',
   ckMonth: '',   // 打卡登记当前查看的月份（YYYY-MM），空则跟随当前日期
   rosterBatch: false, // 日常反馈表：批量录入模式
+  quickBar: false,    // 今日快捷操作面板
 };
 
 function todayStr(d){
@@ -1616,6 +1673,7 @@ function normalizeState(){
     if (!gp.custom.length && Array.isArray(cp.custom)) gp.custom = cp.custom;
   }));
   state.todos = state.todos || [];
+  state.trash = state.trash || { classes: [], students: [], profiles: [] };
   state.gradeLines = state.gradeLines || [];
   state.examPapers = state.examPapers || [];
   state.weeklyExams = state.weeklyExams || { students: [], records: [] };
@@ -1634,6 +1692,7 @@ function normalizeState(){
   if (!state.points) state.points = defaultPoints();
   if (!state.warnRules || !Object.keys(state.warnRules).length) state.warnRules = { ...WARN_RULES_DEFAULT };
   if (!Array.isArray(state.phraseBank)) state.phraseBank = PHRASE_BANK_DEFAULT.map(x => x);
+  if (!Array.isArray(state.hwRatingCfg) || !state.hwRatingCfg.length) state.hwRatingCfg = HW_RATING_CFG_DEFAULT.map(x => ({ ...x }));
   /* 旧版积分规则为扁平结构（att/quizFull/...），迁移到模块化结构 */
   if (!state.points.version || state.points.version < 2) {
     const old = state.points || {};
@@ -1827,6 +1886,25 @@ function toast(msg){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
+/* 带操作按钮的 toast（如「已删除，可撤销」）：label 为按钮文案，fn 为点击回调，duration 毫秒 */
+function toastAction(msg, label, fn, duration){
+  const el = document.getElementById('toast');
+  el.innerHTML = '';
+  const span = document.createElement('span');
+  span.textContent = msg;
+  const btn = document.createElement('button');
+  btn.textContent = label || '撤销';
+  btn.className = 'toast-act';
+  btn.onclick = function(){
+    el.classList.remove('show');
+    try { fn(); } catch (e) { /* 恢复失败不打断 */ }
+  };
+  el.appendChild(span); el.appendChild(btn);
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration || 30000);
+}
+function clearToast(){ const el = document.getElementById('toast'); if (el) el.classList.remove('show'); }
 function openModal(title, bodyHtml, footHtml, maxWidth, noAnim){
   ui._modalTs = Date.now();
   document.getElementById('modalRoot').innerHTML =
@@ -2136,6 +2214,7 @@ function renderSidebar(){
 
     <button class="side-action" onclick="openLuckyDraw()"><span>🎰</span>抽奖台</button>
     <button class="side-action" onclick="openPointsStats()"><span>📊</span>积分统计</button>
+    <button class="side-action" onclick="openTrash()"><span>🗑️</span>回收站${trashCount() ? `<b class="tr-cnt">${trashCount()}</b>` : ''}</button>
 
     <div>
       <div class="side-title">今日待办</div>
@@ -2217,18 +2296,75 @@ function saveClassModal(id){
   }
   closeModal(); save(); renderSidebar(); renderMain();
 }
+/* ===== C4 误删保护：删除统一进回收站，可随时恢复；清空后才不可逆 ===== */
+function trashCount(){
+  const T = state.trash || {};
+  return (T.classes ? T.classes.length : 0) + (T.students ? T.students.length : 0) + (T.profiles ? T.profiles.length : 0);
+}
+function trashStamp(){ return new Date().toLocaleString('zh-CN', { hour12: false }); }
+function restoreTrash(kind, id){
+  const T = state.trash = state.trash || { classes: [], students: [], profiles: [] };
+  const arr = T[kind] || (T[kind] = []);
+  const idx = arr.findIndex(x => String(x.id) === String(id));
+  if (idx < 0) return toast('回收站中未找到该项目');
+  const item = arr[idx];
+  if (kind === 'classes') {
+    if (state.classes.some(c => String(c.id) === String(item.id))) { arr.splice(idx, 1); save(); return toast('班级已存在，无需恢复'); }
+    state.classes.push(item.data);
+    state.activeClassId = item.data.id;
+  } else if (kind === 'students') {
+    const c = state.classes.find(x => String(x.id) === String(item.classId));
+    if (!c) { arr.splice(idx, 1); save(); return toast('原班级已不存在，无法恢复该学生（已在回收站中移除）'); }
+    if (c.students.some(s => String(s.id) === String(item.id))) { arr.splice(idx, 1); save(); return toast('学生已在班级中'); }
+    c.students.push(item.data);
+  } else if (kind === 'profiles') {
+    if (state.studentProfiles[String(item.id)]) { arr.splice(idx, 1); save(); return toast('该档案已存在'); }
+    state.studentProfiles[String(item.id)] = item.data;
+  }
+  arr.splice(idx, 1);
+  save(); renderSidebar(); renderMain();
+  toast('已恢复：' + item.name + ' ✅');
+}
+function openTrash(){
+  const T = state.trash = state.trash || { classes: [], students: [], profiles: [] };
+  const sec = (icon, title, list, kind) => `<div style="margin-bottom:12px">
+      <div class="wr-l">${icon} ${title}（${list.length}）</div>
+      ${list.length ? list.map(x => `<div class="tr-row">
+          <span class="tr-name">${esc(x.name)}</span>
+          <span class="muted tr-time">${esc(x.deletedAt || '')}</span>
+          <button class="btn sm" onclick="restoreTrash('${kind}',${x.id})">↩ 恢复</button>
+        </div>`).join('') : '<div class="muted" style="font-size:12px;padding:4px 0">暂无</div>'}
+    </div>`;
+  openModal('🗑️ 回收站', `
+    <div class="pb-tip">被删除的班级、学生、档案会先进入回收站，可随时恢复；清空回收站后数据不可恢复。</div>
+    ${sec('🏫', '班级', T.classes || [], 'classes')}
+    ${sec('🧑‍🎓', '学生', T.students || [], 'students')}
+    ${sec('📋', '学生档案', T.profiles || [], 'profiles')}`,
+    `<button class="btn" onclick="closeModal()">关闭</button>
+     ${trashCount() ? `<button class="btn danger" style="margin-left:auto" onclick="emptyTrash()">🗑️ 清空回收站</button>` : ''}`, 520);
+}
+function emptyTrash(){
+  const n = trashCount();
+  if (!n) return;
+  if (!confirm(`确定清空回收站吗？其中 ${n} 项（班级/学生/档案及其全部数据）将被永久删除，无法恢复。`)) return;
+  state.trash = { classes: [], students: [], profiles: [] };
+  save(); closeModal(); renderSidebar(); renderMain();
+  toast('回收站已清空');
+}
 function delClass(id){
   const c = state.classes.find(x => String(x.id) === String(id));
   if (!c) return;
   const n = c.students.length;
-  if (!confirm(`确定删除「${c.name}」吗？\n该班 ${n} 名学生及其全部成绩、打卡、加练、档案记录都会一并删除，且无法恢复。\n\n建议先到「导出报告」备份数据。`)) return;
+  if (!confirm(`确定删除「${c.name}」吗？\n该班 ${n} 名学生及其全部成绩、打卡、加练、档案记录将移入回收站，可随时恢复。`)) return;
+  state.trash = state.trash || { classes: [], students: [], profiles: [] };
+  state.trash.classes.push({ id: c.id, name: c.name, data: c, deletedAt: trashStamp() });
   state.classes = state.classes.filter(x => String(x.id) !== String(id));
   if (String(state.activeClassId) === String(id)) {
     state.activeClassId = state.classes[0] ? state.classes[0].id : 0;
   }
   state.mistakeStudentId = null; state.trendStudentId = null;
   closeModal(); save(); renderSidebar(); renderMain();
-  toast(`已删除「${c.name}」`);
+  toastAction('已删除「' + c.name + '」，可恢复', '撤销', () => restoreTrash('classes', c.id));
 }
 function addTodo(){
   const el = document.getElementById('todoInput');
@@ -2464,9 +2600,165 @@ function buildWarnings(cls){
       if (none) { hwStreak++; if (hwStreak >= hwN) { reasons.push('连续 ' + hwStreak + ' 次作业未完成'); break; } }
       else break;
     }
+    // 4) 作业未完成且未订正（作业闭环：近 7 天有未完成/部分完成且订正状态为「待订正」即提醒）
+    let hwCorrectMiss = 0;
+    last7.forEach(d => {
+      if (cls.attendanceOff && cls.attendanceOff[d]) return;
+      const r = s.records && s.records[d];
+      if (!r || !r.hwDetail) return;
+      const st = r.hwDetail.status, co = r.hwDetail.correct;
+      if ((st === 'none' || st === 'partial') && co === 'pending') hwCorrectMiss++;
+    });
+    if (hwCorrectMiss) reasons.push('有 ' + hwCorrectMiss + ' 次作业未订正');
     if (reasons.length) out.push({ s, reasons });
   });
   return out;
+}
+/* ===== C2 今日待办收口：汇总当日待办分组，点击直达处理 ===== */
+function buildTodoList(cls, d){
+  const isRest = !!(cls.attendanceOff && cls.attendanceOff[d]);
+  const G = {
+    quiz: { ico: '📝', title: '小测待录入', names: [] },
+    hwIn: { ico: '🗒️', title: '作业待录入', names: [] },
+    hwUn: { ico: '❌', title: '作业未完成', names: [] },
+    corr: { ico: '🔁', title: '待订正', names: [] },
+    att:  { ico: '⚠️', title: '今日缺勤/迟到', names: [] }
+  };
+  if (!isRest) {
+    cls.students.forEach(s => {
+      const r = recRaw(s, d);
+      if (!r) { G.quiz.names.push(s.name); G.hwIn.names.push(s.name); return; }
+      if (num(r.quiz) === null) G.quiz.names.push(s.name);
+      if (state.hwMode === 'done') {
+        if (r.hwDone === undefined || r.hwDone === null) G.hwIn.names.push(s.name);
+        else if (r.hwDone === false) G.hwUn.names.push(s.name);
+      } else {
+        if (num(r.homework) === null) G.hwIn.names.push(s.name);
+        else if (r.hwDetail && (r.hwDetail.status === 'none' || r.hwDetail.status === 'partial')) G.hwUn.names.push(s.name);
+      }
+      const a = r.attendance;
+      if (a === 'absent' || a === 'late') G.att.names.push(s.name);
+    });
+    /* 待订正：近 7 天有「未完成/部分完成且订正为待订正」即提醒（与预警规则第 4 条同口径） */
+    const corrSet = new Set();
+    const last7 = []; for (let i = 0; i < 7; i++) last7.push(shiftDate(d, -i));
+    last7.forEach(dd => {
+      if (cls.attendanceOff && cls.attendanceOff[dd]) return;
+      cls.students.forEach(s => {
+        const r = s.records && s.records[dd];
+        if (!r || !r.hwDetail) return;
+        const st = r.hwDetail.status, co = r.hwDetail.correct;
+        if ((st === 'none' || st === 'partial') && co === 'pending') corrSet.add(s.name);
+      });
+    });
+    G.corr.names = Array.from(corrSet);
+  }
+  const groups = [G.quiz, G.hwIn, G.hwUn, G.corr, G.att].filter(g => g.names.length);
+  return { isRest, groups, total: groups.reduce((a, g) => a + g.names.length, 0) };
+}
+function todoCardHtml(cls, d){
+  const t = buildTodoList(cls, d);
+  const chips = names => {
+    const show = names.slice(0, 12), more = names.length - show.length;
+    return `<span class="todo-names">${show.map(n => `<span class="todo-chip">${esc(n)}</span>`).join('')}${more > 0 ? `<span class="todo-more">＋${more} 人</span>` : ''}</span>`;
+  };
+  let body;
+  if (t.isRest) body = `<div class="ov-empty">🌴 今日为休息日，无需处理待办</div>`;
+  else if (!t.groups.length) body = `<div class="ov-empty">🎉 今日待办已全部完成！</div>`;
+  else body = t.groups.map(g => `<div class="todo-row">
+      <span class="todo-ico">${g.ico}</span>
+      <div class="todo-main"><div class="todo-t">${g.title} <b>${g.names.length}</b> 人</div>${chips(g.names)}</div>
+    </div>`).join('') + `<div class="ov-actions">
+      <button class="btn sm" onclick="switchTab('roster')">📋 去录入</button>
+      <button class="btn sm" onclick="switchTab('roster');toggleQuickBar()">🚀 批量处理</button>
+      ${t.groups.some(g => g.title === '作业未完成' || g.title === '待订正') ? `<button class="btn sm" onclick="copyUnfinishedHw()">📋 复制未交名单</button>` : ''}
+    </div>`;
+  const badge = t.isRest ? '' : (t.groups.length
+    ? `<span class="todo-cnt">${t.total} 项待办</span>`
+    : `<span class="todo-cnt ok">✓ 全部完成</span>`);
+  return `<div class="ov-sec"><div class="ov-sec-t">📋 今日待办${badge}</div>${body}</div>`;
+}
+/* ===== C3 班级趋势看板：近 14 天小测/作业均分折线（百分比口径，排除休息日） ===== */
+function classTrendData(cls, days){
+  const d = state.activeDate, out = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const dd = shiftDate(d, -i);
+    if (cls.attendanceOff && cls.attendanceOff[dd]) continue;
+    let qSum = 0, qN = 0, hSum = 0, hN = 0, hDone = 0, hTotal = 0;
+    cls.students.forEach(s => {
+      const r = recRaw(s, dd); if (!r) return;
+      const q = num(r.quiz);
+      if (q !== null) { qSum += q; qN++; }
+      if (state.hwMode === 'done') {
+        hTotal++;
+        if (r.hwDone === true) hDone++;
+      } else {
+        const eff = hwEffective(r);
+        if (eff !== null) { const f = hwFullOf(r) || (state.hwScale || 10); if (f > 0) { hSum += eff / f * 100; hN++; } }
+      }
+    });
+    const qPct = qN ? qSum / qN / (state.quizScale || 100) * 100 : null;
+    const hPct = state.hwMode === 'done' ? (hTotal ? hDone / hTotal * 100 : null) : (hN ? hSum / hN : null);
+    out.push({ d: dd, quiz: qPct, hw: hPct, quizN: qN, hwN: hN });
+  }
+  return out;
+}
+function classTrendChartHtml(cls){
+  const data = classTrendData(cls, 14);
+  const qPts = data.map((p, i) => ({ i, v: p.quiz })).filter(p => p.v !== null);
+  const hPts = data.map((p, i) => ({ i, v: p.hw })).filter(p => p.v !== null);
+  if (!qPts.length && !hPts.length) return '';
+  const W = 680, H = 240, PL = 42, PR = 18, PT = 18, PB = 30;
+  const iw = W - PL - PR, ih = H - PT - PB;
+  const x = i => PL + (data.length === 1 ? iw / 2 : (iw * i / (data.length - 1)));
+  const y = v => PT + ih - (v / 100) * ih;
+  const hwLabel = state.hwMode === 'done' ? '作业完成率' : '作业均分';
+  const series = [
+    { key: 'quiz', color: '#2563eb', label: '小测均分', pts: qPts },
+    { key: 'hw', color: '#16a34a', label: hwLabel, pts: hPts },
+  ];
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
+  for (let k = 0; k <= 4; k++) {
+    const v = 100 * k / 4;
+    svg += `<line x1="${PL}" y1="${y(v)}" x2="${W - PR}" y2="${y(v)}" stroke="#e2ecf9" stroke-width="1"/>`;
+    svg += `<text x="${PL - 7}" y="${y(v) + 3.5}" font-size="10" fill="#8a94a6" text-anchor="end">${v}%</text>`;
+  }
+  data.forEach((p, i) => {
+    svg += `<text x="${x(i)}" y="${H - PB + 16}" font-size="9.5" fill="#8a94a6" text-anchor="middle">${p.d.slice(5)}</text>`;
+  });
+  series.forEach(se => {
+    if (se.pts.length > 1) {
+      svg += `<polyline fill="none" stroke="${se.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"
+        points="${se.pts.map(p => `${x(p.i)},${y(p.v)}`).join(' ')}"/>`;
+    }
+    se.pts.forEach(p => {
+      svg += `<circle cx="${x(p.i)}" cy="${y(p.v)}" r="4" fill="#fff" stroke="${se.color}" stroke-width="2.5"/>`;
+    });
+  });
+  svg += `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT + ih}" stroke="#c3d8f2"/>`;
+  svg += `<line x1="${PL}" y1="${PT + ih}" x2="${W - PR}" y2="${PT + ih}" stroke="#c3d8f2"/>`;
+  svg += `</svg>`;
+  const trendOf = key => {
+    const arr = data.filter(p => p[key] !== null);
+    if (arr.length < 2) return null;
+    const a = arr[arr.length - 1], b = arr[arr.length - 2];
+    const dlt = a[key] - b[key];
+    return { up: dlt >= 0, v: Math.abs(dlt).toFixed(1) };
+  };
+  const legend = series.map(se => {
+    const t = trendOf(se.key === 'quiz' ? 'quiz' : 'hw');
+    const arrow = t ? (t.up ? `<span class="pdelta up">▲${t.v}</span>` : `<span class="pdelta down">▼${t.v}</span>`) : '';
+    return `<span><i style="background:${se.color}"></i>${se.label}${arrow}</span>`;
+  }).join('');
+  const hasAny = data.filter(p => p.quiz !== null || p.hw !== null);
+  const lastD = hasAny.length ? hasAny[hasAny.length - 1].d : null;
+  const statLine = hasAny.length
+    ? `<div class="hint" style="margin-top:8px">近 14 天（排除休息日）：${qPts.length ? `小测均分 ${fmt1(qPts[qPts.length-1].v)}% · ` : ''}${hPts.length ? `${hwLabel} ${fmt1(hPts[hPts.length-1].v)}%` : ''}${lastD ? '（最新 ' + lastD + '）' : ''}</div>` : '';
+  return `<div class="ov-sec"><div class="ov-sec-t">📊 近 14 天班级趋势
+      <button class="btn sm" style="margin-left:auto" onclick="switchTab('trend')" title="查看个人走势与排名详情">📈 详细分析</button></div>
+      <div class="legend" style="margin-bottom:4px">${legend}</div>
+      ${svg}${statLine}
+    </div>`;
 }
 function renderOverview(){
   const cls = activeClass();
@@ -2533,7 +2825,9 @@ function renderOverview(){
         ${progRow('进步最快', pg.up, 'up', '🚀')}
         ${progRow('退步明显', pg.down, 'down', '📉')}
       </div></div>` : '';
-  return `${head}${statCards}${progHtml}${warnHtml}`;
+  const todoHtml = todoCardHtml(cls, d);
+  const trendHtml = classTrendChartHtml(cls);
+  return `${head}${statCards}${todoHtml}${progHtml}${trendHtml}${warnHtml}`;
 }
 /* 预警规则设置：连续低分次数 / 近一周缺勤迟到次数 / 连续作业未完成次数 */
 function openWarnRules(){
@@ -2612,6 +2906,9 @@ function buildReportText(cls, days){
   L.push(`👥 出勤：上课 ${attDays.length} 天｜出勤 ${present} 人次、迟到 ${late}、请假 ${leave}、缺勤 ${absent}`);
   L.push(`📊 小测：${qVals.length} 人次｜均分 ${qAvg != null ? fmt1(qAvg) + ' / ' + (state.quizScale || 100) : '—'}｜最高 ${qMax != null ? qMax : '—'}｜达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}`);
   if (hwRate !== null) L.push(`📚 作业：完成率 ${hwRate}%`);
+  const rtStats = hwRatingStats(cls, fromD, d);
+  const rtKeys = Object.keys(rtStats);
+  if (rtKeys.length) L.push(`🏅 作业评级：${rtKeys.map(k => `${k}×${rtStats[k]}`).join('、')}`);
   L.push('');
   if (pg.up.length) L.push('🚀 进步最快：' + pg.up.map(x => `${x.s.name}（▲${Math.abs(x.delta).toFixed(1)}）`).join('、'));
   if (pg.down.length) L.push('📉 退步明显：' + pg.down.map(x => `${x.s.name}（▼${Math.abs(x.delta).toFixed(1)}）`).join('、'));
@@ -2628,6 +2925,7 @@ function buildReportText(cls, days){
   L2.push(`👥 出勤：上课 ${attDays.length} 天，出勤 ${present} 人次、迟到 ${late}、请假 ${leave}、缺勤 ${absent}。`);
   L2.push(`📊 小测（满分 ${state.quizScale || 100}）：共 ${qVals.length} 人次，均分 ${qAvg != null ? fmt1(qAvg) : '—'}，最高 ${qMax != null ? qMax : '—'}，达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}。`);
   if (hwRate !== null) L2.push(`📚 作业完成率：${hwRate}%。`);
+  if (rtKeys.length) L2.push(`🏅 作业评级：${rtKeys.map(k => `${k}×${rtStats[k]}`).join('、')}。`);
   if (pg.up.length) L2.push(`🚀 进步明显：${pg.up.map(x => x.s.name).join('、')}。`);
   if (pg.down.length) L2.push(`📉 近期需加油：${pg.down.map(x => x.s.name).join('、')}。`);
   L2.push(`📌 请家长朋友们关注孩子的学习情况，如有问题欢迎与我沟通。`);
@@ -3039,7 +3337,9 @@ function multiBtnHtml(s, d, field){
 /* 家庭作业单元格：分数输入/完成模式 + 📝 详情按钮 + 完成情况徽标 */
 function renderHwCell(s, r, h){
   const d = hwDetailOf(r);
-  const badge = d ? `<span class="hw-det-badge hw-${d.status || 'done'}">${hwStatusLabel(d.status)}</span>` : '';
+  const correctBadge = (d && (d.status === 'none' || d.status === 'partial') && d.correct === 'pending')
+    ? `<span class="hw-det-badge hw-correct" title="作业未完成且未订正">待订正</span>` : '';
+  const badge = (d ? `<span class="hw-det-badge hw-${d.status || 'done'}">${hwStatusLabel(d.status)}</span>` : '') + correctBadge;
   const detBtn = `<button class="hw-det-btn ${d ? 'on' : ''}" title="作业详情（完成时间/得分/本次满分/完成情况）" onclick="openHwDetail(${s.id})">📝</button>`;
   if (state.hwMode === 'done') {
     return `<span class="hw-done-group">
@@ -3088,7 +3388,7 @@ function renderRoster(){
           inputmode="decimal" max="${state.quizScale || 100}" placeholder="-"
           oninput="setScore(${s.id},'quiz',this.value)" onchange="renderMain()"></td>
       <td class="c">${renderHwCell(s, r, h)}</td>
-      <td class="c"><input class="rate-in" id="in-hwrate-${s.id}" value="${esc(r.hwRating || '')}" maxlength="6" placeholder="—" title="家庭作业评级（如 A+、B）" oninput="setHwRating(${s.id},this.value)"></td>
+      <td class="c">${hwRatingCellHtml(s, r)}</td>
       <td>${multiBtnHtml(s, d, 'behavior')}</td>
       <td>${multiBtnHtml(s, d, 'absorption')}</td>
       <td class="c"><button class="icon-btn" title="删除学生" onclick="delStudent(${s.id})">🗑</button></td>
@@ -3138,8 +3438,10 @@ function renderRoster(){
 
   <div class="batch-bar">
     <button class="btn ${ui.rosterBatch ? 'primary' : ''}" onclick="toggleRosterBatch()">⚡ ${ui.rosterBatch ? '退出批量录入' : '批量录入'}</button>
-    <span class="batch-tip">${ui.rosterBatch ? '紧凑模式：姓名·出勤·小测·作业，回车跳到下一格，改完自动保存' : '需要快速录全班？点「批量录入」进入紧凑表格'}</span>
+    <button class="btn ${ui.quickBar ? 'primary' : ''}" onclick="toggleQuickBar()" title="一键全勤 / 作业全完成 / 全班同分等">🚀 今日快捷</button>
+    <span class="batch-tip">${ui.rosterBatch ? '紧凑模式：姓名·出勤·小测·作业·评级，回车跳到下一格，改完自动保存' : '需要快速录全班？点「批量录入」进入紧凑表格；点「今日快捷」批量设置全勤/作业'}</span>
   </div>
+  ${ui.quickBar ? quickBarHtml(cls, d) : ''}
   ${ui.rosterBatch ? renderBatchTable(cls, d) : ''}
 
   <div class="tbl-wrap" style="display:${ui.rosterBatch ? 'none' : 'block'}">
@@ -3152,6 +3454,7 @@ function renderRoster(){
         <th class="c" style="width:80px"><span class="th-label" onclick="openLabelEditor('quiz')" title="点击修改列名">📝 ${esc(LBL('quiz'))}</span></th>
         <th class="c" style="width:90px"><span class="th-label" onclick="openLabelEditor('homework')" title="点击修改列名">📚 ${esc(LBL('homework'))}</span>
           <button class="th-gear" onclick="toggleHwMode()" title="切换输入模式（分数/完成）" id="hwModeBtn">${state.hwMode === 'done' ? '✓完成' : '🔢分数'}</button>
+          <button class="th-gear" onclick="copyUnfinishedHw()" title="复制今日未完成作业名单">📋</button>
         </th>
         <th class="c" style="width:64px">评级</th>
         <th style="min-width:180px">🐱 课堂表现 <button class="th-gear" title="管理表现标语" onclick="openTagEditor('behavior')">⚙</button></th>
@@ -3192,13 +3495,14 @@ function renderBatchTable(cls, d){
       <td class="c"><input class="score-in batch-inp ${quizScoreClass(q)}" value="${esc(r.quiz)}" inputmode="decimal" max="${state.quizScale || 100}"
         oninput="setScore(${s.id},'quiz',this.value)" onchange="renderMain()" onkeydown="${BATCH_NAV}"></td>
       <td class="c">${hwInput}</td>
+      <td class="c">${hwRatingCellHtml(s, r)}</td>
     </tr>`;
   }).join('');
   return `<div class="tbl-wrap"><table class="batch-tbl">
-    <thead><tr><th class="bnm">姓名</th><th class="c">出勤</th><th class="c">${esc(LBL('quiz'))}</th><th class="c">${esc(LBL('homework'))}</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan="4" class="empty">还没有学生</td></tr>'}</tbody>
+    <thead><tr><th class="bnm">姓名</th><th class="c">出勤</th><th class="c">${esc(LBL('quiz'))}</th><th class="c">${esc(LBL('homework'))}</th><th class="c">评级</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="5" class="empty">还没有学生</td></tr>'}</tbody>
   </table>
-  <div class="batch-tip" style="margin-top:8px">💡 在此表格里按 <b>回车</b> 可跳到下一个输入框，专注快速录全班；详细表现/吸收等仍在「完整表格」里（点「退出批量录入」）。</div>
+  <div class="batch-tip" style="margin-top:8px">💡 在此表格里按 <b>回车</b> 可跳到下一个输入框，专注快速录全班；评级列点击徽章即可快速打等级；详细表现/吸收等仍在「完整表格」里（点「退出批量录入」）。</div>
   </div>`;
 }
 
@@ -3299,6 +3603,34 @@ function saveTagEditor(){
 }
 
 /* -------- 学生档案弹窗 -------- */
+/* 成长动态流：把每次日常记录沉淀为叙事性条目（日期倒序，最多 12 天）。每条聚合当日：出勤异常/小测/作业/评级/待订正/老师评语 */
+function buildGrowthFeed(s, cls){
+  const feed = [];
+  Object.keys(s.records || {}).forEach(dd => {
+    if (cls.attendanceOff && cls.attendanceOff[dd]) return;
+    const r = s.records[dd];
+    const chips = [];
+    const att = r.attendance;
+    if (att && att !== 'present') chips.push({ ico:'🚩', cls:'gf-att', txt: ({ late:'迟到', leave:'请假', absent:'缺勤', makeup:'补课' }[att] || att) });
+    const q = num(r.quiz);
+    if (q !== null) chips.push({ ico:'📝', cls: quizScoreClass(q), txt: LBL('quiz') + ' ' + q + ' 分' });
+    if (state.hwMode === 'done') {
+      if (r.hwDone === true) chips.push({ ico:'📚', cls:'gf-ok', txt:'作业完成 ✓' });
+      else if (r.hwDone === false) chips.push({ ico:'📚', cls:'gf-bad', txt:'作业未完成 ✕' });
+    } else {
+      const h = hwEffective(r);
+      if (h !== null) chips.push({ ico:'📚', cls: scoreClass(h), txt:'作业 ' + h + ' 分' });
+    }
+    const hwR = String(r.hwRating || '').trim();
+    if (hwR) chips.push({ ico:'🏅', cls:'gf-rate', txt: hwR });
+    const d2 = r.hwDetail;
+    if (d2 && (d2.status === 'none' || d2.status === 'partial') && d2.correct === 'pending') chips.push({ ico:'✏️', cls:'gf-bad', txt:'待订正' });
+    const rm = String(r.remark || '').trim();
+    if (rm) chips.push({ ico:'💬', cls:'gf-remark', txt: rm });
+    if (chips.length) feed.push({ d: dd, chips });
+  });
+  return feed.sort((a, b) => b.d.localeCompare(a.d)).slice(0, 12);
+}
 /* 学生成长档案：四维雷达图（出勤 / 小测 / 作业 / 打卡），各维 0-100 */
 function studentRadar(m){
   const axes = [['出勤', m.attend || 0], ['小测', m.quiz || 0], ['作业', m.homework || 0], ['打卡', m.checkin || 0]];
@@ -3322,9 +3654,91 @@ function studentRadar(m){
   </svg>`;
 }
 
+/* 班级定位：该生某项（quiz/homework）全部有效成绩均分在全班的排名、百分位（无数据返回 null） */
+function classRankOf(cls, sid, field){
+  const avgOf = sid2 => {
+    const s = cls.students.find(x => String(x.id) === String(sid2)); if (!s) return null;
+    let sum = 0, n = 0;
+    Object.keys(s.records || {}).forEach(d => {
+      if (cls.attendanceOff && cls.attendanceOff[d]) return;
+      const r = s.records[d];
+      const v = field === 'quiz' ? num(r.quiz) : hwEffective(r);
+      if (v !== null) { sum += v; n++; }
+    });
+    return n ? sum / n : null;
+  };
+  const mine = avgOf(sid);
+  if (mine === null) return null;
+  const all = cls.students.map(s2 => ({ id: String(s2.id), a: avgOf(s2.id) })).filter(x => x.a !== null);
+  if (!all.length) return null;
+  all.sort((a, b) => b.a - a.a);
+  const rank = all.findIndex(x => x.id === String(sid)) + 1;
+  return { rank, total: all.length, pct: Math.round((all.length - rank + 1) / all.length * 100), mine };
+}
+/* 档案就地编辑：载入草稿并重开档案卡（编辑态） */
+function scBeginEdit(sid){
+  const p = profileOf(sid); if (!p) return;
+  ui.scDraft = { sid: String(sid), data: {
+    name: p.name || '', school: p.school || '', class: p.class || '', remark: p.remark || '',
+    custom: (p.custom || []).map(x => ({ label: x.label || '', value: x.value || '' }))
+  }};
+  openStudentCard(sid);
+}
+function scCancelEdit(){
+  const sid = ui.scDraft ? ui.scDraft.sid : '';
+  ui.scDraft = null;
+  if (sid) openStudentCard(sid);
+}
+function scAddField(){ (ui.scDraft.data.custom = ui.scDraft.data.custom || []).push({ label:'', value:'' }); openStudentCard(ui.scDraft.sid); }
+function scDelField(i){ ui.scDraft.data.custom.splice(i, 1); openStudentCard(ui.scDraft.sid); }
+function scSaveDraft(){
+  const d = ui.scDraft; if (!d) return;
+  if (!d.data.name || !d.data.name.trim()) return toast('请填写姓名');
+  const p = ensureProfile(d.sid);
+  p.name = d.data.name.trim(); p.school = d.data.school || ''; p.class = d.data.class || ''; p.remark = d.data.remark || '';
+  p.custom = (d.data.custom || []).filter(x => x.label && x.label.trim()).map(x => ({ label: x.label.trim(), value: x.value || '' }));
+  save();
+  const sid2 = d.sid;
+  ui.scDraft = null;
+  renderMain();
+  toast('已保存档案');
+  openStudentCard(sid2);
+}
+/* 个性标签：添加（预设提示）/ 移除（pfTagAdd/pfTagRemove，避免与标语编辑器 tagAdd 重名） */
+function pfTagAdd(sid){
+  const p = ensureProfile(sid); if (!p) return;
+  const v = prompt('添加标签（如：' + PROFILE_TAGS_DEFAULT.join('、') + '，可自定义）：');
+  if (!v || !v.trim()) return;
+  const t = v.trim().slice(0, 6);
+  p.tags = p.tags || [];
+  if (p.tags.includes(t)) return toast('标签已存在');
+  if (p.tags.length >= 8) return toast('标签最多 8 个');
+  p.tags.push(t);
+  save(); openStudentCard(sid); toast('已添加标签');
+}
+function pfTagRemove(sid, t){
+  const p = ensureProfile(sid); if (!p) return;
+  p.tags = (p.tags || []).filter(x => x !== t);
+  save(); openStudentCard(sid); toast('已移除标签');
+}
+/* 学生照片：FileReader 转 dataURL 存入档案（<400KB），上传后重开档案卡 */
+function uploadProfilePhoto(sid, inputEl){
+  const file = inputEl && inputEl.files && inputEl.files[0];
+  if (!file) return;
+  if (file.size > 1024 * 400) return toast('照片请小于 400KB');
+  const rd = new FileReader();
+  rd.onload = () => {
+    const p = ensureProfile(sid);
+    p.photo = rd.result;
+    save(); openStudentCard(sid); toast('照片已更新 📷');
+  };
+  rd.readAsDataURL(file);
+}
 function openStudentCard(sid, readOnly){
   const p = profileOf(sid); if (!p) return toast('未找到该学生档案');
   const id = String(sid);
+  const editing = !readOnly && ui.scDraft && String(ui.scDraft.sid) === id;
+  const draft = editing ? ui.scDraft.data : null;
   let present = 0, late = 0, leave = 0, makeup = 0, days = 0;
   let qSum = 0, qN = 0, hSum = 0, hN = 0;
   const recs = [];
@@ -3385,13 +3799,17 @@ function openStudentCard(sid, readOnly){
     homework: hAvg != null ? Math.round(hAvg / (state.hwScale || 10) * 100) : 0,
     checkin: ckRate,
   };
+  /* 班级定位（B3）：小测/作业均分在全班的排名与百分位 */
+  const c0r = (firstCid !== null) ? state.classes.find(c => c.id === firstCid) : null;
+  const qRank = (c0r && qAvg != null) ? classRankOf(c0r, id, 'quiz') : null;
+  const hRank = (c0r && hAvg != null) ? classRankOf(c0r, id, 'homework') : null;
   const radarSec = qN || hN || days || ckNeed ? `
     <div class="sc-sec"><div class="sc-sec-t">📡 成长雷达（各维度满分 100）</div>
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
         ${studentRadar(radarM)}
         <div class="sc-radar-metrics">
-          <div><span>📊 小测均分</span><b>${qAvg != null ? fmt1(qAvg) + ' / ' + (state.quizScale || 100) : '—'}</b></div>
-          <div><span>📚 作业均分</span><b>${hAvg != null ? fmt1(hAvg) + ' / ' + (state.hwScale || 10) : '—'}</b></div>
+          <div><span>📊 小测均分</span><b>${qAvg != null ? fmt1(qAvg) + ' / ' + (state.quizScale || 100) : '—'}</b>${qRank ? `<span class="sc-rank">班内第 ${qRank.rank} 名 · 超 ${qRank.pct}% 同学</span>` : ''}</div>
+          <div><span>📚 作业均分</span><b>${hAvg != null ? fmt1(hAvg) + ' / ' + (state.hwScale || 10) : '—'}</b>${hRank ? `<span class="sc-rank">班内第 ${hRank.rank} 名 · 超 ${hRank.pct}% 同学</span>` : ''}</div>
           <div><span>📈 出勤率</span><b>${rate}%</b></div>
           <div><span>✅ 打卡率</span><b>${ckRate}%</b></div>
         </div>
@@ -3413,6 +3831,21 @@ function openStudentCard(sid, readOnly){
     </div>` : '';
   const attCard = (ico, lbl, v, color) => `<div class="sc-stat" style="--c:${color}"><div class="sc-ico">${ico}</div><div class="sc-v" style="color:${color}">${v}</div><div class="sc-l">${lbl}</div></div>`;
   const restSet = fs ? studentRestDays(fs) : new Set();
+  /* 成长动态流（B1）：首个班级视角的叙事性记录 */
+  const feedHtml = (() => {
+    if (!inClass || firstCid === null) return '';
+    const c0f = state.classes.find(c => c.id === firstCid);
+    if (!c0f) return '';
+    const s0f = c0f.students.find(x => String(x.id) === id);
+    if (!s0f) return '';
+    const feed = buildGrowthFeed(s0f, c0f);
+    if (!feed.length) return '';
+    return `<div class="sc-sec"><div class="sc-sec-t">🌱 成长记录</div>
+      <div class="gf-list">${feed.map(f => `
+        <div class="gf-item"><span class="gf-date">${mdShort(f.d)}</span>
+          <span class="gf-chips">${f.chips.map(c => `<span class="gf-chip ${c.cls}">${c.ico} ${esc(c.txt)}</span>`).join('')}</span>
+        </div>`).join('')}</div></div>`;
+  })();
   const recRows = recs.length ? recs.map(([d, r]) => {
     const rest = restSet.has(d);
     return `
@@ -3430,13 +3863,35 @@ function openStudentCard(sid, readOnly){
   const zkHtml = (zk['数学'] || zk['录取学校']) ? `
     <div class="sc-zk">中考：数学 ${esc(zk['数学'] || '—')} ｜ 录取学校 ${esc(zk['录取学校'] || '—')}</div>` : '';
   const body = `
-    <div class="sc-head">
-      <div class="sc-avatar">${(name || '?').slice(0,1)}</div>
-      <div>
-        <div class="sc-name">${esc(name)}</div>
-        <div class="sc-cls">${inClass ? esc(clsName) + ' · ' : ''}可用积分 <b style="color:var(--accent-dark)">${pt}</b>${inClass ? '' : ' · 仅档案（未编入班级）'}</div>
-      </div>
-    </div>
+    ${(() => {
+      const avatarHtml = p.photo
+        ? `<img class="sc-avatar-img" src="${esc(p.photo)}" alt="">`
+        : `<div class="sc-avatar">${(name || '?').slice(0,1)}</div>`;
+      const tags = (p.tags || []).filter(Boolean);
+      const tagsHtml = (!editing && tags.length) ? `
+        <div class="sc-tags">${tags.map(t => `<span class="sc-tag">${esc(t)}<button class="sc-tag-x" onclick="pfTagRemove('${id}','${esc(t)}')" title="移除标签">×</button></span>`).join('')}
+          ${inClass && !readOnly ? `<button class="sc-tag-add" onclick="pfTagAdd('${id}')" title="添加标签">＋</button>` : ''}</div>` : '';
+      if (editing) return `
+        <div class="sc-head">
+          <div class="sc-avatar-wrap">
+            ${avatarHtml}
+            <label class="sc-photo-btn" title="上传照片">📷<input type="file" accept="image/*" style="display:none" onchange="uploadProfilePhoto('${id}',this)"></label>
+          </div>
+          <div style="flex:1;min-width:180px">
+            <input class="inp sc-name-inp" value="${esc(draft.name)}" oninput="ui.scDraft.data.name=this.value" placeholder="姓名">
+            <div class="muted" style="font-size:12px;margin-top:4px">正在编辑档案…</div>
+          </div>
+        </div>`;
+      return `
+        <div class="sc-head">
+          <div class="sc-avatar-wrap">${avatarHtml}${inClass && !readOnly ? `<button class="sc-photo-btn" onclick="document.getElementById('scPhotoInp').click()" title="上传照片">📷</button><input id="scPhotoInp" type="file" accept="image/*" style="display:none" onchange="uploadProfilePhoto('${id}',this)">` : ''}</div>
+          <div style="flex:1;min-width:180px">
+            <div class="sc-name">${esc(name)}${inClass && !readOnly ? `<button class="sc-edit-btn" onclick="scBeginEdit('${id}')" title="就地编辑档案信息">✏️</button>` : ''}</div>
+            <div class="sc-cls">${inClass ? esc(clsName) + ' · ' : ''}可用积分 <b style="color:var(--accent-dark)">${pt}</b>${inClass ? '' : ' · 仅档案（未编入班级）'}</div>
+            ${tagsHtml}
+          </div>
+        </div>`;
+    })()}
     <div class="sc-stats">
       ${attCard('📊','总出勤', total, 'var(--accent)')}
       ${attCard('✅','出勤', present, 'var(--green)')}
@@ -3449,6 +3904,7 @@ function openStudentCard(sid, readOnly){
       ${attCard('❌','缺卡', ckMiss, 'var(--red)')}
       ${attCard('📈','打卡率', ckRate + '%', 'var(--accent-dark)')}
     </div>
+    ${feedHtml}
     ${radarSec}
     ${cmpHtml}
     ${ckNeed > 0
@@ -3478,7 +3934,21 @@ function openStudentCard(sid, readOnly){
           </tr>`;
         }).join('')}</tbody></table></div></div>` : ''}
     ${examHtml ? `<div class="sc-sec"><div class="sc-sec-t">🎓 考试成绩</div>${examHtml}${zkHtml}</div>` : ''}
-    ${(() => {
+    ${editing ? `
+      <div class="sc-sec"><div class="sc-sec-t">📋 编辑档案信息
+        <button class="btn sm" style="margin-left:8px" onclick="scAddField()">＋ 添加字段</button></div>
+        <div class="sc-profile">
+          <div class="sc-pf"><span class="sc-pf-l">🏫 学校</span><input class="inp" value="${esc(draft.school)}" oninput="ui.scDraft.data.school=this.value" placeholder="就读学校"></div>
+          <div class="sc-pf"><span class="sc-pf-l">📚 班级</span><input class="inp" value="${esc(draft.class)}" oninput="ui.scDraft.data.class=this.value" placeholder="校内班级"></div>
+          <div class="sc-pf"><span class="sc-pf-l">📝 备注</span><textarea class="inp" rows="2" oninput="ui.scDraft.data.remark=this.value" placeholder="其他说明">${esc(draft.remark)}</textarea></div>
+          ${(draft.custom || []).map((c, i) => `
+            <div class="sc-pf sc-pf-edit">
+              <input class="inp" style="flex:1" value="${esc(c.label)}" oninput="ui.scDraft.data.custom[${i}].label=this.value" placeholder="字段名，如：家长电话">
+              <input class="inp" style="flex:2" value="${esc(c.value)}" oninput="ui.scDraft.data.custom[${i}].value=this.value" placeholder="内容">
+              <button class="icon-btn del" onclick="scDelField(${i})" title="删除字段">✕</button>
+            </div>`).join('')}
+        </div></div>`
+    : (() => {
       const items = [['🏫 学校', p.school], ['📚 班级', p.class], ['📝 备注', p.remark]]
         .concat((p.custom || []).filter(x => x && x.label).map(x => ['📌 ' + x.label, x.value]));
       const has = items.some(it => it[1]);
@@ -3487,7 +3957,10 @@ function openStudentCard(sid, readOnly){
         <div class="sc-profile">${items.filter(it => it[1]).map(it =>
           `<div class="sc-pf"><span class="sc-pf-l">${it[0]}</span><span class="sc-pf-v">${esc(it[1])}</span></div>`).join('')}</div></div>`;
     })()}
-    ${inClass && !readOnly ? `<div class="sc-actions">
+    ${editing ? `<div class="sc-actions">
+      <button class="btn" onclick="scCancelEdit()">取消</button>
+      <button class="btn primary" onclick="scSaveDraft()">💾 保存</button>
+    </div>` : (inClass && !readOnly ? `<div class="sc-actions">
       <button class="btn" onclick="scToLucky('${firstCid}','${firstSid}')">🎰 用该生抽奖</button>
       <button class="btn" onclick="scToPoints('${firstCid}','${firstSid}')">📊 看积分明细</button>
       <button class="btn" onclick="openParentLink('${firstCid}','${firstSid}')">🔗 生成家长链接</button>
@@ -3497,7 +3970,7 @@ function openStudentCard(sid, readOnly){
     </div>` : `<div class="sc-actions">
       <button class="btn primary" onclick="openProfileEditor('${firstSid}')">✏️ 编辑档案</button>
       <span class="muted">该生未编入任何班级，无法关联抽奖 / 积分（仅展示档案）。</span>
-    </div>`)}
+    </div>`))}
   `;
   window.__scShotName = name;
   if (readOnly) return body;   // 家长只读模式：直接返回内容，由调用方内联渲染
@@ -3611,6 +4084,11 @@ function setScore(id, field, val){
   if (v !== '' && parseFloat(v) > MAX) v = String(MAX);
   const r = rec(f.s, state.activeDate);
   r[field] = v;
+  if (field === 'homework') {
+    r.hwRating = autoHwRating(r);                 // 作业有分且未手填评级 → 按百分比自动建议
+    const re = document.getElementById('hwrate-' + id);
+    if (re) re.innerHTML = hwRatingBadge(r.hwRating);
+  }
   const el = document.getElementById(`in-${field}-${id}`);
   if (el) { el.value = v; el.className = 'score-in ' + (field === 'quiz' ? quizScoreClass(num(v)) : scoreClass(num(v))); }
   const pe = document.getElementById(`pts-${id}`);
@@ -3626,16 +4104,208 @@ function setHwDone(id, val){
   r.hwDone = val;
   save(); renderMain();
 }
+/* 今日未完成作业名单：done 模式 hwDone===false；分数模式 hwDetail.status==='none'/'partial'。返回学生名数组 */
+function hwUnfinishedList(cls, d){
+  const out = [];
+  cls.students.forEach(s => {
+    const r = recRaw(s, d); if (!r) return;
+    let none = false;
+    if (state.hwMode === 'done') none = r.hwDone === false;
+    else if (r.hwDetail && (r.hwDetail.status === 'none' || r.hwDetail.status === 'partial')) none = true;
+    if (none) out.push(s.name);
+  });
+  return out;
+}
+/* 复制今日未交作业名单（可发家长群） */
+function copyUnfinishedHw(){
+  const cls = activeClass(); if (!cls) return toast('暂无班级');
+  const d = state.activeDate;
+  const names = hwUnfinishedList(cls, d);
+  if (!names.length) return toast('今日暂无未完成作业 🎉');
+  const txt = `${d} 未完成作业：${names.join('、')}（共 ${names.length} 人）`;
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast('未交名单已复制 📋'), () => fallbackCopy(txt));
+  else fallbackCopy(txt);
+}
+
+/* ===== 今日快捷操作（批量，带确认；与「批量录入」共用底层写入） ===== */
+function bulkSet(fn){
+  const cls = activeClass(); if (!cls) return toast('暂无班级');
+  const d = state.activeDate;
+  if (cls.attendanceOff && cls.attendanceOff[d]) return toast('今日为休息日，无需批量操作');
+  cls.students.forEach(s => fn(rec(s, d), s));
+  save(); renderMain();
+}
+/* 一键全勤 / 迟到 / 请假 / 缺勤 */
+function bulkAttendance(key){
+  const cls = activeClass(); if (!cls) return;
+  const label = { present:'出勤', late:'迟到', leave:'请假', absent:'缺勤' }[key] || key;
+  if (!confirm(`确定将全班 ${cls.students.length} 名学生的今日出勤统一设为「${label}」吗？`)) return;
+  bulkSet(r => { r.attendance = key; });
+  toast('已设置全班' + label);
+}
+/* 一键作业全完成 / 全未完成（仅完成模式生效） */
+function bulkHwDone(val){
+  const cls = activeClass(); if (!cls) return;
+  if (state.hwMode !== 'done') return toast('请先在作业表头把输入模式切换为「✓完成」');
+  const label = val ? '完成' : '未完成';
+  if (!confirm(`确定将全班 ${cls.students.length} 名学生的今日作业统一标记为「${label}」吗？`)) return;
+  bulkSet(r => { r.hwDone = val; });
+  toast('已标记全班作业' + label);
+}
+/* 全班同分：弹窗选小测/作业 + 统一分值 */
+function bulkSameScore(){
+  const cls = activeClass(); if (!cls) return;
+  openModal('🎯 全班同分', `
+    <div class="form-row"><label>项目</label>
+      <select id="bsField" class="inp">
+        <option value="quiz">${esc(LBL('quiz'))}</option>
+        <option value="homework">${esc(LBL('homework'))}</option>
+      </select></div>
+    <div class="form-row"><label>统一分值</label>
+      <input id="bsVal" class="inp" type="number" min="0" step="0.5" placeholder="如 8 / 90"></div>
+    <p class="muted">将为全班 ${cls.students.length} 名学生当日该项填写同一分值。</p>`,
+    `<button class="btn" onclick="closeModal()">取消</button>
+     <button class="btn primary" onclick="bulkSameScoreGo()">确定</button>`, 420);
+}
+function bulkSameScoreGo(){
+  const f = (document.getElementById('bsField') || {}).value || 'quiz';
+  const v = (document.getElementById('bsVal') || {}).value;
+  const n = num(v);
+  if (n === null || n < 0) return toast('请输入有效分值');
+  const cls = activeClass(); if (!cls) return;
+  const d = state.activeDate;
+  cls.students.forEach(s => {
+    const r = rec(s, d);
+    if (f === 'homework') { r.homework = String(n); r.hwRating = autoHwRating(r); }
+    else r.quiz = String(n);
+  });
+  save(); closeModal(); renderMain();
+  toast('已为全班填写' + (f === 'homework' ? '作业' : '小测') + ' ' + n + ' 分');
+}
+/* 清空今日：清除当日全部日常记录（可撤销），打卡不受影响 */
+function clearDayRecords(){
+  const cls = activeClass(); if (!cls) return;
+  const d = state.activeDate;
+  const snapshot = cls.students.map(s => ({ id: s.id, rec: (s.records && s.records[d]) || null }));
+  if (!snapshot.some(x => x.rec)) return toast('今日暂无日常记录可清空');
+  if (!confirm(`确定清空 ${d} 的全部日常记录吗？\n（${cls.students.length} 名学生的出勤/小测/作业/评级/表现/评语将被清除，打卡登记不受影响，30 秒内可撤销）`)) return;
+  cls.students.forEach(s => { if (s.records) delete s.records[d]; });
+  save(); renderMain();
+  toastAction('已清空今日记录', '撤销', () => {
+    cls.students.forEach(s => {
+      const snap = snapshot.find(x => String(x.id) === String(s.id));
+      if (snap && snap.rec) s.records[d] = snap.rec;
+    });
+    save(); renderMain(); toast('已恢复今日记录');
+  });
+}
+/* 今日快捷面板开关 */
+function toggleQuickBar(){ ui.quickBar = !ui.quickBar; renderMain(); }
+function quickBarHtml(cls, d){
+  const dayRest = !!(cls.attendanceOff && cls.attendanceOff[d]);
+  return `<div class="quickbar">
+    <button class="btn sm" onclick="bulkAttendance('present')" title="全班今日出勤统一设为「出勤」">👥 一键全勤</button>
+    <button class="btn sm" onclick="bulkHwDone(true)" title="全班今日作业标记完成（需完成模式）">✅ 作业全完成</button>
+    <button class="btn sm" onclick="bulkHwDone(false)" title="全班今日作业标记未完成（需完成模式）">❌ 作业全未完成</button>
+    <button class="btn sm" onclick="bulkSameScore()" title="为全班填写同一小测/作业分值">🎯 全班同分</button>
+    <button class="btn sm qb-danger" onclick="clearDayRecords()" title="清空今日全部日常记录（可撤销）">🧹 清空今日</button>
+    ${dayRest ? '<span class="muted" style="font-size:12px">今日休息日，批量操作已停用</span>' : ''}
+  </div>`;
+}
 /* 切换家庭作业输入模式（分数 ↔ 完成） */
 function toggleHwMode(){
   state.hwMode = state.hwMode === 'score' ? 'done' : 'score';
   save(); renderMain();
 }
-/* 家庭作业评级（A+/B/C 等自由文本，可留空） */
+/* 家庭作业评级徽章：空返回「—」，有等级返回彩色徽章 */
+function hwRatingBadge(k){
+  const v = String(k || '').trim();
+  if (!v) return '<span class="rate-badge empty">—</span>';
+  return `<span class="rate-badge" style="background:${esc(hwRatingColor(v))}">${esc(v)}</span>`;
+}
+/* 评级列单元格（可点击）：显示当前评级徽章，点击弹出等级选择器 */
+function hwRatingCellHtml(s, r){
+  return `<button class="rate-cell-btn" id="hwrate-${s.id}" onclick="openRatingPicker(${s.id})" title="点击设置作业评级（如 A+、B）">${hwRatingBadge(r.hwRating)}</button>`;
+}
+/* 评级选择弹窗：预设等级一键选 + 自定义输入 + 清除 + 配置入口 */
+function openRatingPicker(id){
+  const f = findStudentById(id); if (!f) return;
+  ui._ratingSid = id;
+  const r = rec(f.s, state.activeDate);
+  const cur = String(r.hwRating || '').trim();
+  const L = HWRATING();
+  const chips = L.map(x => `<button class="rate-pick" style="--rk:${esc(x.color)}" onclick="pickRating(${id},'${esc(x.k)}')">${esc(x.k)}</button>`).join('');
+  const body = `
+    <div class="hint">为 <b>${esc(f.s.name)}</b> 选择家庭作业评级。已选等级：<span id="rateCur">${cur ? hwRatingBadge(cur) : '—'}</span></div>
+    <div class="rate-pick-grid">${chips}</div>
+    <div class="form-row" style="margin-top:12px"><label>自定义</label>
+      <input id="rateCustom" class="inp" maxlength="6" value="${esc(cur)}" placeholder="如：优、待提高…" onchange="pickRating(${id},this.value)">
+    </div>`;
+  const foot = `<button class="btn" onclick="clearRating(${id})">🧹 清除</button>
+    <button class="btn" onclick="openHwRatingCfg()" title="自定义等级与分数段">⚙️ 评级设置</button>
+    <button class="btn primary" onclick="closeModal()">完成</button>`;
+  openModal('🏅 作业评级 · ' + esc(f.s.name), body, foot, 460);
+}
+function pickRating(id, k){
+  const f = findStudentById(id); if (!f) return;
+  rec(f.s, state.activeDate).hwRating = String(k || '').replace(/[<>"']/g, '').slice(0, 6);
+  save(); renderMain(); toast('已设评级');
+}
+function clearRating(id){
+  const f = findStudentById(id); if (!f) return;
+  rec(f.s, state.activeDate).hwRating = '';
+  save(); renderMain(); toast('已清除评级');
+}
+/* 评级配置管理：等级名 + 对应分数百分比下限（可增删，颜色自动取默认色板） */
+const HW_RATING_PALETTE = ['#16a34a','#22c55e','#65a30d','#ca8a04','#ea7c1c','#ea7c1c','#dc2626'];
+let _hwRcDraft = null;
+function openHwRatingCfg(){
+  _hwRcDraft = HWRATING().map(x => ({ k: x.k, min: x.min, color: x.color }));
+  renderHwRatingCfg();
+}
+function renderHwRatingCfg(){
+  const rows = (_hwRcDraft || []).map((x, i) => `
+    <div class="pb-row">
+      <input class="inp" style="width:70px" maxlength="4" value="${esc(x.k)}" oninput="_hwRcDraft[${i}].k=this.value" placeholder="等级">
+      <span class="muted" style="font-size:12.5px">≥</span>
+      <input class="inp" style="width:80px" type="number" min="0" max="100" value="${x.min}" oninput="_hwRcDraft[${i}].min=parseInt(this.value)||0">
+      <span class="muted" style="font-size:12.5px">%</span>
+      <input type="color" value="${esc(x.color)}" oninput="_hwRcDraft[${i}].color=this.value" title="徽章颜色" style="border:1px solid var(--border);border-radius:8px;padding:2px;height:32px">
+      <button class="icon-btn del" onclick="_hwRcDraft.splice(${i},1);renderHwRatingCfg()" title="删除等级">✕</button>
+    </div>`).join('');
+  openModal('⚙️ 作业评级设置', `
+    <div class="pb-tip">评级用于「家庭作业评级」列。作业有分且未手填评级时，将按「得分 ÷ 本次满分」的百分比自动匹配等级（如 A=90% 以上）。等级与分数段可自行增删调整。</div>
+    <div class="pb-list">${rows || '<div class="muted" style="padding:8px 0">暂无等级</div>'}</div>
+    <button class="btn sm" onclick="_hwRcDraft.push({ k:'', min:0, color:'#64748b' });renderHwRatingCfg()">＋ 添加等级</button>
+  `, `<button class="btn" onclick="closeModal()">取消</button>
+     <button class="btn" onclick="closeModal();openRatingPicker(ui._ratingSid)">返回</button>
+     <button class="btn primary" onclick="saveHwRatingCfg()">保存</button>`, 520);
+}
+function saveHwRatingCfg(){
+  const arr = (_hwRcDraft || []).filter(x => x.k && x.k.trim()).map(x => ({ k: x.k.trim().slice(0,4), min: Math.max(0, Math.min(100, +x.min || 0)), color: x.color || '#64748b' }));
+  if (!arr.length) return toast('至少保留一个等级');
+  state.hwRatingCfg = arr;
+  save(); closeModal(); renderMain();
+  toast('评级设置已保存 ✅');
+}
+/* 评级分布统计：窗口内各等级人数（按已设评级记录统计） */
+function hwRatingStats(cls, fromD, toD){
+  const cnt = {};
+  cls.students.forEach(s => Object.keys(s.records || {}).forEach(d => {
+    if (d < fromD || d > toD) return;
+    if (cls.attendanceOff && cls.attendanceOff[d]) return;
+    const k = String(s.records[d].hwRating || '').trim();
+    if (k) cnt[k] = (cnt[k] || 0) + 1;
+  }));
+  return cnt;
+}
+/* 家庭作业评级（A+/B/C 等自由文本，可留空；已在 setScore 中自动建议，此函数保留给既有调用） */
 function setHwRating(id, val){
   const f = findStudentById(id); if (!f) return;
   const r = rec(f.s, state.activeDate);
   r.hwRating = (String(val || '').replace(/[<>"']/g, '') || '').slice(0, 6);
+  const re = document.getElementById('hwrate-' + id);
+  if (re) re.innerHTML = hwRatingBadge(r.hwRating);
   save();
 }
 /* ===== 家庭作业详情（完成时间 / 得分 / 本次满分 / 完成情况 / 备注）===== */
@@ -3644,7 +4314,7 @@ function hwStatusLabel(st){ return ({ done:'完成', partial:'部分完成', non
 function openHwDetail(id){
   const f = findStudentById(id); if (!f) return;
   const r = rec(f.s, state.activeDate);
-  const d = hwDetailOf(r) || { time:'', score: r.homework || '', full: r.hwFull || state.hwScale || 10, status:'done', note:'' };
+  const d = hwDetailOf(r) || { time:'', score: r.homework || '', full: r.hwFull || state.hwScale || 10, status:'done', correct:'na', note:'' };
   const body = `
     <div class="hint">为 <b>${esc(f.s.name)}</b> 记录 ${state.activeDate} 的家庭作业情况。可自定义「本次满分」（如 10 / 100 / 120），趋势图与统计将按实际满分折算。</div>
     <div class="form-row"><label>完成时间</label><input class="inp" id="hwTime" type="time" value="${esc(d.time || '')}" onchange="hwDetailAutosave(${id})"></div>
@@ -3657,6 +4327,12 @@ function openHwDetail(id){
         <option value="none" ${d.status === 'none' ? 'selected' : ''}>未完成</option>
       </select>
     </div>
+    <div class="form-row"><label>订正情况</label>
+      <select class="inp" id="hwCorrect" onchange="hwDetailAutosave(${id})">
+        ${HW_CORRECT_OPTS.map(o => `<option value="${o.key}" ${(d.correct || 'na') === o.key ? 'selected' : ''}>${o.label}</option>`).join('')}
+      </select>
+      <span class="muted" style="font-size:12px">未完成 / 部分完成的作业记得跟进订正，未订正会进入预警提醒</span>
+    </div>
     <div class="form-row"><label>备注</label><textarea class="inp" id="hwNote" rows="2" placeholder="如：书写工整、订正及时…" onchange="hwDetailAutosave(${id})">${esc(d.note || '')}</textarea></div>`;
   const foot = `<button class="btn primary" onclick="saveHwDetail(${id})">保存</button>
                 <button class="btn" onclick="closeModal()">取消</button>`;
@@ -3668,10 +4344,12 @@ function applyHwDetail(r, d){
     score:  d.score  === '' || d.score  === undefined ? '' : (+d.score),
     full:   d.full   === '' || d.full   === undefined ? '' : (+d.full),
     status: d.status || 'done',
+    correct: (d.correct === 'pending' || d.correct === 'done' || d.correct === 'na') ? d.correct : 'na',
     note:   d.note   || ''
   };
   r.homework = (d.score === '' || d.score === undefined) ? '' : String(+d.score);  // 同步，供趋势/平均分兼容
   r.hwFull   = (d.full  === '' || d.full  === undefined) ? '' : (+d.full);
+  r.hwRating = autoHwRating(r);   // 详情得分变化时同步评级建议
 }
 function saveHwDetail(id){
   const f = findStudentById(id); if (!f) return;
@@ -3681,6 +4359,7 @@ function saveHwDetail(id){
     score:  (document.getElementById('hwScore') || {}).value,
     full:   (document.getElementById('hwFull')  || {}).value,
     status: (document.getElementById('hwStatus')|| {}).value || 'done',
+    correct:(document.getElementById('hwCorrect')|| {}).value || 'na',
     note:   (document.getElementById('hwNote')  || {}).value || ''
   };
   applyHwDetail(r, d);
@@ -3696,6 +4375,7 @@ function hwDetailAutosave(id){
     score:  (document.getElementById('hwScore') || {}).value,
     full:   (document.getElementById('hwFull')  || {}).value,
     status: (document.getElementById('hwStatus')|| {}).value || 'done',
+    correct:(document.getElementById('hwCorrect')|| {}).value || 'na',
     note:   (document.getElementById('hwNote')  || {}).value || ''
   };
   applyHwDetail(r, d);
@@ -3757,10 +4437,12 @@ function batchAddStudents(){
 }
 function delStudent(id){
   const f = findStudentById(id); if (!f) return;
-  if (!confirm(`确定删除学生「${f.s.name}」吗？其所有记录将一并删除，且无法恢复。`)) return;
+  if (!confirm(`确定删除学生「${f.s.name}」吗？其所有成绩、打卡、加练记录将移入回收站，可随时恢复。`)) return;
+  state.trash = state.trash || { classes: [], students: [], profiles: [] };
+  state.trash.students.push({ id: f.s.id, name: f.s.name, data: f.s, classId: f.c.id, deletedAt: trashStamp() });
   f.c.students = f.c.students.filter(x => String(x.id) !== String(id));
   save(); renderSidebar(); renderMain();
-  toast('已删除');
+  toastAction('已删除「' + f.s.name + '」，可恢复', '撤销', () => restoreTrash('students', f.s.id));
 }
 
 /* -------- 多选浮动面板 -------- */
@@ -5291,34 +5973,51 @@ function addProfileOption(id, key){
 }
 function renderProfile(){
   const sp = state.studentProfiles || {};
+  const q = (ui.profileSearch || '').trim().toLowerCase();
   const ids = Object.keys(sp);
   const enrolled = new Set();
   state.classes.forEach(c => c.students.forEach(s => enrolled.add(String(s.id))));
-  const rows = ids.map(id => {
+  const rows = ids.filter(id => {
+    if (!q) return true;
+    const p = sp[id] || {};
+    return String(p.name || '').toLowerCase().includes(q)
+      || String(p.class || '').toLowerCase().includes(q)
+      || String(p.school || '').toLowerCase().includes(q)
+      || (p.tags || []).some(t => String(t).toLowerCase().includes(q));
+  }).map(id => {
     const p = sp[id] || {};
     const inClass = enrolled.has(id);
     const custom = (p.custom || []).filter(x => x && x.label);
     const remark = (p.remark || '');
     const remarkTxt = remark ? (remark.length > 18 ? esc(remark.slice(0, 18)) + '…' : esc(remark)) : '—';
+    const tags = (p.tags || []).filter(Boolean);
+    const avatar = p.photo
+      ? `<img class="pf-avatar-img" src="${esc(p.photo)}" alt="">`
+      : `<span class="pf-avatar">${esc((p.name || '?').slice(0, 1))}</span>`;
+    const tagsTxt = tags.length
+      ? `<span class="pf-tags">${tags.slice(0, 2).map(t => `<span class="pf-tag">${esc(t)}</span>`).join('')}${tags.length > 2 ? `<span class="pf-tag more">+${tags.length - 2}</span>` : ''}</span>`
+      : '—';
     return `<tr>
-      <td class="nm"><button class="stu-link" onclick="openProfileEditor('${id}')" title="点击填写 / 编辑基础信息">${esc(p.name || '未命名')}</button></td>
+      <td class="nm"><span class="pf-name-cell">${avatar}<button class="stu-link" onclick="openProfileEditor('${id}')" title="点击填写 / 编辑基础信息">${esc(p.name || '未命名')}</button></span></td>
       <td>${profileSelect(id, 'class', p.class)}</td>
       <td>${profileSelect(id, 'school', p.school)}</td>
+      <td>${tagsTxt}</td>
       <td class="pf-remark" title="${esc(remark)}">${remarkTxt}</td>
       <td class="c">${custom.length ? custom.length + ' 项' : '—'}</td>
       <td class="c">${inClass ? '<span class="tag-ok">在班</span>' : '<span class="tag-off">无班级</span>'}</td>
       <td class="c"><button class="icon-btn del" title="删除该学生档案" onclick="delProfile('${id}')">✕</button></td>
     </tr>`;
   }).join('');
-  return `<div class="row" style="margin-bottom:10px;gap:10px;align-items:center">
+  return `<div class="row" style="margin-bottom:10px;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn primary" onclick="addProfile()">＋ 新增学生档案</button>
-      <span class="muted" style="font-size:12.5px">档案独立于班级：班级新增学生自动进入档案；删除班级学生，档案保留。点姓名即可填写 / 编辑基础信息，并可在编辑页<b>自行添加字段</b>。</span>
+      <input class="inp pf-search" placeholder="🔍 搜索姓名 / 班级 / 学校 / 标签…" value="${esc(ui.profileSearch || '')}" oninput="ui.profileSearch=this.value;renderProfile()">
+      <span class="muted" style="font-size:12.5px">档案独立于班级：班级新增学生自动进入档案；删除班级学生，档案保留。点姓名即可填写 / 编辑基础信息（支持<b>照片、标签、自定义字段</b>）。</span>
     </div>
     ${ids.length ? `<div class="tbl-wrap"><table>
-      <thead><tr><th style="width:110px">姓名</th><th>班级</th><th>学校</th><th>备注</th><th style="width:64px" class="c">自定义</th><th style="width:64px" class="c">状态</th><th style="width:56px" class="c">操作</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>`
+      <thead><tr><th style="width:150px">姓名</th><th>班级</th><th>学校</th><th style="min-width:90px">标签</th><th>备注</th><th style="width:64px" class="c">自定义</th><th style="width:64px" class="c">状态</th><th style="width:56px" class="c">操作</th></tr></thead>
+      <tbody>${rows.length ? rows : '<tr><td colspan="8" class="empty">没有匹配的学生档案</td></tr>'}</tbody></table></div>`
       : `<div class="empty"><span class="ico">👤</span>还没有学生档案。点上方「＋ 新增学生档案」添加；或在班级里添加学生后会自动进入档案。</div>`}
-    <div class="hint" style="margin-top:10px">💡 列表仅展示基础信息。如需登记更多维度（如家长联系方式、特长等），点学生姓名打开编辑页，按「＋ 添加字段」自行新增，保存后自动显示在档案卡中。</div>`;
+    <div class="hint" style="margin-top:10px">💡 点学生姓名可填写基础信息：支持 <b>上传照片、打标签</b>（如"数学之星"）、添加自定义字段，保存后自动显示在档案卡与列表中。</div>`;
 }
 /* 点击学生姓名：打开基础信息编辑（支持界面内自行添加字段） */
 function openProfileEditor(id){
@@ -5369,10 +6068,14 @@ function saveProfileEditor(id){
 }
 /* 管理员显式删除某条学生档案（不会因班级操作而误删） */
 function delProfile(sid){
-  if (!confirm('确定删除该学生档案吗？\n此操作仅删除档案记录本身，不会影响班级里仍在校的学生（如该生仍在班）。该操作不可恢复。')) return;
+  const p = state.studentProfiles[String(sid)];
+  if (!p) return;
+  if (!confirm('确定删除该学生档案吗？\n档案将移入回收站，可随时恢复。')) return;
+  state.trash = state.trash || { classes: [], students: [], profiles: [] };
+  state.trash.profiles.push({ id: String(sid), name: p.name || '未命名', data: p, deletedAt: trashStamp() });
   delete state.studentProfiles[String(sid)];
   save(); renderMain();
-  toast('已删除学生档案');
+  toastAction('已删除学生档案，可恢复', '撤销', () => restoreTrash('profiles', String(sid)));
 }
 /* 管理员手动新增一条独立的学生档案（无需先建班级） */
 function addProfile(){
