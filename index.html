@@ -544,8 +544,6 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .att-group button.on-late{background:var(--yellow-light);color:var(--yellow)}
 .att-group button.on-leave{background:var(--red-light);color:var(--red)}
 
-.pts-chip{display:inline-block;background:var(--accent-light);color:var(--accent-dark);border-radius:999px;
-  padding:3px 10px;font-size:12px;font-weight:800;min-width:36px;text-align:center}
 
 .score-in{width:56px;text-align:center;border:1.5px solid var(--border);border-radius:9px;padding:5px 4px;font-size:13.5px;font-weight:800;background:#fff}
 .rate-in{width:48px;text-align:center;border:1.5px solid var(--border);border-radius:9px;padding:5px 4px;font-size:13px;font-weight:700;background:#fff;color:var(--accent-dark)}
@@ -555,7 +553,11 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .score-in.s-r{background:var(--red-light);border-color:#f0b6b6;color:var(--red)}
 .hw-done-group{display:inline-flex;gap:4px}
 .hw-score-wrap{display:inline-flex;align-items:center;gap:2px}
-.hw-full{font-size:11px;color:var(--text-muted);font-weight:700}
+.hw-full{font-size:13.5px;color:var(--accent-dark);font-weight:800}
+.hw-full-btn{display:inline-block;border:none;background:transparent;cursor:pointer;padding:3px 5px;border-radius:8px;font-size:13.5px;font-weight:800;color:var(--accent-dark);line-height:1;transition:background .15s,color .15s}
+.hw-full-btn b{font-size:14.5px;font-weight:800}
+.hw-full-btn:hover{background:var(--accent-light);color:var(--accent)}
+.hw-full-gear{color:var(--accent-dark)!important;font-weight:800}
 .hw-det-btn{width:28px;height:28px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:13px;line-height:1;transition:.15s}
 .hw-det-btn:hover{border-color:var(--accent);background:var(--accent-light)}
 .hw-det-btn.on{background:var(--accent-light);border-color:var(--accent)}
@@ -1398,33 +1400,6 @@ const WARN_RULES_DEFAULT = { lowStreak: 2, absentCnt: 2, hwStreak: 2 };
 function WARNRULES(){ return (state.warnRules && Object.keys(state.warnRules).length) ? state.warnRules : WARN_RULES_DEFAULT; }
 function PHRASES(){ return (Array.isArray(state.phraseBank) && state.phraseBank.length) ? state.phraseBank : PHRASE_BANK_DEFAULT; }
 
-/* 家庭作业评级配置：等级（k）、分数百分比下限（min，如 A=90 即 ≥90% 为 A）、徽章颜色。
-   评级列点击弹出等级选择；作业有分且未手填评级时按百分比自动建议等级。可在「评级设置」中自定义。 */
-const HW_RATING_CFG_DEFAULT = [
-  { k:'A+', min:95, color:'#16a34a' },
-  { k:'A',  min:90, color:'#22c55e' },
-  { k:'B+', min:85, color:'#65a30d' },
-  { k:'B',  min:80, color:'#ca8a04' },
-  { k:'C+', min:75, color:'#ea7c1c' },
-  { k:'C',  min:70, color:'#ea7c1c' },
-  { k:'D',  min:0,  color:'#dc2626' },
-];
-function HWRATING(){ return (Array.isArray(state.hwRatingCfg) && state.hwRatingCfg.length) ? state.hwRatingCfg : HW_RATING_CFG_DEFAULT; }
-function hwRatingColor(k){
-  return (HWRATING().find(x => x.k === k) || {}).color || '#64748b';
-}
-/* 作业评级自动建议：按得分百分比匹配等级。已手填评级不覆盖；无分数返回原值。 */
-function autoHwRating(r){
-  const cur = String(r.hwRating || '').trim();
-  if (cur) return cur;
-  const v = num(r.homework); if (v === null) return cur;
-  let full = (r.hwDetail && r.hwDetail.full) || state.hwScale || 10;
-  if (!(+full > 0)) full = state.hwScale || 10;
-  const pct = v / (+full) * 100;
-  const hit = HWRATING().slice().sort((a, b) => b.min - a.min).find(x => pct >= x.min);
-  return hit ? hit.k : cur;
-}
-
 /* 家庭作业订正状态：'na'=无需订正 / 'pending'=待订正 / 'done'=已订正（作业闭环：未完成+未订正进预警） */
 const HW_CORRECT_OPTS = [
   { key:'na',      label:'无需订正' },
@@ -1490,7 +1465,7 @@ function buildDefaultData(){
     weeklyExams: { students: [], records: [] },
     ldHistory: [],
     behaviorOpts: null, absorptionOpts: null, lottery: null, points: null, tabOrder: null,
-    teacherName: null, profileOptions: null,
+    teacherName: null, profileOptions: null, hwFullOfDate: null,
   };
 }
 /* ==================================================================
@@ -1505,7 +1480,7 @@ let state = {
   behaviorOpts: null, absorptionOpts: null, lottery: null, points: null, tabOrder: null,
   teacherName: null, profileOptions: null,
   warnRules: null, phraseBank: null,   // 预警规则自定义 / 常用评语库（normalizeState 补默认）
-  hwRatingCfg: null,                   // 家庭作业评级配置（normalizeState 补默认）
+  hwFullOfDate: null,                  // 各日期「本次作业满分」（班级统一，如 { '2026-08-18': 10 }）
 };
 
 /* 临时 UI 状态（不持久化） */
@@ -1593,7 +1568,7 @@ function findStudentByKey(key){
 function rec(student, date){
   student.records = student.records || {};
   if (!student.records[date]) {
-    student.records[date] = { attendance:'present', quiz:'', homework:'', hwRating:'', behavior:[], absorption:[], hwDetail:null, remark:'' };
+    student.records[date] = { attendance:'present', quiz:'', homework:'', behavior:[], absorption:[], hwDetail:null, remark:'' };
   }
   const r = student.records[date];
   if (!Array.isArray(r.behavior)) r.behavior = [];
@@ -1707,7 +1682,7 @@ function normalizeState(){
   if (!state.points) state.points = defaultPoints();
   if (!state.warnRules || !Object.keys(state.warnRules).length) state.warnRules = { ...WARN_RULES_DEFAULT };
   if (!Array.isArray(state.phraseBank)) state.phraseBank = PHRASE_BANK_DEFAULT.map(x => x);
-  if (!Array.isArray(state.hwRatingCfg) || !state.hwRatingCfg.length) state.hwRatingCfg = HW_RATING_CFG_DEFAULT.map(x => ({ ...x }));
+  if (!state.hwFullOfDate || typeof state.hwFullOfDate !== 'object') state.hwFullOfDate = {};
   /* 旧版积分规则为扁平结构（att/quizFull/...），迁移到模块化结构 */
   if (!state.points.version || state.points.version < 2) {
     const old = state.points || {};
@@ -2534,13 +2509,11 @@ function renderMain(){
 /* ==================================================================
    Tab 0：概览 (overview)
    ================================================================== */
-/* 分值 → 百分比：小测按 quizScale，作业按 hwScale（或本次作业满分 full）。区别于 scorePct(s,date,subj)（趋势分析用） */
-function pctOf(v, field, r){
+/* 分值 → 百分比：小测按 quizScale，作业按本次满分（日期级 → 个别 → 全局基准）。区别于 scorePct(s,date,subj)（趋势分析用） */
+function pctOf(v, field, r, d){
   if (v === null || v === undefined) return null;
   if (field === 'quiz') return v / (state.quizScale || 100) * 100;
-  let full = state.hwScale || 10;
-  if (r && r.hwDetail && r.hwDetail.full) full = r.hwDetail.full;
-  return v / full * 100;
+  return v / hwFullFor(d, r) * 100;
 }
 /* 学生某时间窗口内的有效成绩百分比均分（小测+作业取平均，休息日跳过；无有效数据返回 null） */
 function studentWindowAvg(s, cls, fromD, toD){
@@ -2550,7 +2523,7 @@ function studentWindowAvg(s, cls, fromD, toD){
     if (cls.attendanceOff && cls.attendanceOff[d]) return;
     const r = s.records[d];
     const q = pctOf(num(r.quiz), 'quiz');
-    const h = pctOf(hwEffective(r), 'homework', r);
+    const h = pctOf(hwEffective(r), 'homework', r, d);
     if (q !== null) { sum += q; n++; }
     if (h !== null) { sum += h; n++; }
   });
@@ -2709,7 +2682,7 @@ function classTrendData(cls, days){
         if (r.hwDone === true) hDone++;
       } else {
         const eff = hwEffective(r);
-        if (eff !== null) { const f = hwFullOf(r) || (state.hwScale || 10); if (f > 0) { hSum += eff / f * 100; hN++; } }
+        if (eff !== null) { const f = hwFullFor(dd, r); if (f > 0) { hSum += eff / f * 100; hN++; } }
       }
     });
     const qPct = qN ? qSum / qN / (state.quizScale || 100) * 100 : null;
@@ -2921,9 +2894,6 @@ function buildReportText(cls, days){
   L.push(`👥 出勤：上课 ${attDays.length} 天｜出勤 ${present} 人次、迟到 ${late}、请假 ${leave}、缺勤 ${absent}`);
   L.push(`📊 小测：${qVals.length} 人次｜均分 ${qAvg != null ? fmt1(qAvg) + ' / ' + (state.quizScale || 100) : '—'}｜最高 ${qMax != null ? qMax : '—'}｜达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}`);
   if (hwRate !== null) L.push(`📚 作业：完成率 ${hwRate}%`);
-  const rtStats = hwRatingStats(cls, fromD, d);
-  const rtKeys = Object.keys(rtStats);
-  if (rtKeys.length) L.push(`🏅 作业评级：${rtKeys.map(k => `${k}×${rtStats[k]}`).join('、')}`);
   L.push('');
   if (pg.up.length) L.push('🚀 进步最快：' + pg.up.map(x => `${x.s.name}（▲${Math.abs(x.delta).toFixed(1)}）`).join('、'));
   if (pg.down.length) L.push('📉 退步明显：' + pg.down.map(x => `${x.s.name}（▼${Math.abs(x.delta).toFixed(1)}）`).join('、'));
@@ -2940,7 +2910,6 @@ function buildReportText(cls, days){
   L2.push(`👥 出勤：上课 ${attDays.length} 天，出勤 ${present} 人次、迟到 ${late}、请假 ${leave}、缺勤 ${absent}。`);
   L2.push(`📊 小测（满分 ${state.quizScale || 100}）：共 ${qVals.length} 人次，均分 ${qAvg != null ? fmt1(qAvg) : '—'}，最高 ${qMax != null ? qMax : '—'}，达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}。`);
   if (hwRate !== null) L2.push(`📚 作业完成率：${hwRate}%。`);
-  if (rtKeys.length) L2.push(`🏅 作业评级：${rtKeys.map(k => `${k}×${rtStats[k]}`).join('、')}。`);
   if (pg.up.length) L2.push(`🚀 进步明显：${pg.up.map(x => x.s.name).join('、')}。`);
   if (pg.down.length) L2.push(`📉 近期需加油：${pg.down.map(x => x.s.name).join('、')}。`);
   L2.push(`📌 请家长朋友们关注孩子的学习情况，如有问题欢迎与我沟通。`);
@@ -3366,9 +3335,10 @@ function renderHwCell(s, r, h){
         <button class="hw-btn ${r.hwDone === false ? 'on-miss' : ''}" onclick="setHwDone(${s.id},false)" title="标记未完成">✕</button>
       </span>${detBtn}${badge}`;
   }
-  const fullTxt = (d && d.full) ? `<span class="hw-full">/${d.full}</span>` : '';
+  const fv = hwFullFor(state.activeDate, r);
+  const fullTxt = `<button class="hw-full-btn" title="本次作业满分 ${fv} 分 · 点击修改（全班同步）" onclick="editHwFull()">/<b>${fv}</b></button>`;
   return `<span class="hw-score-wrap"><input class="score-in ${scoreClass(h)}" id="in-homework-${s.id}" value="${esc(r.homework)}"
-        inputmode="decimal" max="${state.hwScale || 10}" placeholder="-"
+        inputmode="decimal" max="${fv}" placeholder="-"
         oninput="setScore(${s.id},'homework',this.value)" onchange="renderMain()">${fullTxt}</span>${detBtn}${badge}`;
 }
 
@@ -3402,12 +3372,10 @@ function renderRoster(){
              onclick="setAttendance(${s.id},'${o.key}')">${o.label}</button>`).join('')}
         </span>`}
       </td>
-      <td class="c"><span class="pts-chip ${dayRest ? 'muted' : ''}" id="pts-${s.id}">${dayRest ? '不计入' : dayPoints(r) + ' 分'}</span></td>
       <td class="c"><input class="score-in ${quizScoreClass(q)}" id="in-quiz-${s.id}" value="${esc(r.quiz)}"
           inputmode="decimal" max="${state.quizScale || 100}" placeholder="-"
           oninput="setScore(${s.id},'quiz',this.value)" onchange="renderMain()"></td>
       <td class="c">${renderHwCell(s, r, h)}</td>
-      <td class="c">${hwRatingCellHtml(s, r)}</td>
       <td>${multiBtnHtml(s, d, 'behavior')}</td>
       <td>${multiBtnHtml(s, d, 'absorption')}</td>
       <td class="c"><button class="icon-btn" title="删除学生" onclick="delStudent(${s.id})">🗑</button></td>
@@ -3415,10 +3383,9 @@ function renderRoster(){
   }).join('');
 
   const foot = (label, pick) => `<tr class="tfoot-row">
-      <td colspan="4" style="text-align:right"><span class="tfoot-tag">${label}</span></td>
+      <td colspan="3" style="text-align:right"><span class="tfoot-tag">${label}</span></td>
       <td class="c ${qs ? valClass(pick(qs)) : ''}">${qs ? fmt1(pick(qs)) : '—'}</td>
       <td class="c ${hs ? valClass(pick(hs)) : ''}">${hs ? fmt1(pick(hs)) : '—'}</td>
-      <td></td>
       <td colspan="2"></td>
       <td></td>
     </tr>`;
@@ -3458,7 +3425,7 @@ function renderRoster(){
   <div class="batch-bar">
     <button class="btn ${ui.rosterBatch ? 'primary' : ''}" onclick="toggleRosterBatch()">⚡ ${ui.rosterBatch ? '退出批量录入' : '批量录入'}</button>
     <button class="btn ${ui.quickBar ? 'primary' : ''}" onclick="toggleQuickBar()" title="一键全勤 / 作业全完成 / 全班同分等">🚀 今日快捷</button>
-    <span class="batch-tip">${ui.rosterBatch ? '紧凑模式：姓名·出勤·小测·作业·评级，回车跳到下一格，改完自动保存' : '需要快速录全班？点「批量录入」进入紧凑表格；点「今日快捷」批量设置全勤/作业'}</span>
+    <span class="batch-tip">${ui.rosterBatch ? '紧凑模式：姓名·出勤·小测·作业，回车跳到下一格，改完自动保存' : '需要快速录全班？点「批量录入」进入紧凑表格；点「今日快捷」批量设置全勤/作业'}</span>
   </div>
   ${ui.quickBar ? quickBarHtml(cls, d) : ''}
   ${ui.rosterBatch ? renderBatchTable(cls, d) : ''}
@@ -3469,18 +3436,17 @@ function renderRoster(){
         <th class="c" style="width:56px">排名</th>
         <th style="width:96px">学生姓名</th>
         <th class="c" style="width:150px">出勤</th>
-        <th class="c" style="width:76px">积分卡</th>
         <th class="c" style="width:80px"><span class="th-label" onclick="openLabelEditor('quiz')" title="点击修改列名">📝 ${esc(LBL('quiz'))}</span></th>
-        <th class="c" style="width:90px"><span class="th-label" onclick="openLabelEditor('homework')" title="点击修改列名">📚 ${esc(LBL('homework'))}</span>
+        <th class="c" style="width:120px"><span class="th-label" onclick="openLabelEditor('homework')" title="点击修改列名">📚 ${esc(LBL('homework'))}</span>
           <button class="th-gear" onclick="toggleHwMode()" title="切换输入模式（分数/完成）" id="hwModeBtn">${state.hwMode === 'done' ? '✓完成' : '🔢分数'}</button>
+          ${state.hwMode === 'done' ? '' : `<button class="th-gear hw-full-gear" onclick="editHwFull()" title="设置本次作业满分（全班同步）">满分${curHwFull()}</button>`}
           <button class="th-gear" onclick="copyUnfinishedHw()" title="复制今日未完成作业名单">📋</button>
         </th>
-        <th class="c" style="width:64px">评级</th>
         <th style="min-width:180px">🐱 课堂表现 <button class="th-gear" title="管理表现标语" onclick="openTagEditor('behavior')">⚙</button></th>
         <th style="min-width:180px">💡 课堂吸收 <button class="th-gear" title="管理吸收标语" onclick="openTagEditor('absorption')">⚙</button></th>
         <th class="c" style="width:52px">删除</th>
       </tr></thead>
-      <tbody>${body || '<tr><td colspan="10" class="empty">还没有学生，先在下方添加吧</td></tr>'}</tbody>
+      <tbody>${body || '<tr><td colspan="8" class="empty">还没有学生，先在下方添加吧</td></tr>'}</tbody>
       ${rows.length ? `<tfoot>${foot('平均分', v => v.avg)}${foot('最高分', v => v.max)}${foot('最低分', v => v.min)}</tfoot>` : ''}
     </table>
   </div>
@@ -3506,7 +3472,7 @@ function renderBatchTable(cls, d){
            <option value="" ${r.hwDone === undefined || r.hwDone === null ? 'selected' : ''}>—</option>
            <option value="true" ${r.hwDone === true ? 'selected' : ''}>✓完成</option>
            <option value="false" ${r.hwDone === false ? 'selected' : ''}>✕未完成</option></select>`
-      : `<input class="score-in batch-inp ${scoreClass(h)}" value="${esc(r.homework)}" inputmode="decimal" max="${state.hwScale || 10}"
+      : `<input class="score-in batch-inp ${scoreClass(h)}" value="${esc(r.homework)}" inputmode="decimal" max="${curHwFull()}"
            oninput="setScore(${s.id},'homework',this.value)" onchange="renderMain()" onkeydown="${BATCH_NAV}">`;
     return `<tr>
       <td class="bnm"><button class="stu-link" onclick="openStudentCard(${s.id})">${esc(s.name)}</button></td>
@@ -3514,14 +3480,13 @@ function renderBatchTable(cls, d){
       <td class="c"><input class="score-in batch-inp ${quizScoreClass(q)}" value="${esc(r.quiz)}" inputmode="decimal" max="${state.quizScale || 100}"
         oninput="setScore(${s.id},'quiz',this.value)" onchange="renderMain()" onkeydown="${BATCH_NAV}"></td>
       <td class="c">${hwInput}</td>
-      <td class="c">${hwRatingCellHtml(s, r)}</td>
     </tr>`;
   }).join('');
   return `<div class="tbl-wrap"><table class="batch-tbl">
-    <thead><tr><th class="bnm">姓名</th><th class="c">出勤</th><th class="c">${esc(LBL('quiz'))}</th><th class="c">${esc(LBL('homework'))}</th><th class="c">评级</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan="5" class="empty">还没有学生</td></tr>'}</tbody>
+    <thead><tr><th class="bnm">姓名</th><th class="c">出勤</th><th class="c">${esc(LBL('quiz'))}</th><th class="c">${esc(LBL('homework'))}</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="4" class="empty">还没有学生</td></tr>'}</tbody>
   </table>
-  <div class="batch-tip" style="margin-top:8px">💡 在此表格里按 <b>回车</b> 可跳到下一个输入框，专注快速录全班；评级列点击徽章即可快速打等级；详细表现/吸收等仍在「完整表格」里（点「退出批量录入」）。</div>
+  <div class="batch-tip" style="margin-top:8px">💡 在此表格里按 <b>回车</b> 可跳到下一个输入框，专注快速录全班；详细表现/吸收等仍在「完整表格」里（点「退出批量录入」）。</div>
   </div>`;
 }
 
@@ -3640,8 +3605,6 @@ function buildGrowthFeed(s, cls){
       const h = hwEffective(r);
       if (h !== null) chips.push({ ico:'📚', cls: scoreClass(h), txt:'作业 ' + h + ' 分' });
     }
-    const hwR = String(r.hwRating || '').trim();
-    if (hwR) chips.push({ ico:'🏅', cls:'gf-rate', txt: hwR });
     const d2 = r.hwDetail;
     if (d2 && (d2.status === 'none' || d2.status === 'partial') && d2.correct === 'pending') chips.push({ ico:'✏️', cls:'gf-bad', txt:'待订正' });
     const rm = String(r.remark || '').trim();
@@ -3871,11 +3834,10 @@ function openStudentCard(sid, readOnly){
     <tr${rest ? ' class="sc-rest"' : ''}>
       <td class="c">${mdShort(d)}${rest ? ' <span class="sc-rest-tag">休</span>' : ''}</td>
       <td class="c ${quizScoreClass(num(r.quiz))}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
-      <td class="c ${state.hwMode === 'done' ? (r.hwDone ? 'v-g' : (r.hwDone === false ? 'v-r' : '')) : scoreClass(num(r.homework))}">${state.hwMode === 'done' ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '—')) : (() => { const d = hwDetailOf(r); if (d && d.full) return `${num(r.homework) != null ? num(r.homework) : '—'}<span class="hw-full">/${d.full}</span>`; return num(r.homework) != null ? num(r.homework) : '—'; })()}</td>
-      <td class="c rate-cell">${esc(r.hwRating || '—')}</td>
+      <td class="c ${state.hwMode === 'done' ? (r.hwDone ? 'v-g' : (r.hwDone === false ? 'v-r' : '')) : scoreClass(num(r.homework))}">${state.hwMode === 'done' ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '—')) : (() => { const f = hwFullFor(d, r); return `${num(r.homework) != null ? num(r.homework) : '—'}<span class="hw-full">/${f}</span>`; })()}</td>
       <td class="c muted">${rest ? '不计入' : dayPoints(r)}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="4" class="empty" style="padding:14px">暂无小测/作业记录</td></tr>';
+  }).join('') : '<tr><td colspan="3" class="empty" style="padding:14px">暂无小测/作业记录</td></tr>';
   const examHtml = examRowsAll.length ? `
     <table class="sc-tbl"><thead><tr><th>考试</th><th class="c">数学</th><th class="c">总分</th></tr></thead>
       <tbody>${examRowsAll.map(e => `<tr><td>${e.pp}</td><td class="c">${esc(e.m || '—')}</td><td class="c">${esc(e.tot || '—')}</td></tr>`).join('')}</tbody></table>` : '';
@@ -3935,11 +3897,11 @@ function openStudentCard(sid, readOnly){
       </div>`
       : `<div class="sc-sec"><div class="sc-sec-t">✅ 打卡登记（${ckMonthStr}）</div><div class="muted" style="padding:4px 0">本月尚未设置打卡安排</div></div>`}
     ${recs.length ? `<div class="sc-sec"><div class="sc-sec-t">📝 最近小测 / 作业（最新 ${recs.length} 条）</div>
-      <table class="sc-tbl"><thead><tr><th>日期</th><th class="c">${esc(LBL('quiz'))}</th><th class="c">${esc(LBL('homework'))}</th><th class="c">评级</th><th class="c">当日分</th></tr></thead>
+      <table class="sc-tbl"><thead><tr><th>日期</th><th class="c">${esc(LBL('quiz'))}</th><th class="c">${esc(LBL('homework'))}</th><th class="c">当日分</th></tr></thead>
         <tbody>${recRows}</tbody></table></div>` : ''}
     ${timeline.length ? `<div class="sc-sec"><div class="sc-sec-t">🗂️ 全部日常记录时间线（共 ${timeline.length} 天）</div>
       <div style="max-height:230px;overflow:auto">
-      <table class="sc-tbl"><thead><tr><th>日期</th><th class="c">出勤</th><th class="c">${esc(LBL('quiz'))}</th><th class="c">${esc(LBL('homework'))}</th><th class="c">评级</th></tr></thead>
+      <table class="sc-tbl"><thead><tr><th>日期</th><th class="c">出勤</th><th class="c">${esc(LBL('quiz'))}</th><th class="c">${esc(LBL('homework'))}</th></tr></thead>
         <tbody>${timeline.slice().sort((a, b) => a[0].localeCompare(b[0])).map(([d, r]) => {
           const rest = restSet.has(d);
           const att = r.attendance === 'present' ? '出勤' : r.attendance === 'late' ? '迟到' : r.attendance === 'leave' ? '请假' : r.attendance === 'absent' ? '缺勤' : '出勤';
@@ -3949,7 +3911,6 @@ function openStudentCard(sid, readOnly){
             <td class="c">${att}</td>
             <td class="c ${quizScoreClass(num(r.quiz))}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
             <td class="c ${state.hwMode === 'done' ? (r.hwDone ? 'v-g' : (r.hwDone === false ? 'v-r' : '')) : scoreClass(num(r.homework))}">${esc(hv)}</td>
-            <td class="c rate-cell">${esc(r.hwRating || '—')}</td>
           </tr>`;
         }).join('')}</tbody></table></div></div>` : ''}
     ${examHtml ? `<div class="sc-sec"><div class="sc-sec-t">🎓 考试成绩</div>${examHtml}${zkHtml}</div>` : ''}
@@ -4099,19 +4060,12 @@ function setAttendance(id, key){
 function setScore(id, field, val){
   const f = findStudentById(id); if (!f) return;
   let v = String(val).replace(/[^0-9.]/g, '');
-  const MAX = field === 'quiz' ? (state.quizScale || 100) : (state.hwScale || 10);
+  const MAX = field === 'quiz' ? (state.quizScale || 100) : curHwFull();
   if (v !== '' && parseFloat(v) > MAX) v = String(MAX);
   const r = rec(f.s, state.activeDate);
   r[field] = v;
-  if (field === 'homework') {
-    r.hwRating = autoHwRating(r);                 // 作业有分且未手填评级 → 按百分比自动建议
-    const re = document.getElementById('hwrate-' + id);
-    if (re) re.innerHTML = hwRatingBadge(r.hwRating);
-  }
   const el = document.getElementById(`in-${field}-${id}`);
   if (el) { el.value = v; el.className = 'score-in ' + (field === 'quiz' ? quizScoreClass(num(v)) : scoreClass(num(v))); }
-  const pe = document.getElementById(`pts-${id}`);
-  if (pe) pe.textContent = dayPoints(r) + ' 分';
   const sr = document.getElementById('statRow');
   if (sr) sr.innerHTML = statRowHtml(activeClass(), state.activeDate);
   save();
@@ -4195,7 +4149,7 @@ function bulkSameScoreGo(){
   const d = state.activeDate;
   cls.students.forEach(s => {
     const r = rec(s, d);
-    if (f === 'homework') { r.homework = String(n); r.hwRating = autoHwRating(r); }
+    if (f === 'homework') { r.homework = String(n); }
     else r.quiz = String(n);
   });
   save(); closeModal(); renderMain();
@@ -4236,96 +4190,41 @@ function toggleHwMode(){
   state.hwMode = state.hwMode === 'score' ? 'done' : 'score';
   save(); renderMain();
 }
-/* 家庭作业评级徽章：空返回「—」，有等级返回彩色徽章 */
-function hwRatingBadge(k){
-  const v = String(k || '').trim();
-  if (!v) return '<span class="rate-badge empty">—</span>';
-  return `<span class="rate-badge" style="background:${esc(hwRatingColor(v))}">${esc(v)}</span>`;
+/* ===== 本次作业满分（班级统一、全班同步显示）：优先日期级满分，其次该生个别满分，最后全局基准 ===== */
+function hwFullFor(d, r){
+  const m = state.hwFullOfDate || {};
+  if (m[d]) return +m[d];
+  return hwFullOf(r);
 }
-/* 评级列单元格（可点击）：显示当前评级徽章，点击弹出等级选择器 */
-function hwRatingCellHtml(s, r){
-  return `<button class="rate-cell-btn" id="hwrate-${s.id}" onclick="openRatingPicker(${s.id})" title="点击设置作业评级（如 A+、B）">${hwRatingBadge(r.hwRating)}</button>`;
+/* 当前日期「本次作业满分」：日期级 → 当天首位有记录学生的个别满分 → 全局基准 */
+function curHwFull(){
+  const d = state.activeDate;
+  const m = state.hwFullOfDate || {};
+  if (m[d]) return +m[d];
+  const cls = activeClass();
+  if (cls) for (const s of cls.students) { const r = recRaw(s, d); if (r) return hwFullOf(r); }
+  return state.hwScale || 10;
 }
-/* 评级选择弹窗：预设等级一键选 + 自定义输入 + 清除 + 配置入口 */
-function openRatingPicker(id){
-  const f = findStudentById(id); if (!f) return;
-  ui._ratingSid = id;
-  const r = rec(f.s, state.activeDate);
-  const cur = String(r.hwRating || '').trim();
-  const L = HWRATING();
-  const chips = L.map(x => `<button class="rate-pick" style="--rk:${esc(x.color)}" onclick="pickRating(${id},'${esc(x.k)}')">${esc(x.k)}</button>`).join('');
-  const body = `
-    <div class="hint">为 <b>${esc(f.s.name)}</b> 选择家庭作业评级。已选等级：<span id="rateCur">${cur ? hwRatingBadge(cur) : '—'}</span></div>
-    <div class="rate-pick-grid">${chips}</div>
-    <div class="form-row" style="margin-top:12px"><label>自定义</label>
-      <input id="rateCustom" class="inp" maxlength="6" value="${esc(cur)}" placeholder="如：优、待提高…" onchange="pickRating(${id},this.value)">
-    </div>`;
-  const foot = `<button class="btn" onclick="clearRating(${id})">🧹 清除</button>
-    <button class="btn" onclick="openHwRatingCfg()" title="自定义等级与分数段">⚙️ 评级设置</button>
-    <button class="btn primary" onclick="closeModal()">完成</button>`;
-  openModal('🏅 作业评级 · ' + esc(f.s.name), body, foot, 460);
-}
-function pickRating(id, k){
-  const f = findStudentById(id); if (!f) return;
-  rec(f.s, state.activeDate).hwRating = String(k || '').replace(/[<>"']/g, '').slice(0, 6);
-  save(); renderMain(); toast('已设评级');
-}
-function clearRating(id){
-  const f = findStudentById(id); if (!f) return;
-  rec(f.s, state.activeDate).hwRating = '';
-  save(); renderMain(); toast('已清除评级');
-}
-/* 评级配置管理：等级名 + 对应分数百分比下限（可增删，颜色自动取默认色板） */
-const HW_RATING_PALETTE = ['#16a34a','#22c55e','#65a30d','#ca8a04','#ea7c1c','#ea7c1c','#dc2626'];
-let _hwRcDraft = null;
-function openHwRatingCfg(){
-  _hwRcDraft = HWRATING().map(x => ({ k: x.k, min: x.min, color: x.color }));
-  renderHwRatingCfg();
-}
-function renderHwRatingCfg(){
-  const rows = (_hwRcDraft || []).map((x, i) => `
-    <div class="pb-row">
-      <input class="inp" style="width:70px" maxlength="4" value="${esc(x.k)}" oninput="_hwRcDraft[${i}].k=this.value" placeholder="等级">
-      <span class="muted" style="font-size:12.5px">≥</span>
-      <input class="inp" style="width:80px" type="number" min="0" max="100" value="${x.min}" oninput="_hwRcDraft[${i}].min=parseInt(this.value)||0">
-      <span class="muted" style="font-size:12.5px">%</span>
-      <input type="color" value="${esc(x.color)}" oninput="_hwRcDraft[${i}].color=this.value" title="徽章颜色" style="border:1px solid var(--border);border-radius:8px;padding:2px;height:32px">
-      <button class="icon-btn del" onclick="_hwRcDraft.splice(${i},1);renderHwRatingCfg()" title="删除等级">✕</button>
-    </div>`).join('');
-  openModal('⚙️ 作业评级设置', `
-    <div class="pb-tip">评级用于「家庭作业评级」列。作业有分且未手填评级时，将按「得分 ÷ 本次满分」的百分比自动匹配等级（如 A=90% 以上）。等级与分数段可自行增删调整。</div>
-    <div class="pb-list">${rows || '<div class="muted" style="padding:8px 0">暂无等级</div>'}</div>
-    <button class="btn sm" onclick="_hwRcDraft.push({ k:'', min:0, color:'#64748b' });renderHwRatingCfg()">＋ 添加等级</button>
-  `, `<button class="btn" onclick="closeModal()">取消</button>
-     <button class="btn" onclick="closeModal();openRatingPicker(ui._ratingSid)">返回</button>
-     <button class="btn primary" onclick="saveHwRatingCfg()">保存</button>`, 520);
-}
-function saveHwRatingCfg(){
-  const arr = (_hwRcDraft || []).filter(x => x.k && x.k.trim()).map(x => ({ k: x.k.trim().slice(0,4), min: Math.max(0, Math.min(100, +x.min || 0)), color: x.color || '#64748b' }));
-  if (!arr.length) return toast('至少保留一个等级');
-  state.hwRatingCfg = arr;
+/* 设置 / 清除某天全班作业满分（保存后所有统计按新满分折算） */
+function setHwFull(v){
+  const n = parseFloat(v);
+  state.hwFullOfDate = state.hwFullOfDate || {};
+  if (isNaN(n) || n <= 0) delete state.hwFullOfDate[state.activeDate];
+  else state.hwFullOfDate[state.activeDate] = n;
   save(); closeModal(); renderMain();
-  toast('评级设置已保存 ✅');
+  toast(isNaN(n) || n <= 0 ? '已恢复默认满分' : '本次作业满分已设为 ' + n + ' 分（全班同步）');
 }
-/* 评级分布统计：窗口内各等级人数（按已设评级记录统计） */
-function hwRatingStats(cls, fromD, toD){
-  const cnt = {};
-  cls.students.forEach(s => Object.keys(s.records || {}).forEach(d => {
-    if (d < fromD || d > toD) return;
-    if (cls.attendanceOff && cls.attendanceOff[d]) return;
-    const k = String(s.records[d].hwRating || '').trim();
-    if (k) cnt[k] = (cnt[k] || 0) + 1;
-  }));
-  return cnt;
-}
-/* 家庭作业评级（A+/B/C 等自由文本，可留空；已在 setScore 中自动建议，此函数保留给既有调用） */
-function setHwRating(id, val){
-  const f = findStudentById(id); if (!f) return;
-  const r = rec(f.s, state.activeDate);
-  r.hwRating = (String(val || '').replace(/[<>"']/g, '') || '').slice(0, 6);
-  const re = document.getElementById('hwrate-' + id);
-  if (re) re.innerHTML = hwRatingBadge(r.hwRating);
-  save();
+/* 满分设置弹窗：点作业列表头「满分」按钮或任意单元格的 /满分 均可打开 */
+function editHwFull(){
+  const cur = curHwFull();
+  const body = `
+    <div class="hint">设置 <b>${state.activeDate}</b> 家庭作业的全班满分（如 10 / 100 / 120）。改动后<b>全班当日作业统一按新满分显示与折算</b>，均分 / 趋势 / 统计自动重算。</div>
+    <div class="form-row"><label>本次满分</label>
+      <input class="inp" id="hwFullInput" type="number" min="1" step="0.5" value="${cur}" placeholder="如 10 / 100 / 120"></div>
+    <div class="muted" style="font-size:12.5px;margin-top:4px">清空输入可恢复全局默认满分（${state.hwScale || 10} 分）。</div>`;
+  openModal('📐 本次作业满分 · ' + state.activeDate, body,
+    `<button class="btn" onclick="closeModal()">取消</button>
+     <button class="btn primary" onclick="setHwFull((document.getElementById('hwFullInput')||{}).value)">保存</button>`, 420);
 }
 /* ===== 家庭作业详情（完成时间 / 得分 / 本次满分 / 完成情况 / 备注）===== */
 function hwDetailOf(r){ return (r && r.hwDetail) ? r.hwDetail : null; }
@@ -4368,7 +4267,6 @@ function applyHwDetail(r, d){
   };
   r.homework = (d.score === '' || d.score === undefined) ? '' : String(+d.score);  // 同步，供趋势/平均分兼容
   r.hwFull   = (d.full  === '' || d.full  === undefined) ? '' : (+d.full);
-  r.hwRating = autoHwRating(r);   // 详情得分变化时同步评级建议
 }
 function saveHwDetail(id){
   const f = findStudentById(id); if (!f) return;
@@ -7995,14 +7893,14 @@ function attLabel(k){ const o = optOf(ATTENDANCE_OPTS, k); return o ? o.label : 
 
 function exportAllCSV(){
   const cls = activeClass();
-  const rows = [['班级','姓名','日期','出勤', LBL('quiz'), LBL('homework'),'评级','课堂表现','课堂吸收','当日积分']];
+  const rows = [['班级','姓名','日期','出勤', LBL('quiz'), LBL('homework'),'课堂表现','课堂吸收','当日积分']];
   cls.students.forEach(s => {
     Object.keys(s.records || {}).sort().forEach(d => {
       const r = s.records[d];
       const q = num(r.quiz), h = hwEffective(r);
       if (q === null && h === null && r.attendance === 'present'
         && !(r.behavior || []).length && !(r.absorption || []).length) return;
-      rows.push([cls.name, s.name, d, attLabel(r.attendance), q === null ? '' : q, h === null ? '' : h, r.hwRating || '',
+      rows.push([cls.name, s.name, d, attLabel(r.attendance), q === null ? '' : q, h === null ? '' : h,
         labelsOf(BOPTS(), r.behavior), labelsOf(AOPTS(), r.absorption), dayPoints(r)]);
     });
   });
@@ -8033,13 +7931,13 @@ function exportTodayCSV(){
   const cls = activeClass(), d = state.activeDate;
   const rowsData = rankedRows(cls, d);
   const ready = rankReady(cls, d);
-  const rows = [['排名','姓名','出勤', LBL('quiz'), LBL('homework'),'评级','课堂表现','课堂吸收','当日积分']];
+  const rows = [['排名','姓名','出勤', LBL('quiz'), LBL('homework'),'课堂表现','课堂吸收','当日积分']];
   let n = 0;
   rowsData.forEach(row => {
     const { s, r, leave, q, h } = row;
     let rk = '-';
     if (ready && !leave) { n++; rk = n; }
-    rows.push([rk, s.name, attLabel(r.attendance), q === null ? '' : q, h === null ? '' : h, r.hwRating || '',
+    rows.push([rk, s.name, attLabel(r.attendance), q === null ? '' : q, h === null ? '' : h,
       labelsOf(BOPTS(), r.behavior), labelsOf(AOPTS(), r.absorption), dayPoints(r)]);
   });
   const lesson = cls.lessons[d] || {};
@@ -8066,7 +7964,7 @@ function exportSummaryExcel(){
   const wb = XLSX.utils.book_new();
 
   const h1 = ['姓名'], h1b = [''];
-  dDates.forEach(d => { h1.push(d, '', ''); h1b.push(LBL('quiz'), LBL('homework'), '评级'); });
+  dDates.forEach(d => { h1.push(d, '', ''); h1b.push(LBL('quiz'), LBL('homework'), ''); });
   const s1 = [h1, h1b];
   cls.students.forEach(s => {
     const row = [s.name];
@@ -8074,7 +7972,7 @@ function exportSummaryExcel(){
       const r = (s.records || {})[d] || {};
       const r2 = (s.records || {})[d] || {};
       const hv = state.hwMode === 'done' ? (r2.hwDone ? '✓' : (r2.hwDone === false ? '✕' : '')) : (r2.homework === '' || r2.homework == null ? '' : r2.homework);
-      row.push(r2.quiz === '' || r2.quiz == null ? '' : r2.quiz, hv, r2.hwRating || '');
+      row.push(r2.quiz === '' || r2.quiz == null ? '' : r2.quiz, hv, '');
     });
     s1.push(row);
   });
@@ -8116,14 +8014,14 @@ function exportBackup(){
   if (typeof XLSX === 'undefined') return toast('Excel 组件未加载，请检查网络');
   const wb = XLSX.utils.book_new();
   state.classes.forEach(c => {
-    const rows = [['姓名','日期','出勤','补课日期', LBL('quiz'), LBL('homework'),'评级','课堂表现','课堂吸收','当日积分','抽奖消耗','手动积分','当前可用积分']];
+    const rows = [['姓名','日期','出勤','补课日期', LBL('quiz'), LBL('homework'),'课堂表现','课堂吸收','当日积分','抽奖消耗','手动积分','当前可用积分']];
     c.students.forEach(s => {
       const ds = Object.keys(s.records || {}).sort();
-      if (!ds.length) rows.push([s.name, '', '', '', '', '', '', '', '', '', s.spentPoints || 0, s.manualPts || 0, availablePoints(s)]);
+      if (!ds.length) rows.push([s.name, '', '', '', '', '', '', '', '', s.spentPoints || 0, s.manualPts || 0, availablePoints(s)]);
       ds.forEach(d => {
         const r = s.records[d];
         const hv = state.hwMode === 'done' ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '')) : (r.homework === '' || r.homework == null ? '' : r.homework);
-        rows.push([s.name, d, attLabel(r.attendance), makeupOf(s, d), r.quiz, hv, r.hwRating || '',
+        rows.push([s.name, d, attLabel(r.attendance), makeupOf(s, d), r.quiz, hv,
           labelsOf(BOPTS(), r.behavior), labelsOf(AOPTS(), r.absorption),
           dayPoints(r), s.spentPoints || 0, s.manualPts || 0, availablePoints(s)]);
       });
