@@ -225,6 +225,11 @@ input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;outlin
 .hint{font-size:11.5px;color:var(--text-muted);line-height:1.6}
 .hidden{display:none !important}
 
+/* === 分布分析（📊 分布视图） === */
+.dist-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:7px;vertical-align:-1px}
+.dist-bar{display:inline-block;width:100%;height:12px;background:var(--surface-alt);border-radius:999px;overflow:hidden;vertical-align:middle}
+.dist-bar i{display:block;height:100%;border-radius:999px;min-width:2px;transition:width .4s}
+
 /* date nav */
 .datenav{display:flex;align-items:center;gap:8px}
 .datenav .nav-btn{width:30px;height:30px;border-radius:9px;background:var(--surface-alt);border:1px solid var(--border);
@@ -699,9 +704,23 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .wr-t{font-size:11.5px;color:var(--text-muted);margin-top:2px}
 /* 周报弹窗 */
 .wr-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
-.wr-ta{width:100%;height:320px;box-sizing:border-box;resize:vertical;border:1px solid var(--border);
-  border-radius:10px;padding:12px;font-size:13px;line-height:1.7;background:#fff;color:var(--text);
+.wr-ta{width:100%;height:320px;box-sizing:border-box;resize:vertical;border:1px solid var(--border);  border-radius:10px;padding:12px;font-size:13px;line-height:1.7;background:#fff;color:var(--text);
   font-family:inherit}
+/* 学期报告（📄 弹窗内显示样式；打印样式由 trPrint 内联提供） */
+.tr-out{max-height:62vh;overflow:auto;background:var(--surface-alt);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.tr-print{font-size:13.5px}
+.tr-print h1{font-size:22px;text-align:center;letter-spacing:5px;margin:0 0 3px;color:var(--text)}
+.tr-print .tr-sub{text-align:center;color:var(--text-muted);font-size:12.5px;margin-bottom:14px}
+.tr-print h2{font-size:14px;font-weight:800;border-left:4px solid var(--accent);padding-left:9px;margin:15px 0 8px;color:var(--text-secondary)}
+.tr-print p,.tr-print li{font-size:13px;line-height:1.85;color:var(--text);margin:4px 0}
+.tr-print ul{margin:4px 0;padding-left:20px}
+.tr-print .tr-meta{display:flex;flex-wrap:wrap;gap:5px 16px;font-size:12px;color:var(--text-muted);margin-bottom:4px}
+.tr-print table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;background:#fff}
+.tr-print th,.tr-print td{border:1px solid var(--border);padding:6px 9px}
+.tr-print th{background:#f1f5fb;font-size:12px;color:var(--text-muted)}
+.tr-print .c{text-align:center}
+.tr-print .tr-foot{margin-top:24px;display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);border-top:1px dashed var(--border);padding-top:9px}
+.tr-txt{width:100%;height:210px;box-sizing:border-box;resize:vertical;border:1px solid var(--border);border-radius:10px;padding:11px;font-size:12.5px;line-height:1.7;background:#fff;color:var(--text);font-family:inherit;margin-top:14px}
 /* 档案卡：近两周变化 */
 .sc-cmp{display:flex;gap:12px;flex-wrap:wrap}
 .sc-cmp .cmp-item{flex:1;min-width:110px;background:var(--surface-alt);border-radius:10px;
@@ -1213,6 +1232,37 @@ th.atc-d.we-sun small{color:var(--red)}
 .sc-ck-chip.miss{background:var(--red);color:#fff}
 .sc-ck-chip.mk{background:var(--orange-light);color:var(--orange);border:1px solid #f2cfa2}
 .sc-ck-actions{margin-top:2px}
+/* === 成绩单（📄 导出 / 打印） === */
+.rc-wrap{font-size:13.5px}
+.rc-head{text-align:center;border-bottom:3px double var(--accent);padding-bottom:12px;margin-bottom:16px}
+.rc-title{font-size:26px;font-weight:800;letter-spacing:12px;color:var(--text)}
+.rc-sub{font-size:12.5px;color:var(--text-muted);margin-top:5px}
+.rc-info{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:13.5px;margin-bottom:14px}
+.rc-info span{color:var(--text-muted);margin-right:8px}
+.rc-info b{font-weight:800}
+.rc-stats{display:flex;gap:8px;margin-bottom:16px}
+.rc-stat{flex:1;border:1px solid var(--border);border-radius:11px;padding:10px 6px;text-align:center;background:#fff}
+.rc-stat i{font-size:17px}
+.rc-stat b{display:block;font-size:19px;margin:3px 0 2px;font-weight:800}
+.rc-stat span{font-size:11px;color:var(--text-muted);font-weight:700}
+.rc-sec{margin-bottom:14px}
+.rc-sec-t{font-size:13.5px;font-weight:800;margin-bottom:8px;padding-left:9px;border-left:4px solid var(--accent)}
+.rc-scroll{max-height:300px;overflow:auto}
+.rc-tbl{width:100%;border-collapse:collapse;background:#fff;border-radius:9px;overflow:hidden}
+.rc-tbl th{font-size:11.5px;color:var(--text-muted);font-weight:800;padding:7px 9px;background:#f1f5fb;border-bottom:1px solid var(--border);text-align:left}
+.rc-tbl td{font-size:13px;padding:6.5px 9px;border-bottom:1px solid var(--border)}
+.rc-tbl tbody tr:nth-child(even){background:#fafcff}
+.rc-tbl tbody tr:last-child td{border-bottom:none}
+.rc-tbl td.c,.rc-tbl th.c{text-align:center}
+.rc-zk{font-size:12.5px;font-weight:700;color:var(--accent-dark);margin:2px 0 8px}
+.rc-remark{font-size:12.5px;color:var(--text-muted);margin:2px 0 8px;line-height:1.7}
+.rc-foot{display:flex;justify-content:space-between;margin-top:26px;font-size:12.5px;color:var(--text-muted);border-top:1px dashed var(--border);padding-top:10px}
+.rk-list{display:flex;flex-direction:column;gap:7px}
+.rk-item{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 13px;cursor:pointer;transition:.15s}
+.rk-item:hover{border-color:var(--accent);background:var(--accent-light);transform:translateX(2px)}
+.rk-name{font-weight:800;font-size:14px;min-width:76px}
+.rk-cls{font-size:12px;color:var(--text-muted);flex:1}
+.rk-arrow{font-size:15px;opacity:.55}
 .ps-sec h4{font-size:13.5px;font-weight:800;margin-bottom:11px;display:flex;align-items:center;gap:6px}
 .adj-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .op-btn{padding:7px 14px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:12.5px;font-weight:700}
@@ -3941,11 +3991,15 @@ function openStudentCard(sid, readOnly){
       <button class="btn" onclick="scCancelEdit()">取消</button>
       <button class="btn primary" onclick="scSaveDraft()">💾 保存</button>
     </div>` : (inClass && !readOnly ? `<div class="sc-actions">
+      <button class="btn" onclick="openReportCard('${id}')">🖨️ 成绩单</button>
+      <button class="btn" onclick="openTermReport('${id}')">📄 学期报告</button>
       <button class="btn" onclick="scToLucky('${firstCid}','${firstSid}')">🎰 用该生抽奖</button>
       <button class="btn" onclick="scToPoints('${firstCid}','${firstSid}')">📊 看积分明细</button>
       <button class="btn" onclick="openParentLink('${firstCid}','${firstSid}')">🔗 生成家长链接</button>
       <button class="btn primary" onclick="openProfileEditor('${firstSid}')">✏️ 编辑档案</button>
     </div>` : (inClass ? `<div class="sc-actions">
+      <button class="btn" onclick="openReportCard('${id}')">🖨️ 成绩单</button>
+      <button class="btn" onclick="openTermReport('${id}')">📄 学期报告</button>
       <button class="btn primary" onclick="openParentLink('${firstCid}','${firstSid}')">🔗 复制家长查看链接</button>
     </div>` : `<div class="sc-actions">
       <button class="btn primary" onclick="openProfileEditor('${firstSid}')">✏️ 编辑档案</button>
@@ -3989,6 +4043,357 @@ async function captureStudentCard(){
     document.body.appendChild(a); a.click(); a.remove();
     toast('截图已保存 📸');
   } catch (e) { console.error(e); holder.remove(); toast('截图失败：' + (e && e.message ? e.message : e)); }
+}
+/* ==================================================================
+   📄 成绩单（导出 / 打印 / 截图）：学生维度完整成绩单
+   汇总出勤、小测、作业、打卡、考试，生成可打印/可存图的标准成绩单
+   ================================================================== */
+/* 成绩单学生选择器：列出全部班级学生，点击即生成该生成绩单 */
+function openReportPicker(){
+  const classes = state.classes || [];
+  const all = [];
+  classes.forEach(c => (c.students || []).forEach(s => all.push({ c, s })));
+  if (!all.length) return toast('还没有学生，请先在「日常反馈表」添加');
+  const rows = all.map(({ c, s }) => `
+    <div class="rk-item" onclick="closeModal();openReportCard(${s.id})">
+      <span class="rk-name">${esc(s.name)}</span>
+      <span class="rk-cls">${esc(c.name)}</span>
+      <span class="rk-arrow">🖨️</span>
+    </div>`).join('');
+  openModal('🖨️ 打印成绩单 · 选择学生', `
+    <p class="muted" style="margin:0 0 10px">点击学生姓名，生成包含<b>出勤 / 小测 / 作业 / 考试 / 日常明细</b>的标准成绩单，可打印或导出图片。</p>
+    <div class="rk-list" style="max-height:60vh;overflow:auto">${rows}</div>`,
+    `<button class="btn" onclick="closeModal()">取消</button>`, 460);
+}
+function openReportCard(sid){
+  const p = profileOf(sid); if (!p) return toast('未找到该学生档案');
+  const id = String(sid);
+  let firstName = null, firstCid = null, firstSid = null, zk = {};
+  let present = 0, late = 0, leave = 0, makeup = 0, days = 0;
+  let qSum = 0, qN = 0, hSum = 0, hN = 0;
+  const recs = [];
+  const examRows = [];
+  state.classes.forEach(c => {
+    const s = c.students.find(x => String(x.id) === id); if (!s) return;
+    if (firstName === null) { firstName = s.name; firstCid = c.id; firstSid = s.id; }
+    Object.keys(s.records || {}).forEach(d => {
+      if (c.attendanceOff && c.attendanceOff[d]) return;
+      days++; const st = attStatus(s, d);
+      if (st === 'present') present++; else if (st === 'late') late++; else if (st === 'leave') leave++; else if (st === 'makeup') makeup++;
+    });
+    Object.entries(s.records || {}).forEach(([d, r]) => {
+      if (!(c.attendanceOff && c.attendanceOff[d])) {
+        const q = num(r.quiz); if (q !== null) { qSum += q; qN++; }
+        const h = hwEffective(r); if (h !== null) { hSum += h; hN++; }
+      }
+      recs.push({ d, r });
+    });
+    const es = (c.examScores && c.examScores[id]) || {};
+    EXAM_PERIODS.forEach(pp => { if (es[pp] && (es[pp].mathScore || es[pp].totalScore)) examRows.push({ pp, m: es[pp].mathScore, tot: es[pp].totalScore }); });
+    if (es.zhongkao) zk = es.zhongkao;
+  });
+  const inClass = firstName !== null;
+  const name = p.name || firstName || '?';
+  const total = present + late + makeup;
+  const rate = days ? Math.round(total / days * 100) : 0;
+  const clsName = inClass ? state.classes.find(c => c.id === firstCid).name : '';
+  const qAvg = qN ? qSum / qN : null;
+  const hAvg = hN ? hSum / hN : null;
+  const school = p.school || '';
+  const clsTxt = p.class || clsName || '';
+  const sorted = recs.slice().sort((a, b) => a.d.localeCompare(b.d));
+  const rowsHtml = sorted.length ? sorted.map(({ d, r }) => {
+    const att = r.attendance === 'present' ? '出勤' : r.attendance === 'late' ? '迟到' : r.attendance === 'leave' ? '请假' : r.attendance === 'absent' ? '缺勤' : '出勤';
+    const q = num(r.quiz);
+    const qTxt = q !== null ? q + ' / ' + (state.quizScale || 100) : '—';
+    const hTxt = state.hwMode === 'done'
+      ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '—'))
+      : (() => { const h = num(r.homework); return h !== null ? h + ' / ' + hwFullFor(d, r) : '—'; })();
+    return `<tr><td class="c">${d}</td><td class="c">${att}</td><td class="c">${qTxt}</td><td class="c">${hTxt}</td><td class="c">${dayPoints(r)}</td></tr>`;
+  }).join('') : '<tr><td colspan="5" class="empty" style="padding:14px">暂无记录</td></tr>';
+  const examHtml = examRows.length ? `
+    <div class="rc-sec"><div class="rc-sec-t">🎓 考试成绩</div>
+      <table class="rc-tbl"><thead><tr><th>考试</th><th class="c">数学</th><th class="c">总分</th></tr></thead>
+      <tbody>${examRows.map(e => `<tr><td>${e.pp}</td><td class="c">${esc(e.m || '—')}</td><td class="c">${esc(e.tot || '—')}</td></tr>`).join('')}</tbody></table></div>` : '';
+  const zkHtml = (zk['数学'] || zk['录取学校']) ? `<div class="rc-zk">🏅 中考：数学 ${esc(zk['数学'] || '—')} ｜ 录取学校 ${esc(zk['录取学校'] || '—')}</div>` : '';
+  const remark = p.remark ? `<div class="rc-remark">📝 备注：${esc(p.remark)}</div>` : '';
+  const html = `
+    <div id="reportCardArea" class="rc-wrap">
+      <div class="rc-head">
+        <div class="rc-title">成 绩 单</div>
+        <div class="rc-sub">${esc(state.teacherName || '班级自主管理工作台')} · 学习情况汇总</div>
+      </div>
+      <div class="rc-info">
+        <div><span>姓 名</span><b>${esc(name)}</b></div>
+        <div><span>班 级</span><b>${esc(clsTxt || '—')}</b></div>
+        <div><span>学 校</span><b>${esc(school || '—')}</b></div>
+        <div><span>生成日期</span><b>${todayStr()}</b></div>
+      </div>
+      <div class="rc-stats">
+        <div class="rc-stat"><i>📈</i><b>${rate}%</b><span>出勤率</span></div>
+        <div class="rc-stat"><i>📊</i><b>${qAvg != null ? fmt1(qAvg) : '—'}</b><span>小测均分 / ${state.quizScale || 100}</span></div>
+        <div class="rc-stat"><i>📚</i><b>${hAvg != null ? fmt1(hAvg) : '—'}</b><span>作业均分 / ${state.hwScale || 10}</span></div>
+        <div class="rc-stat"><i>✅</i><b>${qN}</b><span>小测次数</span></div>
+      </div>
+      <div class="rc-sec"><div class="rc-sec-t">📝 日常记录明细（共 ${sorted.length} 天）</div>
+        <div class="rc-scroll"><table class="rc-tbl"><thead><tr><th class="c">日期</th><th class="c">出勤</th><th class="c">小测</th><th class="c">作业</th><th class="c">当日分</th></tr></thead>
+        <tbody>${rowsHtml}</tbody></table></div></div>
+      ${examHtml}${zkHtml}${remark}
+      <div class="rc-foot"><div>教师签名：______________</div><div>${todayStr()}</div></div>
+    </div>`;
+  window.__rcShotName = name;
+  openModal('📄 成绩单', html,
+    `<button class="btn primary" onclick="printReportCard()">🖨️ 打印成绩单</button>
+     <button class="btn" onclick="captureReportCard()">📸 导出图片</button>
+     <button class="btn" onclick="closeModal()">关闭</button>`, 640);
+}
+/* 打印成绩单：写入独立窗口 + 专用纸张样式，不干扰工作台页面 */
+function printReportCard(){
+  const src = document.getElementById('reportCardArea');
+  if (!src) return toast('未找到成绩单内容');
+  const w = window.open('', '_blank', 'width=820,height=1000');
+  if (!w) return toast('浏览器拦截了打印窗口，请允许弹窗后重试');
+  const css = `
+    *{box-sizing:border-box}
+    body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#1c2434;margin:0;background:#fff}
+    .rc-wrap{max-width:760px;margin:0 auto;padding:34px 40px}
+    .rc-head{text-align:center;border-bottom:3px double #2563eb;padding-bottom:14px;margin-bottom:20px}
+    .rc-title{font-size:30px;font-weight:800;letter-spacing:16px;color:#1c2434}
+    .rc-sub{font-size:13px;color:#6b7686;margin-top:6px}
+    .rc-info{display:grid;grid-template-columns:1fr 1fr;gap:9px 28px;font-size:14.5px;margin-bottom:20px}
+    .rc-info span{color:#6b7686;margin-right:9px}
+    .rc-info b{font-size:15px}
+    .rc-stats{display:flex;gap:10px;margin-bottom:22px}
+    .rc-stat{flex:1;border:1px solid #e2e8f0;border-radius:10px;padding:12px 8px;text-align:center}
+    .rc-stat i{font-size:19px}
+    .rc-stat b{display:block;font-size:21px;margin:4px 0 2px}
+    .rc-stat span{font-size:11.5px;color:#6b7686}
+    .rc-sec{margin-bottom:20px}
+    .rc-sec-t{font-size:15px;font-weight:800;margin-bottom:9px;padding-left:10px;border-left:4px solid #2563eb}
+    .rc-scroll{max-height:none;overflow:visible}
+    .rc-tbl{width:100%;border-collapse:collapse;font-size:13px}
+    .rc-tbl th,.rc-tbl td{border:1px solid #d5dce7;padding:6.5px 9px}
+    .rc-tbl th{background:#f1f5f9;font-weight:700;text-align:center}
+    .rc-tbl .c{text-align:center}
+    .rc-zk{font-size:13.5px;color:#2563eb;font-weight:700;margin:2px 0 8px}
+    .rc-remark{font-size:13px;color:#6b7686;margin:2px 0 8px;line-height:1.7}
+    .rc-foot{display:flex;justify-content:space-between;margin-top:34px;font-size:13.5px;color:#6b7686;border-top:1px dashed #c3d8f2;padding-top:12px}
+    @page{margin:16mm}
+    @media print{body{margin:0}}`;
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>成绩单 - ${esc(window.__rcShotName || '')}</title><style>${css}</style></head><body>${src.outerHTML}</body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { try { w.print(); } catch (e) { toast('打印失败，请手动 Ctrl+P'); } }, 300);
+}
+/* 成绩单导出图片（PNG）：与档案卡截图共用 html2canvas 流程 */
+async function captureReportCard(){
+  const src = document.getElementById('reportCardArea');
+  if (!src) return toast('未找到成绩单内容');
+  if (typeof html2canvas === 'undefined') return toast('截图组件未加载，请检查网络');
+  toast('正在生成图片…');
+  const holder = document.createElement('div');
+  holder.style.cssText = 'position:fixed;left:-10000px;top:0;z-index:-1;padding:26px;margin:0;background:#fff';
+  const clone = src.cloneNode(true);
+  clone.style.width = (src.offsetWidth || 580) + 'px';
+  clone.style.margin = '0';
+  holder.appendChild(clone);
+  document.body.appendChild(holder);
+  try {
+    const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
+    holder.remove();
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = '成绩单_' + (window.__rcShotName || 'student') + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('成绩单图片已保存 📸');
+  } catch (e) { console.error(e); holder.remove(); toast('截图失败：' + (e && e.message ? e.message : e)); }
+}
+/* ==================================================================
+   📄 学生学期报告：一键生成单个学生的学期总结（可复制 / 打印）
+   概况 + 考试成绩 + 进步趋势 + 亮点与待改进 + 教师评语
+   ================================================================== */
+function openTermReport(sid){
+  const p = profileOf(sid); if (!p) return toast('未找到该学生档案');
+  const id = String(sid);
+  const body = `
+    <div class="wr-bar">
+      <select id="trScope" class="inp" style="width:auto" onchange="trGen()">
+        <option value="0">全部日期</option>
+        <option value="30">近 30 天</option>
+        <option value="14">近 14 天</option>
+      </select>
+      <button class="btn sm" onclick="trCopy()">📋 复制报告</button>
+      <button class="btn sm" onclick="trPrint()">🖨️ 打印</button>
+      <span class="hint">报告含概况、考试、进步趋势、亮点与待改进、教师评语</span>
+    </div>
+    <div id="trOut" class="tr-out"></div>`;
+  openModal('📄 学生学期报告 · ' + esc(p.name || '?'), body,
+    `<button class="btn" onclick="closeModal()">完成</button>`, 660);
+  trGen();
+  /* 生成当前选择的报告文本 */
+  function trGen(){
+    const scope = +document.getElementById('trScope').value;
+    const ta = document.getElementById('trOut');
+    if (ta) ta.innerHTML = buildTermReportHtml(id, scope);
+  }
+  function trCopy(){
+    const t = document.getElementById('trTxt');
+    if (!t || !t.value) return toast('暂无内容');
+    const done = () => toast('已复制到剪贴板 ✅');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t.value).then(done).catch(() => fallbackCopy(t, done));
+    } else fallbackCopy(t, done);
+  }
+  function trPrint(){
+    const src = document.getElementById('trArea');
+    if (!src) return toast('未找到报告内容');
+    const w = window.open('', '_blank', 'width=780,height=1000');
+    if (!w) return toast('浏览器拦截了打印窗口，请允许弹窗后重试');
+    const css = `
+      *{box-sizing:border-box}
+      body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#1c2434;margin:0;background:#fff}
+      .tr-print{max-width:720px;margin:0 auto;padding:32px 36px}
+      .tr-print h1{font-size:24px;text-align:center;letter-spacing:6px;margin:0 0 4px}
+      .tr-print .tr-sub{text-align:center;color:#6b7686;font-size:13px;margin-bottom:18px}
+      .tr-print h2{font-size:15px;border-left:4px solid #2563eb;padding-left:9px;margin:16px 0 8px}
+      .tr-print p,.tr-print li{font-size:13.5px;line-height:1.9;color:#2a3345}
+      .tr-print .tr-meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:#6b7686;margin-bottom:6px}
+      .tr-print table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+      .tr-print th,.tr-print td{border:1px solid #d5dce7;padding:6px 9px}
+      .tr-print th{background:#f1f5f9}
+      .tr-print .c{text-align:center}
+      .tr-print .tr-foot{margin-top:30px;display:flex;justify-content:space-between;font-size:13px;color:#6b7686;border-top:1px dashed #c3d8f2;padding-top:10px}
+      @page{margin:16mm}`;
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>学期报告</title><style>${css}</style></head><body>${src.outerHTML}</body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { try { w.print(); } catch (e) { toast('打印失败，请手动 Ctrl+P'); } }, 300);
+  }
+}
+/* 生成学期报告 HTML（含隐藏的纯文本用于复制） */
+function buildTermReportHtml(sid, scopeDays){
+  const p = profileOf(sid); if (!p) return '<div class="empty">未找到该学生档案</div>';
+  const id = String(sid);
+  let firstName = null, firstCid = null, firstSid = null;
+  let present = 0, late = 0, leave = 0, makeup = 0, days = 0;
+  let qSum = 0, qN = 0, hSum = 0, hN = 0, hwMiss = 0, hwNoCorrect = 0;
+  const remarks = [];
+  const examRows = [];
+  let zk = {};
+  const fromD = scopeDays ? shiftDate(state.activeDate, -(scopeDays - 1)) : null;
+  state.classes.forEach(c => {
+    const s = c.students.find(x => String(x.id) === id); if (!s) return;
+    if (firstName === null) { firstName = s.name; firstCid = c.id; firstSid = s.id; }
+    Object.keys(s.records || {}).forEach(d => {
+      if (fromD && (d < fromD || d > state.activeDate)) return;
+      if (c.attendanceOff && c.attendanceOff[d]) return;
+      days++; const st = attStatus(s, d);
+      if (st === 'present') present++; else if (st === 'late') late++; else if (st === 'leave') leave++; else if (st === 'makeup') makeup++;
+    });
+    Object.entries(s.records || {}).forEach(([d, r]) => {
+      if (fromD && (d < fromD || d > state.activeDate)) return;
+      if (!(c.attendanceOff && c.attendanceOff[d])) {
+        const q = num(r.quiz); if (q !== null) { qSum += q; qN++; }
+        const h = hwEffective(r); if (h !== null) { hSum += h; hN++; }
+      }
+      if (r.hwDone === false) hwMiss++;
+      if (r.hwDetail && r.hwDetail.correct === 'pending') hwNoCorrect++;
+      if (r.remark && String(r.remark).trim()) remarks.push({ d, txt: String(r.remark).trim() });
+    });
+    const es = (c.examScores && c.examScores[id]) || {};
+    EXAM_PERIODS.forEach(pp => { if (es[pp] && (es[pp].mathScore || es[pp].totalScore)) examRows.push({ pp, m: es[pp].mathScore, tot: es[pp].totalScore }); });
+    if (es.zhongkao) zk = es.zhongkao;
+  });
+  const inClass = firstName !== null;
+  const name = p.name || firstName || '?';
+  const total = present + late + makeup;
+  const rate = days ? Math.round(total / days * 100) : 0;
+  const qAvg = qN ? qSum / qN : null;
+  const hAvg = hN ? hSum / hN : null;
+  const clsName = inClass ? state.classes.find(c => c.id === firstCid).name : '';
+  const scopeTxt = scopeDays ? `近 ${scopeDays} 天（${shiftDate(state.activeDate, -(scopeDays - 1))} ~ ${state.activeDate}）` : '全部日期';
+  /* 进步趋势：与近 7 天对比 */
+  let cmp = null;
+  if (firstCid !== null) {
+    const c0 = state.classes.find(c => c.id === firstCid);
+    if (c0) { const s0 = c0.students.find(x => String(x.id) === id); if (s0) cmp = compareWindows(s0, c0, state.activeDate, 7); }
+  }
+  /* 亮点与待改进 */
+  const highlights = [], improve = [];
+  if (qAvg != null) {
+    const qPct = qAvg / (state.quizScale || 100) * 100;
+    if (qPct >= 85) highlights.push(`${LBL('quiz')}均分 ${fmt1(qAvg)}（得分率 ${Math.round(qPct)}%），成绩优异`);
+    else if (qPct < 60) improve.push(`${LBL('quiz')}均分 ${fmt1(qAvg)}（得分率 ${Math.round(qPct)}%），需加强基础`);
+  }
+  if (hAvg != null) {
+    const hPct = hAvg / (state.hwScale || 10) * 100;
+    if (hPct >= 85) highlights.push(`${LBL('homework')}均分 ${fmt1(hAvg)}，作业完成质量高`);
+    else if (hPct < 60) improve.push(`${LBL('homework')}均分 ${fmt1(hAvg)}，作业正确率待提升`);
+  }
+  if (rate >= 95) highlights.push(`出勤率 ${rate}%，全勤表现优秀`);
+  else if (rate < 80) improve.push(`出勤率仅 ${rate}%，存在迟到 / 请假情况`);
+  if (hwMiss > 0) improve.push(`作业未完成 ${hwMiss} 次`);
+  if (hwNoCorrect > 0) improve.push(`有 ${hwNoCorrect} 次作业待订正`);
+  if (cmp) {
+    if (cmp.delta >= 3) highlights.push(`近两周进步 ▲${cmp.delta.toFixed(1)} 分`);
+    else if (cmp.delta <= -3) improve.push(`近两周退步 ▼${Math.abs(cmp.delta).toFixed(1)} 分，需关注`);
+  }
+  if (!highlights.length) highlights.push('学习态度良好，保持稳定');
+  if (!improve.length) improve.push('暂无突出短板，继续保持');
+  const examHtml = examRows.length ? `
+    <table><thead><tr><th>考试</th><th class="c">数学</th><th class="c">总分</th></tr></thead>
+    <tbody>${examRows.map(e => `<tr><td>${e.pp}</td><td class="c">${esc(e.m || '—')}</td><td class="c">${esc(e.tot || '—')}</td></tr>`).join('')}</tbody></table>` : '';
+  const remarkHtml = remarks.length ? `<ul>${remarks.slice(-5).map(r => `<li><b>${mdShort(r.d)}</b>：${esc(r.txt)}</li>`).join('')}</ul>` : '<p>暂无评语记录</p>';
+  const html = `
+    <div id="trArea" class="tr-print">
+      <h1>${esc(name)} 学习报告</h1>
+      <div class="tr-sub">${esc(state.teacherName || '班级自主管理工作台')} · ${scopeTxt}</div>
+      <div class="tr-meta">
+        <span>🏫 班级：${esc(clsName || '—')}</span><span>🏫 学校：${esc(p.school || '—')}</span>
+        <span>📅 生成：${todayStr()}</span>
+      </div>
+      <h2>📊 学习概况</h2>
+      <table>
+        <thead><tr><th class="c">出勤率</th><th class="c">${esc(LBL('quiz'))}均分</th><th class="c">${esc(LBL('homework'))}均分</th><th class="c">考试科目</th></tr></thead>
+        <tbody><tr>
+          <td class="c">${rate}%</td>
+          <td class="c">${qAvg != null ? fmt1(qAvg) + ' / ' + (state.quizScale || 100) : '—'}</td>
+          <td class="c">${hAvg != null ? fmt1(hAvg) + ' / ' + (state.hwScale || 10) : '—'}</td>
+          <td class="c">${examRows.length} 次</td>
+        </tr></tbody>
+      </table>
+      ${examHtml ? `<h2>🎓 考试成绩</h2>${examHtml}` : ''}
+      <h2>📈 进步趋势</h2>
+      ${cmp ? `<p>近 7 天均分 <b>${fmt1(cmp.cur)}</b>（前 7 天 <b>${fmt1(cmp.prev)}</b>），<b style="color:${cmp.delta >= 0 ? '#16a34a' : '#dc2626'}">${cmp.delta >= 0 ? '进步 ▲' : '退步 ▼'} ${Math.abs(cmp.delta).toFixed(1)}</b>。</p>` : '<p>暂无足够数据对比近两周变化。</p>'}
+      <h2>⭐ 亮点</h2><ul>${highlights.map(x => `<li>${x}</li>`).join('')}</ul>
+      <h2>📌 待改进</h2><ul>${improve.map(x => `<li>${x}</li>`).join('')}</ul>
+      <h2>💬 教师评语</h2>${remarkHtml}
+      <div class="tr-foot"><div>教师签名：______________</div><div>${todayStr()}</div></div>
+    </div>
+    <textarea id="trTxt" class="tr-txt" readonly spellcheck="false">${esc(buildTermReportText(name, clsName, p.school, rate, qAvg, hAvg, scopeTxt, examRows, cmp, highlights, improve, remarks, zk))}</textarea>`;
+  return html;
+}
+/* 生成学期报告纯文本（用于一键复制） */
+function buildTermReportText(name, clsName, school, rate, qAvg, hAvg, scopeTxt, examRows, cmp, highlights, improve, remarks, zk){
+  const L = [];
+  L.push(`📄 ${name} 学习报告`);
+  L.push(`班级：${clsName || '—'} ｜ 学校：${school || '—'} ｜ 范围：${scopeTxt}`);
+  L.push('');
+  L.push(`📊 学习概况：出勤率 ${rate}% ｜ ${LBL('quiz')}均分 ${qAvg != null ? fmt1(qAvg) + ' / ' + (state.quizScale || 100) : '—'} ｜ ${LBL('homework')}均分 ${hAvg != null ? fmt1(hAvg) + ' / ' + (state.hwScale || 10) : '—'}`);
+  if (examRows.length) L.push(`🎓 考试成绩：${examRows.map(e => `${e.pp} 数学${e.m ? e.m + '分' : '—'}${e.tot ? '，总分' + e.tot : ''}`).join('；')}`);
+  if (cmp) L.push(`📈 进步趋势：近 7 天均分 ${fmt1(cmp.cur)}（前 7 天 ${fmt1(cmp.prev)}），${cmp.delta >= 0 ? '进步 ▲' : '退步 ▼'} ${Math.abs(cmp.delta).toFixed(1)}`);
+  L.push('');
+  L.push('⭐ 亮点：');
+  highlights.forEach(x => L.push('  · ' + x));
+  L.push('📌 待改进：');
+  improve.forEach(x => L.push('  · ' + x));
+  L.push('');
+  L.push('💬 教师评语：');
+  if (remarks.length) remarks.slice(-5).forEach(r => L.push(`  · ${mdShort(r.d)} ${r.txt}`));
+  else L.push('  （暂无评语记录）');
+  L.push('');
+  L.push('—— 由「班级自主管理工作台」自动生成');
+  return L.join('\n');
 }
 /* 生成家长只读查看链接（数据来自已云同步的公开仓库，家长只看到该生） */
 function openParentLink(cid, sid){
@@ -5178,6 +5583,132 @@ function renderRank(){
 
   return controlCard + summary + `<div class="card"><ul class="rank-list">${list}</ul></div>` + hint;
 }
+/* ==================================================================
+   📊 分布分析：按「得分率」分档统计全班成绩分布（柱状图 + 分布表）
+   口径与走势图一致：小测按满分 scale，作业按每次实际满分折算
+   ================================================================== */
+function setDistSubject(v){ state.distSubject = v; save(); renderMain(); }
+function setDistRange(v){ state.distRange = v; save(); renderMain(); }
+function renderDist(){
+  const cls = activeClass();
+  const subj = state.distSubject || 'quiz';
+  const range = state.distRange || '30';
+  const toD = state.activeDate;
+  const fromD = range === 'all' ? null : shiftDate(toD, -(+range - 1));
+  const subjLabel = subj === 'quiz' ? LBL('quiz') : LBL('homework');
+  /* 分档：优秀 90+ / 良好 80-89 / 中等 70-79 / 及格 60-69 / 待提升 <60 */
+  const segs = [
+    { label:'优秀', lo:90, color:'#16a34a' },
+    { label:'良好', lo:80, color:'#3b6fe0' },
+    { label:'中等', lo:70, color:'#0891b2' },
+    { label:'及格', lo:60, color:'#ca8a04' },
+    { label:'待提升', lo:0, color:'#dc2626' },
+  ];
+  const rows = [];
+  cls.students.forEach(s => {
+    Object.keys(s.records || {}).forEach(dd => {
+      if (fromD && (dd < fromD || dd > toD)) return;
+      if (cls.attendanceOff && cls.attendanceOff[dd]) return;
+      const r = s.records[dd];
+      let pct = null;
+      if (subj === 'quiz') {
+        const q = num(r.quiz);
+        if (q !== null) { const f = state.quizScale || 100; pct = f > 0 ? q / f * 100 : null; }
+      } else {
+        const h = hwScore(r); const f = hwFullOf(r);
+        if (h !== null && f > 0) pct = h / f * 100;
+      }
+      if (pct === null) return;
+      rows.push({ name: s.name, d: dd, pct: Math.max(0, Math.min(100, pct)) });
+    });
+  });
+  const rangeTxt = range === 'all' ? '全部日期' : `${fromD} ~ ${toD}`;
+  const controls = `<div class="card" style="padding:10px 14px"><div class="row" style="flex-wrap:wrap;gap:10px;align-items:center">
+      <span class="ta-label">统计科目</span>
+      <span class="ta-seg">
+        <button class="${subj === 'quiz' ? 'on' : ''}" onclick="setDistSubject('quiz')">${esc(LBL('quiz'))}</button>
+        <button class="${subj === 'homework' ? 'on' : ''}" onclick="setDistSubject('homework')">${esc(LBL('homework'))}</button>
+      </span>
+      <span class="ta-label">时间范围</span>
+      <span class="ta-seg">
+        ${[['7','近 7 天'],['14','近 14 天'],['30','近 30 天'],['all','全部']].map(([k, l]) =>
+          `<button class="${range === k ? 'on' : ''}" onclick="setDistRange('${k}')">${l}</button>`).join('')}
+      </span>
+      <span class="muted">${esc(cls.name)} · ${subjLabel} · ${rangeTxt}</span>
+    </div></div>`;
+  if (!rows.length) return controls + '<div class="empty"><span class="ico">📊</span>所选范围内还没有' + subjLabel + '成绩记录</div>';
+
+  const N = rows.length;
+  const avgPct = rows.reduce((a, b) => a + b.pct, 0) / N;
+  const passN = rows.filter(x => x.pct >= 60).length;
+  const goodN = rows.filter(x => x.pct >= 90).length;
+  const maxPct = Math.max(...rows.map(x => x.pct));
+  const minPct = Math.min(...rows.map(x => x.pct));
+  const counts = segs.map((se, i) => {
+    const hi = i === 0 ? 100.0001 : se.lo + 10;
+    return { ...se, n: rows.filter(x => x.pct >= se.lo && x.pct < hi).length };
+  });
+  /* —— SVG 柱状图 —— */
+  const W = 640, H = 250, PL = 40, PR = 16, PT = 24, PB = 44;
+  const iw = W - PL - PR, ih = H - PT - PB;
+  const bw = Math.min(74, iw / counts.length * 0.5);
+  const maxN = Math.max(1, ...counts.map(x => x.n));
+  let cum = 0;
+  let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width:100%;height:auto">`;
+  svg += `<text x="${PL}" y="${PT - 6}" font-size="11" fill="#8a94a6">人次</text>`;
+  for (let k = 0; k <= 4; k++) {
+    const yv = PT + ih - ih * k / 4;
+    svg += `<line x1="${PL}" y1="${yv}" x2="${W - PR}" y2="${yv}" stroke="#e2ecf9" stroke-width="1"/>`;
+    svg += `<text x="${PL - 8}" y="${yv + 4}" font-size="10.5" fill="#8a94a6" text-anchor="end">${Math.round(maxN * k / 4)}</text>`;
+  }
+  counts.forEach((c, i) => {
+    const x0 = PL + iw * (i + 0.5) / counts.length - bw / 2;
+    const bh = c.n > 0 ? Math.max(3, ih * c.n / maxN) : 2;
+    const y0 = PT + ih - bh;
+    const ratio = N ? Math.round(c.n / N * 100) : 0;
+    svg += `<rect x="${x0}" y="${y0}" width="${bw}" height="${bh}" rx="5" fill="${c.color}" opacity="${c.n ? 0.9 : 0.25}"/>`;
+    svg += `<text x="${x0 + bw / 2}" y="${y0 - 7}" font-size="12.5" font-weight="700" fill="${c.color}" text-anchor="middle">${c.n}</text>`;
+    svg += `<text x="${x0 + bw / 2}" y="${PT + ih + 16}" font-size="11" fill="#5a6474" text-anchor="middle">${c.label}</text>`;
+    svg += `<text x="${x0 + bw / 2}" y="${PT + ih + 32}" font-size="10.5" fill="#9aa4b4" text-anchor="middle">${ratio}%</text>`;
+    cum += c.n;
+  });
+  svg += `<line x1="${PL}" y1="${PT + ih}" x2="${W - PR}" y2="${PT + ih}" stroke="#c3d8f2"/>`;
+  svg += `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT + ih}" stroke="#c3d8f2"/>`;
+  svg += `</svg>`;
+  /* —— 分布表 —— */
+  let cumPct = 0;
+  const tableRows = counts.map(c => {
+    const ratio = N ? c.n / N * 100 : 0;
+    cumPct += ratio;
+    return `<tr>
+      <td><span class="dist-dot" style="background:${c.color}"></span>${c.label}</td>
+      <td class="c"><b>${c.n}</b> 人次</td>
+      <td class="c">${fmt1(ratio)}%</td>
+      <td class="c">${fmt1(cumPct)}%</td>
+      <td style="width:40%"><div class="dist-bar"><i style="width:${Math.round(ratio)}%;background:${c.color}"></i></div></td>
+    </tr>`;
+  }).join('');
+  const stat = (t, v, c) => `<div class="avg-card"><div class="ac-l">${t}</div><div class="ac-v" style="${c ? 'color:' + c : ''}">${v}</div></div>`;
+  return controls + `
+    <div class="card"><div class="chart-box"><div class="legend">
+      <span><i style="background:#16a34a"></i>≥90 优秀</span><span><i style="background:#3b6fe0"></i>80-89 良好</span>
+      <span><i style="background:#0891b2"></i>70-79 中等</span><span><i style="background:#ca8a04"></i>60-69 及格</span>
+      <span><i style="background:#dc2626"></i>&lt;60 待提升</span>
+    </div>${svg}
+    <div class="hint" style="margin-top:6px">💡 口径：按「得分率」分档（实际分 ÷ 该次满分 ×100），与走势图纵轴一致；样本 = 全班该科目${rangeTxt}内的全部有效记录。</div></div></div>
+    <div class="avg-cards">
+      ${stat('样本人次', N + ' 次')}
+      ${stat('平均得分率', fmt1(avgPct) + '%', avgPct >= 80 ? '#16a34a' : avgPct >= 60 ? '#ca8a04' : '#dc2626')}
+      ${stat('最高 / 最低', fmt1(maxPct) + ' / ' + fmt1(minPct))}
+      ${stat('及格率 (≥60)', fmt1(passN / N * 100) + '%', '#3b6fe0')}
+      ${stat('优秀率 (≥90)', fmt1(goodN / N * 100) + '%', '#16a34a')}
+    </div>
+    <div class="card"><div class="card-title">📋 分布明细</div>
+      <table class="ana-tbl"><thead><tr><th>段位</th><th class="c">人数</th><th class="c">占比</th><th class="c">累计</th><th>占比条</th></tr></thead>
+      <tbody>${tableRows}</tbody></table>
+      <div class="hint" style="margin-top:8px">💡 待提升人数较多时，可在「概览」页预警名单中查看具体学生，及时跟进辅导。</div>
+    </div>`;
+}
 function renderTrend(){
   const view = state.trendView || 'trend';
   const viewSwitch = `<div class="card" style="padding:10px 14px"><div class="row" style="flex-wrap:wrap;gap:12px;align-items:center">
@@ -5185,11 +5716,15 @@ function renderTrend(){
       <span class="view-switch">
         <button class="${view==='trend'?'on':''}" onclick="setTrendView('trend')"><span class="vs-ico">📈</span>走势图</button>
         <button class="${view==='rank'?'on':''}" onclick="setTrendView('rank')"><span class="vs-ico">🏆</span>排名榜</button>
+        <button class="${view==='dist'?'on':''}" onclick="setTrendView('dist')"><span class="vs-ico">📊</span>分布</button>
       </span>
-      <span class="muted">切换可查看「个人成绩走势」或「全班级 / 指定班级排名」</span>
+      <span class="muted">切换可查看「个人成绩走势」「全班级 / 指定班级排名」或「全班成绩分布」</span>
     </div></div>`;
   if (view === 'rank') {
     return viewSwitch + renderRank();
+  }
+  if (view === 'dist') {
+    return viewSwitch + renderDist();
   }
   const cls = activeClass();
   if (!cls.students.length) return viewSwitch + '<div class="empty"><span class="ico">📈</span>本班还没有学生</div>';
@@ -7025,6 +7560,7 @@ function renderExportTab(){
     ${item('📊','导出全部成绩（CSV）','当前班级所有学生、所有日期的小测 / 作业 / 出勤 / 课堂表现记录','导出 CSV','exportAllCSV()')}
     ${item('✅','导出打卡登记（CSV）','当前班级本月每日打卡 / 补卡 / 未完成明细与完成率','导出 CSV','exportCheckinCSV()')}
     ${item('📋','导出当日成绩单（CSV）',`${state.activeDate} 当日成绩，含排名与课堂评价`,'导出 CSV','exportTodayCSV()')}
+    ${item('🖨️','打印成绩单（按学生）','选择学生生成标准成绩单：出勤 / 小测 / 作业 / 考试汇总，可打印或导出图片','选择学生','openReportPicker()')}
     ${item('🗓️','导出出勤统计（CSV）','当前班级逐日出勤明细，含迟到 / 请假 / 补课日期与出勤率','导出 CSV','exportAttendCSV()')}
     <div class="card-title" style="margin-top:20px">💾 备份与恢复</div>
     ${item('📦','备份全部数据（Excel）','每个班级一个工作表，另含出勤补课 / 打卡登记 / 上课内容 / 学生档案 / 考试成绩 / 周测月考 / 待办事项','立即备份','exportBackup()', true)}
