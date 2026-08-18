@@ -642,6 +642,50 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .ov-warn-row .wtag{background:#fff;border:1px solid #fdba74;border-radius:999px;padding:1px 8px;font-size:11.5px}
 .ov-empty{color:var(--text-muted);font-size:13px;padding:8px 2px}
 .ov-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+/* 概览：进步/退步对比 */
+.ov-prog{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:640px){.ov-prog{grid-template-columns:1fr}}
+.ov-col{min-width:0}
+.ov-prow{display:flex;align-items:center;gap:8px;padding:4px 0}
+.ov-prow .pnm{font-weight:700;font-size:13px;min-width:56px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-prow .pbar{flex:1;height:8px;background:var(--surface-alt);border-radius:99px;overflow:hidden}
+.ov-prow .pbar i{display:block;height:100%;border-radius:99px}
+.ov-prow .pdelta{font-weight:800;font-size:12px;min-width:44px;text-align:right}
+.pdelta.up{color:var(--green)}.pdelta.down{color:var(--red)}
+/* 课堂评价弹窗：评语区 */
+.mp-remark{border-top:1px solid var(--border);padding:8px 13px 10px;background:#fafbff}
+.mp-remark-t{display:flex;align-items:center;gap:6px;font-weight:800;font-size:12px;margin-bottom:6px}
+.mp-remark-c{margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:20px}
+.rm-chip{display:inline-block;background:var(--accent-light);color:var(--accent-dark);border-radius:8px;
+  padding:3px 10px;font-size:12px;font-weight:600}
+.mp-phrases{display:flex;flex-wrap:wrap;gap:6px;max-height:84px;overflow-y:auto}
+.ph-chip{background:#fff;border:1px solid var(--border);border-radius:99px;padding:3px 10px;
+  font-size:11.5px;color:var(--text);cursor:pointer;transition:.15s}
+.ph-chip:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark)}
+/* 评语库管理 */
+.pb-tip{font-size:12px;color:var(--text-muted);margin-bottom:10px}
+.pb-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;margin-bottom:12px}
+.pb-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface-alt);
+  border-radius:8px;padding:6px 8px 6px 12px;font-size:13px}
+.pb-txt{flex:1}
+.pb-add{display:flex;gap:8px}
+.pb-add .inp{flex:1}
+/* 预警规则设置 */
+.wr-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:var(--surface-alt);border-radius:10px;padding:10px 14px;margin-bottom:10px}
+.wr-l{font-weight:700;font-size:13.5px}
+.wr-t{font-size:11.5px;color:var(--text-muted);margin-top:2px}
+/* 周报弹窗 */
+.wr-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.wr-ta{width:100%;height:320px;box-sizing:border-box;resize:vertical;border:1px solid var(--border);
+  border-radius:10px;padding:12px;font-size:13px;line-height:1.7;background:#fff;color:var(--text);
+  font-family:inherit}
+/* 档案卡：近两周变化 */
+.sc-cmp{display:flex;gap:12px;flex-wrap:wrap}
+.sc-cmp .cmp-item{flex:1;min-width:110px;background:var(--surface-alt);border-radius:10px;
+  padding:10px 14px;text-align:center}
+.cmp-item .cmp-l{display:block;font-size:11.5px;color:var(--text-muted);font-weight:700;margin-bottom:2px}
+.cmp-item b{font-size:20px;font-weight:800}
 
 /* 批量录入 */
 .batch-bar{display:flex;align-items:center;gap:10px;margin:10px 0;flex-wrap:wrap}
@@ -1310,6 +1354,18 @@ const TOPIC_OPTS = [
   { key:'mixed',    label:'综合' },
 ];
 
+/* 常用评语库：课堂评价（行为/吸收弹窗）底部点选即填，可在「管理评语库」弹窗中增删改 */
+const PHRASE_BANK_DEFAULT = [
+  '课堂积极发言', '解题思路清晰', '作业书写认真', '计算细心', '进步明显',
+  '笔记工整', '上课专注', '做题速度偏慢', '审题不够仔细', '易漏写单位',
+  '需加强课后练习', '建议多做错题整理',
+];
+
+/* 预警规则默认值：连续低分次数 / 近一周缺勤迟到次数 / 连续作业未完成次数 */
+const WARN_RULES_DEFAULT = { lowStreak: 2, absentCnt: 2, hwStreak: 2 };
+function WARNRULES(){ return (state.warnRules && Object.keys(state.warnRules).length) ? state.warnRules : WARN_RULES_DEFAULT; }
+function PHRASES(){ return (Array.isArray(state.phraseBank) && state.phraseBank.length) ? state.phraseBank : PHRASE_BANK_DEFAULT; }
+
 const EXAM_PERIODS = ['七上期中','七上期末','七下期中','七下期末','八上期中','八上期末','八下期中','八下期末','九上期中','九上期末','九下期中'];
 const ZHONGKAO_SUBJECTS = ['语文','数学','英语','理化','道法','历史'];
 
@@ -1378,6 +1434,7 @@ let state = {
   ldHistory: [],
   behaviorOpts: null, absorptionOpts: null, lottery: null, points: null, tabOrder: null,
   teacherName: null, profileOptions: null,
+  warnRules: null, phraseBank: null,   // 预警规则自定义 / 常用评语库（normalizeState 补默认）
 };
 
 /* 临时 UI 状态（不持久化） */
@@ -1464,11 +1521,12 @@ function findStudentByKey(key){
 function rec(student, date){
   student.records = student.records || {};
   if (!student.records[date]) {
-    student.records[date] = { attendance:'present', quiz:'', homework:'', hwRating:'', behavior:[], absorption:[], hwDetail:null };
+    student.records[date] = { attendance:'present', quiz:'', homework:'', hwRating:'', behavior:[], absorption:[], hwDetail:null, remark:'' };
   }
   const r = student.records[date];
   if (!Array.isArray(r.behavior)) r.behavior = [];
   if (!Array.isArray(r.absorption)) r.absorption = [];
+  if (r.remark === undefined) r.remark = '';
   return r;
 }
 function recRaw(student, date){ return (student.records || {})[date] || null; }
@@ -1574,6 +1632,8 @@ function normalizeState(){
   if (!state.lottery || !Array.isArray(state.lottery.segments) || !state.lottery.segments.length)
     state.lottery = { cost: LD_COST, segments: LD_SEGMENTS.map(o => ({ ...o })) };
   if (!state.points) state.points = defaultPoints();
+  if (!state.warnRules || !Object.keys(state.warnRules).length) state.warnRules = { ...WARN_RULES_DEFAULT };
+  if (!Array.isArray(state.phraseBank)) state.phraseBank = PHRASE_BANK_DEFAULT.map(x => x);
   /* 旧版积分规则为扁平结构（att/quizFull/...），迁移到模块化结构 */
   if (!state.points.version || state.points.version < 2) {
     const old = state.points || {};
@@ -2320,31 +2380,80 @@ function renderMain(){
 /* ==================================================================
    概览首页 + 需关注名单（预警）
    ================================================================== */
+/* ==================================================================
+   Tab 0：概览 (overview)
+   ================================================================== */
+/* 分值 → 百分比：小测按 quizScale，作业按 hwScale（或本次作业满分 full）。区别于 scorePct(s,date,subj)（趋势分析用） */
+function pctOf(v, field, r){
+  if (v === null || v === undefined) return null;
+  if (field === 'quiz') return v / (state.quizScale || 100) * 100;
+  let full = state.hwScale || 10;
+  if (r && r.hwDetail && r.hwDetail.full) full = r.hwDetail.full;
+  return v / full * 100;
+}
+/* 学生某时间窗口内的有效成绩百分比均分（小测+作业取平均，休息日跳过；无有效数据返回 null） */
+function studentWindowAvg(s, cls, fromD, toD){
+  let sum = 0, n = 0;
+  Object.keys(s.records || {}).forEach(d => {
+    if (d < fromD || d > toD) return;
+    if (cls.attendanceOff && cls.attendanceOff[d]) return;
+    const r = s.records[d];
+    const q = pctOf(num(r.quiz), 'quiz');
+    const h = pctOf(hwEffective(r), 'homework', r);
+    if (q !== null) { sum += q; n++; }
+    if (h !== null) { sum += h; n++; }
+  });
+  return n ? sum / n : null;
+}
+/* 对比两个窗口：近 days 天 vs 更早 days 天，返回 { cur, prev, delta }（delta 单位=百分点） */
+function compareWindows(s, cls, d, days){
+  const fromCur = shiftDate(d, -(days - 1));
+  const toPrev = shiftDate(d, -days);
+  const fromPrev = shiftDate(d, -(2 * days - 1));
+  const cur = studentWindowAvg(s, cls, fromCur, d);
+  const prev = studentWindowAvg(s, cls, fromPrev, toPrev);
+  return { cur, prev, delta: (cur !== null && prev !== null) ? cur - prev : null };
+}
+/* 全班进步/退步榜：返回 { up:[{s,delta,cur,prev}...], down:[...] } */
+function buildProgressRanking(cls, days){
+  const d = state.activeDate;
+  const arr = cls.students.map(s => {
+    const c = compareWindows(s, cls, d, days || 7);
+    return { s, delta: c.delta, cur: c.cur, prev: c.prev };
+  }).filter(x => x.delta !== null);
+  const up = arr.filter(x => x.delta >= 1).sort((a, b) => b.delta - a.delta).slice(0, 3);
+  const down = arr.filter(x => x.delta <= -1).sort((a, b) => a.delta - b.delta).slice(0, 3);
+  return { up, down };
+}
 function buildWarnings(cls){
   const pass = (state.quizThresholds && state.quizThresholds.pass) || (state.quizScale || 100) * 0.6;
+  const WR = WARNRULES();
+  const lowStreakN = Math.max(1, +WR.lowStreak || 2);
+  const absentN = Math.max(1, +WR.absentCnt || 2);
+  const hwN = Math.max(1, +WR.hwStreak || 2);
   const last7 = [];
   for (let i = 0; i < 7; i++) last7.push(shiftDate(state.activeDate, -i));
   const out = [];
   cls.students.forEach(s => {
     const reasons = [];
-    // 1) 连续 2 次小测低于达标线
+    // 1) 连续 N 次小测低于达标线
     const qDates = Object.keys(s.records || {}).filter(d => !cls.attendanceOff || !cls.attendanceOff[d])
       .sort((a, b) => b.localeCompare(a));
     let lowStreak = 0;
     for (const d of qDates) {
       const q = num(s.records[d].quiz);
       if (q === null) break;
-      if (q < pass) { lowStreak++; if (lowStreak >= 2) { reasons.push('连续 ' + lowStreak + ' 次小测低于达标线'); break; } }
+      if (q < pass) { lowStreak++; if (lowStreak >= lowStreakN) { reasons.push('连续 ' + lowStreak + ' 次小测低于达标线'); break; } }
       else break;
     }
-    // 2) 近一周缺勤/迟到 ≥ 2 次
+    // 2) 近一周缺勤/迟到 ≥ N 次
     let absentCnt = 0;
     last7.forEach(d => {
       if (cls.attendanceOff && cls.attendanceOff[d]) return;
       const a = (s.records && s.records[d] && s.records[d].attendance) || 'present';
       if (a === 'absent' || a === 'late') absentCnt++;
     });
-    if (absentCnt >= 2) reasons.push('近一周缺勤/迟到 ' + absentCnt + ' 次');
+    if (absentCnt >= absentN) reasons.push('近一周缺勤/迟到 ' + absentCnt + ' 次');
     // 3) 作业连续未完成（done 模式 hwDone===false；分数模式取最近 hwDetail.status==='none'）
     let hwStreak = 0;
     for (const d of qDates) {
@@ -2352,7 +2461,7 @@ function buildWarnings(cls){
       let none = false;
       if (state.hwMode === 'done') none = r.hwDone === false;
       else if (r.hwDetail && r.hwDetail.status === 'none') none = true;
-      if (none) { hwStreak++; if (hwStreak >= 2) { reasons.push('连续 ' + hwStreak + ' 次作业未完成'); break; } }
+      if (none) { hwStreak++; if (hwStreak >= hwN) { reasons.push('连续 ' + hwStreak + ' 次作业未完成'); break; } }
       else break;
     }
     if (reasons.length) out.push({ s, reasons });
@@ -2375,6 +2484,7 @@ function renderOverview(){
   const quizTodo = cls.students.filter(s => { const r = rec(s, d); return (num(r.quiz) === null); }).length;
   const hwTodo = cls.students.filter(s => { const r = rec(s, d); return (state.hwMode === 'done' ? (r.hwDone === undefined || r.hwDone === null) : hwEffective(r) === null); }).length;
   const warns = buildWarnings(cls);
+  const pg = buildProgressRanking(cls, 7);
   const card = (ico, v, l, cls2) => `<div class="ov-card ${cls2 || ''}"><div class="ov-ico">${ico}</div><div class="ov-v">${v}</div><div class="ov-l">${l}</div></div>`;
   const head = `<div class="row" style="justify-content:space-between;margin-bottom:12px">
       <div><div class="datenav">
@@ -2383,7 +2493,10 @@ function renderOverview(){
         <button class="nav-btn" onclick="setDate('${shiftDate(d, 1)}')">›</button>
         <button class="btn sm" onclick="setDate('${todayStr()}')">今天</button>
       </div></div>
-      <div class="muted">当前班级：<b>${esc(cls.name)}</b></div>
+      <div class="row" style="gap:8px">
+        <div class="muted">当前班级：<b>${esc(cls.name)}</b></div>
+        <button class="btn sm" onclick="openWeeklyReport()">📄 生成周报</button>
+      </div>
     </div>`;
   const statCards = `<div class="ov-grid">
       ${card('✅', present, '今日出勤', 'green')}
@@ -2395,7 +2508,8 @@ function renderOverview(){
       ${card('📝', quizTodo, '小测待录入', quizTodo ? 'amber' : '')}
       ${card('🗒️', hwTodo, '作业待录入', hwTodo ? 'amber' : '')}
     </div>`;
-  const warnHtml = `<div class="ov-sec"><div class="ov-sec-t">🔔 需关注名单（自动预警）</div>
+  const warnHtml = `<div class="ov-sec"><div class="ov-sec-t">🔔 需关注名单（自动预警）
+      <button class="btn sm" style="margin-left:8px" onclick="openWarnRules()" title="自定义预警触发条件">⚙️ 规则</button></div>
       ${warns.length ? `<div class="ov-warn">${warns.map(w => `<div class="ov-warn-row">
           <span class="wico">⚠️</span><span class="wnm">${esc(w.s.name)}</span>
           <span class="wrs">${w.reasons.map(r => `<span class="wtag">${esc(r)}</span>`).join('')}</span>
@@ -2403,7 +2517,167 @@ function renderOverview(){
         <div class="ov-actions"><button class="btn sm" onclick="switchTab('roster')">📋 去日常反馈表处理</button></div>`
       : `<div class="ov-empty">🎉 暂无预警，孩子们状态都不错～</div>`}
     </div>`;
-  return `${head}${statCards}${warnHtml}`;
+  const progRow = (t, list, clsName, ico) => {
+    if (!list.length) return '';
+    return `<div class="ov-col">
+      <div class="ov-sec-t">${ico} ${t}</div>
+      ${list.map(x => `<div class="ov-prow">
+        <span class="pnm">${esc(x.s.name)}</span>
+        <span class="pbar"><i style="width:${Math.max(8, Math.min(100, Math.abs(x.delta) * 4))}%;background:${clsName === 'up' ? 'var(--green)' : 'var(--red)'}"></i></span>
+        <span class="pdelta ${clsName}">${clsName === 'up' ? '▲' : '▼'}${Math.abs(x.delta).toFixed(1)}</span>
+      </div>`).join('')}
+    </div>`;
+  };
+  const progHtml = (pg.up.length || pg.down.length) ? `<div class="ov-sec"><div class="ov-sec-t">📈 近 7 天进步 / 退步对比</div>
+      <div class="ov-prog">
+        ${progRow('进步最快', pg.up, 'up', '🚀')}
+        ${progRow('退步明显', pg.down, 'down', '📉')}
+      </div></div>` : '';
+  return `${head}${statCards}${progHtml}${warnHtml}`;
+}
+/* 预警规则设置：连续低分次数 / 近一周缺勤迟到次数 / 连续作业未完成次数 */
+function openWarnRules(){
+  const WR = WARNRULES();
+  const numInp = (key, label, tip) => `<div class="wr-row">
+      <div><div class="wr-l">${label}</div><div class="wr-t">${tip}</div></div>
+      <input id="wr-${key}" class="inp" type="number" min="1" max="10" value="${WR[key]}" style="width:76px;text-align:center">
+    </div>`;
+  const body = `
+    <div class="pb-tip">预警名单触发条件可自定义，保存后立即生效。</div>
+    ${numInp('lowStreak', '连续低分次数', '小测连续低于达标线的次数达到此值即预警')}
+    ${numInp('absentCnt', '近一周缺勤/迟到', '7 天内缺勤或迟到达到此次数即预警')}
+    ${numInp('hwStreak', '连续作业未完成', '作业连续未完成达到此次数即预警')}`;
+  openModal('⚙️ 预警规则设置', body, `
+    <button class="btn" onclick="closeModal()">取消</button>
+    <button class="btn primary" onclick="saveWarnRules()">保存</button>`, 460);
+}
+function saveWarnRules(){
+  ['lowStreak','absentCnt','hwStreak'].forEach(k => {
+    const el = document.getElementById('wr-' + k);
+    const v = Math.max(1, Math.min(10, parseInt(el.value, 10) || 2));
+    state.warnRules = state.warnRules || { ...WARN_RULES_DEFAULT };
+    state.warnRules[k] = v;
+  });
+  save(); closeModal(); renderMain(); toast('预警规则已保存 ✅');
+}
+/* 周报 / 月报一键生成：汇总出勤、小测、作业、进步榜、需关注名单 */
+function buildReportText(cls, days){
+  const d = state.activeDate;
+  const fromD = shiftDate(d, -(days - 1));
+  const daysStr = `${fromD} ~ ${d}`;
+  const L = [];
+  const L2 = [];
+  /* 出勤汇总：窗口中每个上课日统计 */
+  const daySet = new Set();
+  cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => {
+    if (dd >= fromD && dd <= d && !(cls.attendanceOff && cls.attendanceOff[dd])) daySet.add(dd);
+  }));
+  const attDays = Array.from(daySet).sort();
+  let present = 0, late = 0, leave = 0, absent = 0;
+  attDays.forEach(dd => cls.students.forEach(s => {
+    const a = (s.records && s.records[dd] && s.records[dd].attendance) || 'present';
+    if (a === 'present') present++; else if (a === 'late') late++;
+    else if (a === 'leave') leave++; else if (a === 'absent') absent++;
+  }));
+  /* 小测：均分 / 最高 / 及格率（以达标线 pass 为及格） */
+  const pass = (state.quizThresholds && state.quizThresholds.pass) || (state.quizScale || 100) * 0.6;
+  const qVals = [];
+  cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => {
+    if (dd < fromD || dd > d) return;
+    if (cls.attendanceOff && cls.attendanceOff[dd]) return;
+    const q = num(s.records[dd].quiz);
+    if (q !== null) qVals.push(q);
+  }));
+  const qAvg = qVals.length ? qVals.reduce((a, b) => a + b, 0) / qVals.length : null;
+  const qMax = qVals.length ? Math.max(...qVals) : null;
+  const qPass = qVals.length ? qVals.filter(v => v >= pass).length / qVals.length * 100 : null;
+  /* 作业：完成率（done 模式按 hwDone；分数模式按有分比例） */
+  let hwDoneN = 0, hwTotal = 0;
+  cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => {
+    if (dd < fromD || dd > d) return;
+    if (cls.attendanceOff && cls.attendanceOff[dd]) return;
+    const r = s.records[dd];
+    if (state.hwMode === 'done') {
+      if (r.hwDone === true || r.hwDone === false) hwTotal++;
+      if (r.hwDone === true) hwDoneN++;
+    } else {
+      if (num(r.homework) !== null) { hwTotal++; hwDoneN++; }
+    }
+  }));
+  const hwRate = hwTotal ? Math.round(hwDoneN / hwTotal * 100) : null;
+  const pg = buildProgressRanking(cls, days);
+  const warns = buildWarnings(cls);
+  L.push(`📋 ${cls.name}${days >= 30 ? ' 月度' : ' 周度'}学习简报（${daysStr}）`);
+  L.push('');
+  L.push(`👥 出勤：上课 ${attDays.length} 天｜出勤 ${present} 人次、迟到 ${late}、请假 ${leave}、缺勤 ${absent}`);
+  L.push(`📊 小测：${qVals.length} 人次｜均分 ${qAvg != null ? fmt1(qAvg) + ' / ' + (state.quizScale || 100) : '—'}｜最高 ${qMax != null ? qMax : '—'}｜达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}`);
+  if (hwRate !== null) L.push(`📚 作业：完成率 ${hwRate}%`);
+  L.push('');
+  if (pg.up.length) L.push('🚀 进步最快：' + pg.up.map(x => `${x.s.name}（▲${Math.abs(x.delta).toFixed(1)}）`).join('、'));
+  if (pg.down.length) L.push('📉 退步明显：' + pg.down.map(x => `${x.s.name}（▼${Math.abs(x.delta).toFixed(1)}）`).join('、'));
+  if (L.length > 4) L.push('');
+  if (warns.length) {
+    L.push('🔔 需关注：');
+    warns.forEach(w => L.push(`  · ${w.s.name}：${w.reasons.join('；')}`));
+  } else {
+    L.push('🎉 需关注：暂无，整体状态良好');
+  }
+  L.push('');
+  L.push('—— 由「班级自主管理工作台」自动生成');
+  L2.push(`📋 ${cls.name}${days >= 30 ? ' 月度' : ' 周度'}学习简报（${daysStr}）`);
+  L2.push(`👥 出勤：上课 ${attDays.length} 天，出勤 ${present} 人次、迟到 ${late}、请假 ${leave}、缺勤 ${absent}。`);
+  L2.push(`📊 小测（满分 ${state.quizScale || 100}）：共 ${qVals.length} 人次，均分 ${qAvg != null ? fmt1(qAvg) : '—'}，最高 ${qMax != null ? qMax : '—'}，达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}。`);
+  if (hwRate !== null) L2.push(`📚 作业完成率：${hwRate}%。`);
+  if (pg.up.length) L2.push(`🚀 进步明显：${pg.up.map(x => x.s.name).join('、')}。`);
+  if (pg.down.length) L2.push(`📉 近期需加油：${pg.down.map(x => x.s.name).join('、')}。`);
+  L2.push(`📌 请家长朋友们关注孩子的学习情况，如有问题欢迎与我沟通。`);
+  return { terse: L.join('\n'), pretty: L2.join('\n') };
+}
+function openWeeklyReport(){
+  const cls = activeClass();
+  if (!cls) return toast('请先选择班级');
+  const gen = days => {
+    const t = buildReportText(cls, days);
+    const ta = document.getElementById('wrText');
+    if (ta) ta.value = t.pretty;
+    document.getElementById('wrMode').value = days;
+  };
+  const body = `
+    <div class="wr-bar">
+      <select id="wrMode" class="inp" style="width:auto" onchange="genReport(this.value)">
+        <option value="7">最近 7 天（周报）</option>
+        <option value="30">最近 30 天（月报）</option>
+      </select>
+      <button class="btn sm" onclick="copyReport()">📋 复制</button>
+      <button class="btn sm" onclick="switchReport()" title="简洁版 / 完整版切换">🔄 切换版本</button>
+    </div>
+    <textarea id="wrText" class="wr-ta" readonly spellcheck="false"></textarea>`;
+  openModal('📄 生成学习简报', body, `<button class="btn" onclick="closeModal()">完成</button>`, 620);
+  gen(7);
+}
+let _reportFancy = true;
+function genReport(days){
+  const cls = activeClass(); if (!cls) return;
+  const ta = document.getElementById('wrText');
+  if (ta) ta.value = buildReportText(cls, +days)[_reportFancy ? 'pretty' : 'terse'];
+}
+function switchReport(){
+  const cls = activeClass(); if (!cls) return;
+  _reportFancy = !_reportFancy;
+  const ta = document.getElementById('wrText');
+  if (ta) ta.value = buildReportText(cls, +document.getElementById('wrMode').value)[_reportFancy ? 'pretty' : 'terse'];
+}
+function copyReport(){
+  const ta = document.getElementById('wrText');
+  if (!ta || !ta.value) return toast('暂无内容');
+  const done = () => toast('已复制到剪贴板 ✅');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(ta.value).then(done).catch(() => fallbackCopy(ta, done));
+  } else fallbackCopy(ta, done);
+}
+function fallbackCopy(ta, done){
+  ta.select(); ta.setSelectionRange(0, 99999);
+  try { document.execCommand('copy'); done(); } catch (e) { toast('复制失败，请手动长按选择复制'); }
 }
 /* ==================================================================
    Tab 1：日常反馈表 (roster)
@@ -2754,9 +3028,11 @@ function multiBtnHtml(s, d, field){
   const r = rec(s, d);
   const opts = field === 'behavior' ? BOPTS() : AOPTS();
   const sel = r[field] || [];
-  const inner = sel.length
+  let inner = sel.length
     ? sel.map(k => { const o = optOf(opts, k); return o ? `<span class="chip ${o.type}">${o.short}</span>` : ''; }).join('')
     : '<span style="opacity:.7">点击选择…</span>';
+  const rm = (r.remark || '').trim();
+  if (rm) inner += `<span class="chip neutral" title="评语：${esc(rm)}">💬 ${rm.length > 8 ? rm.slice(0, 8) + '…' : rm}</span>`;
   return `<button class="multi-btn" id="mb-${field}-${s.id}" onclick="openMulti(event,${s.id},'${field}')">${inner}</button>`;
 }
 
@@ -3121,6 +3397,20 @@ function openStudentCard(sid, readOnly){
         </div>
       </div>
     </div>` : '';
+  /* —— 近两周成绩变化（对比前 7 天，百分比口径）—— */
+  let cmp = null;
+  if (firstCid !== null) {
+    const c0 = state.classes.find(c => c.id === firstCid);
+    if (c0) { const s0 = c0.students.find(x => String(x.id) === id); if (s0) cmp = compareWindows(s0, c0, state.activeDate, 7); }
+  }
+  const cmpHtml = (cmp && cmp.cur !== null && cmp.prev !== null) ? `
+    <div class="sc-sec"><div class="sc-sec-t">📈 近两周成绩变化</div>
+      <div class="sc-cmp">
+        <div class="cmp-item"><span class="cmp-l">近 7 天均分</span><b>${fmt1(cmp.cur)}</b></div>
+        <div class="cmp-item"><span class="cmp-l">前 7 天均分</span><b>${fmt1(cmp.prev)}</b></div>
+        <div class="cmp-item ${cmp.delta >= 0 ? 'v-g' : 'v-r'}"><span class="cmp-l">${cmp.delta >= 0 ? '进步 ▲' : '退步 ▼'}</span><b>${Math.abs(cmp.delta).toFixed(1)}</b></div>
+      </div>
+    </div>` : '';
   const attCard = (ico, lbl, v, color) => `<div class="sc-stat" style="--c:${color}"><div class="sc-ico">${ico}</div><div class="sc-v" style="color:${color}">${v}</div><div class="sc-l">${lbl}</div></div>`;
   const restSet = fs ? studentRestDays(fs) : new Set();
   const recRows = recs.length ? recs.map(([d, r]) => {
@@ -3160,6 +3450,7 @@ function openStudentCard(sid, readOnly){
       ${attCard('📈','打卡率', ckRate + '%', 'var(--accent-dark)')}
     </div>
     ${radarSec}
+    ${cmpHtml}
     ${ckNeed > 0
       ? `<div class="sc-sec"><div class="sc-sec-t">✅ 打卡登记（${ckMonthStr}）</div>
         <div class="sc-ck-summary">应打卡 <b>${ckNeed}</b> 天 · 已完成 <b>${ckDone}</b> 天 · 补卡 <b>${ckMakeup}</b> 天 · 缺卡 <b class="ck-red">${ckMiss}</b> 天 · 完成率 <b>${ckRate}%</b></div>
@@ -3505,6 +3796,14 @@ function openMulti(ev, sid, field){
             onchange="toggleMulti(${sid},'${field}','${o.key}',this.checked)">
           <span class="dot t-${o.type}"></span>${o.label}
         </label>`).join('')}
+    </div>
+    <div class="mp-remark">
+      <div class="mp-remark-t">💬 当日评语
+        <span class="muted" style="font-size:11px">点下方短语直接添加</span>
+        <button class="btn sm" style="margin-left:auto" onclick="openPhraseBank()" title="管理常用评语库">✏️ 管理</button>
+      </div>
+      <div id="remark-${sid}" class="mp-remark-c">${remarkChips(f.s)}</div>
+      <div class="mp-phrases">${PHRASES().map(ph => `<button class="ph-chip" onclick="addRemark(${sid},this)">${esc(ph)}</button>`).join('')}</div>
     </div>`;
   document.body.appendChild(p);
   const rect = ev.currentTarget.getBoundingClientRect();
@@ -3536,14 +3835,77 @@ function clearMulti(sid, field){
   rec(f.s, state.activeDate)[field] = [];
   save(); closeMulti(); refreshMultiBtn(f.s, field);
 }
+/* —— 当日评语（评语库点选追加，存 r.remark）—— */
+function remarkChips(s){
+  const r = rec(s, state.activeDate);
+  const rm = (r.remark || '').trim();
+  if (!rm) return '<span class="muted" style="opacity:.65">今日暂无评语</span>';
+  return `<span class="rm-chip">${esc(rm)}</span>
+    <button class="btn sm" onclick="clearRemark(${s.id})" title="清空评语">✕</button>`;
+}
+function addRemark(sid, btnEl){
+  const f = findStudentById(sid); if (!f) return;
+  const r = rec(f.s, state.activeDate);
+  const ph = btnEl.textContent.trim();
+  const cur = (r.remark || '').trim();
+  if (cur.includes(ph)) { toast('该评语已添加'); return; }
+  r.remark = cur ? cur + '、' + ph : ph;
+  save();
+  const box = document.getElementById(`remark-${sid}`);
+  if (box) box.innerHTML = remarkChips(f.s);
+  refreshMultiBtn(f.s, 'behavior');
+  refreshMultiBtn(f.s, 'absorption');
+}
+function clearRemark(sid){
+  const f = findStudentById(sid); if (!f) return;
+  rec(f.s, state.activeDate).remark = '';
+  save();
+  const box = document.getElementById(`remark-${sid}`);
+  if (box) box.innerHTML = remarkChips(f.s);
+  refreshMultiBtn(f.s, 'behavior');
+  refreshMultiBtn(f.s, 'absorption');
+}
+/* 管理常用评语库 */
+function openPhraseBank(){
+  const list = PHRASES();
+  const body = `
+    <div class="pb-tip">评语库用于课堂评价弹窗快速点选。点击 ✕ 删除，下方可新增。</div>
+    <div id="pbList" class="pb-list">
+      ${list.map((ph, i) => `<div class="pb-row">
+        <span class="pb-txt">${esc(ph)}</span>
+        <button class="btn sm" onclick="pbDel(${i})">✕</button>
+      </div>`).join('')}
+    </div>
+    <div class="pb-add">
+      <input id="pbNew" class="inp" maxlength="20" placeholder="输入新评语，如：应用题单位换算要注意">
+      <button class="btn primary" onclick="pbAdd()">＋ 添加</button>
+    </div>`;
+  openModal('💬 管理常用评语库', body, `<button class="btn" onclick="closeModal()">完成</button>`, 460);
+}
+function pbAdd(){
+  const inp = document.getElementById('pbNew');
+  const v = (inp.value || '').trim();
+  if (!v) return toast('请输入评语内容');
+  if (PHRASES().includes(v)) return toast('该评语已存在');
+  state.phraseBank = PHRASES().concat(v);
+  save(); openPhraseBank();
+}
+function pbDel(i){
+  state.phraseBank = PHRASES().filter((_, k) => k !== i);
+  save(); openPhraseBank();
+}
 function refreshMultiBtn(s, field){
   const btn = document.getElementById(`mb-${field}-${s.id}`);
   if (!btn) return;
   const opts = field === 'behavior' ? BOPTS() : AOPTS();
-  const sel = rec(s, state.activeDate)[field] || [];
-  btn.innerHTML = sel.length
+  const r = rec(s, state.activeDate);
+  const sel = r[field] || [];
+  let inner = sel.length
     ? sel.map(k => { const o = optOf(opts, k); return o ? `<span class="chip ${o.type}">${o.short}</span>` : ''; }).join('')
     : '<span style="opacity:.7">点击选择…</span>';
+  const rm = (r.remark || '').trim();
+  if (rm) inner += `<span class="chip neutral" title="评语：${esc(rm)}">💬 ${rm.length > 8 ? rm.slice(0, 8) + '…' : rm}</span>`;
+  btn.innerHTML = inner;
 }
 document.addEventListener('click', () => closeMulti());
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMulti(); closeModal(); } });
