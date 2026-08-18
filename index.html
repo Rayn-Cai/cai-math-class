@@ -1847,19 +1847,13 @@ function normalizeState(){
   if (!state.labels || typeof state.labels !== 'object') state.labels = {};
   if (!state.labels.quiz) state.labels.quiz = '小测';
   if (!state.labels.homework) state.labels.homework = '家庭作业';
-  /* 进门小测等级阈值（100 分制）：优 ≥ excellent，良 ≥ good，中 ≥ pass，其余为差 */
+  /* 进门小测等级阈值：优 ≥ excellent，良 ≥ good，中 ≥ pass，其余为差（按当前 quizScale 折算，不绑定百分制） */
   if (!state.quizThresholds || typeof state.quizThresholds !== 'object')
     state.quizThresholds = { excellent:90, good:70, pass:60 };
-  /* 小测满分（录入 / 着色 / 等级线都按此换算）：默认 100，可改为 10 / 120 等 */
+  /* 小测满分（录入 / 着色 / 等级线都按此换算）：默认 100，可改为 10 / 120 等；刷新后保留上次的设置 */
   if (!state.quizScale || isNaN(+state.quizScale) || +state.quizScale <= 0) state.quizScale = 100;
-  /* 兼容旧数据：旧版按 10 分制（阈值 ≤10），自动×10 折算为 100 分制 */
-  else if ((state.quizThresholds.excellent|0) <= 10 && (state.quizThresholds.good|0) <= 10 && (state.quizThresholds.pass|0) <= 10) {
-    state.quizThresholds = {
-      excellent: state.quizThresholds.excellent * 10,
-      good:      state.quizThresholds.good      * 10,
-      pass:      state.quizThresholds.pass      * 10,
-    };
-  }
+  /* 注意：不再做「阈值≤10 自动×10」的兼容迁移——该逻辑会在每次刷新时重复翻倍，
+     导致用户自定义的非百分制设置被不断「修正」回百分制。旧版数据早已在更早版本加载时折算过，无需再处理。 */
   /* 测试分析：达标分改为 100 分制；旧 10 分制自动×10（8→80 等） */
   if (state.trendPass == null || isNaN(+state.trendPass)) state.trendPass = 60;
   else if (+state.trendPass <= 10) state.trendPass = +state.trendPass * 10;
@@ -1999,8 +1993,9 @@ function toast(msg){
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
 function openModal(title, bodyHtml, footHtml, maxWidth, noAnim){
+  ui._modalTs = Date.now();
   document.getElementById('modalRoot').innerHTML =
-    `<div class="overlay" onclick="if(event.target===this)closeModal()">
+    `<div class="overlay" onclick="if(event.target===this)maybeCloseModal()">
       <div class="modal ${noAnim ? 'no-anim' : ''}" style="max-width:${maxWidth || 520}px">
         <div class="modal-head"><h3>${title}</h3><button class="close-x" onclick="closeModal()">×</button></div>
         <div class="modal-body">${bodyHtml}</div>
@@ -2008,6 +2003,8 @@ function openModal(title, bodyHtml, footHtml, maxWidth, noAnim){
       </div>
     </div>`;
 }
+/* 点击遮罩关闭：加 250ms 保护期，避免「打开弹窗的同一点击」误触立即关闭（闪退） */
+function maybeCloseModal(){ if (ui._modalTs && Date.now() - ui._modalTs < 250) return; closeModal(); }
 function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
 function showImage(url){
   document.getElementById('lightRoot').innerHTML =
@@ -2804,10 +2801,10 @@ function openQuizLevels(){
   const scale = state.quizScale || 100;
   openModal('小测满分与等级线设置', `
     <div class="hint">先设定小测「满分」，录入与着色都按此满分换算；再自定义各等级最低分。依次判定 优 → 良 → 中 → 差（低于「中」归为「差」）。修改满分时等级线会按比例自动折算。</div>
-    <div class="form-row"><label>小测满分</label><input class="inp" id="qlvScale" type="number" min="1" max="200" step="1" value="${scale}" onchange="qlvRescale(this.value)"></div>
-    <div class="form-row"><label>优 ≥</label><input class="inp" id="qlvE" type="number" min="0" max="${scale}" step="0.5" value="${t.excellent}"></div>
-    <div class="form-row"><label>良 ≥</label><input class="inp" id="qlvG" type="number" min="0" max="${scale}" step="0.5" value="${t.good}"></div>
-    <div class="form-row"><label>中 ≥</label><input class="inp" id="qlvP" type="number" min="0" max="${scale}" step="0.5" value="${t.pass}"></div>`,
+    <div class="form-row"><label>小测满分</label><input class="inp" id="qlvScale" type="number" min="1" max="200" step="1" value="${scale}" onchange="qlvRescale(this.value);qlvAutosave()"></div>
+    <div class="form-row"><label>优 ≥</label><input class="inp" id="qlvE" type="number" min="0" max="${scale}" step="0.5" value="${t.excellent}" onchange="qlvAutosave()"></div>
+    <div class="form-row"><label>良 ≥</label><input class="inp" id="qlvG" type="number" min="0" max="${scale}" step="0.5" value="${t.good}" onchange="qlvAutosave()"></div>
+    <div class="form-row"><label>中 ≥</label><input class="inp" id="qlvP" type="number" min="0" max="${scale}" step="0.5" value="${t.pass}" onchange="qlvAutosave()"></div>`,
     `<button class="btn" onclick="closeModal()">取消</button>
      <button class="btn primary" onclick="saveQuizLevels()">保存</button>`);
 }
@@ -2834,6 +2831,20 @@ function saveQuizLevels(){
   state.quizScale = newScale;
   state.quizThresholds = { excellent:e, good:g, pass:p };
   save(); closeModal(); renderMain(); toast('满分与等级线已保存');
+}
+/* 字段失焦即静默保存：即使弹窗意外关闭，最新设置也已落盘，刷新不会丢失 */
+function qlvAutosave(){
+  const sc = parseFloat((document.getElementById('qlvScale') || {}).value);
+  const e = parseFloat((document.getElementById('qlvE') || {}).value);
+  const g = parseFloat((document.getElementById('qlvG') || {}).value);
+  const p = parseFloat((document.getElementById('qlvP') || {}).value);
+  if ([sc,e,g,p].some(v => isNaN(v)) || sc <= 0) return;       // 编辑中不完整，暂存
+  if (!(e >= g && g >= p)) return;                            // 顺序非法，暂存
+  if (e > sc || g > sc || p > sc) return;                    // 阈值超满分，暂存
+  state.quizScale = sc;
+  state.quizThresholds = { excellent:e, good:g, pass:p };
+  save();
+  updateSaveStatus('saved');
 }
 function statRowHtml(cls, d){
   const view = ui.quizView || 'range';
@@ -3326,17 +3337,17 @@ function openHwDetail(id){
   const d = hwDetailOf(r) || { time:'', score: r.homework || '', full: r.hwFull || state.hwScale || 10, status:'done', note:'' };
   const body = `
     <div class="hint">为 <b>${esc(f.s.name)}</b> 记录 ${state.activeDate} 的家庭作业情况。可自定义「本次满分」（如 10 / 100 / 120），趋势图与统计将按实际满分折算。</div>
-    <div class="form-row"><label>完成时间</label><input class="inp" id="hwTime" type="time" value="${esc(d.time || '')}"></div>
-    <div class="form-row"><label>得分</label><input class="inp" id="hwScore" type="number" min="0" step="0.5" value="${esc(d.score === '' ? '' : d.score)}" placeholder="本次实得"></div>
-    <div class="form-row"><label>本次满分</label><input class="inp" id="hwFull" type="number" min="1" step="0.5" value="${esc(d.full === '' ? '' : d.full)}" placeholder="如 10 / 100 / 120"></div>
+    <div class="form-row"><label>完成时间</label><input class="inp" id="hwTime" type="time" value="${esc(d.time || '')}" onchange="hwDetailAutosave(${id})"></div>
+    <div class="form-row"><label>得分</label><input class="inp" id="hwScore" type="number" min="0" step="0.5" value="${esc(d.score === '' ? '' : d.score)}" placeholder="本次实得" onchange="hwDetailAutosave(${id})"></div>
+    <div class="form-row"><label>本次满分</label><input class="inp" id="hwFull" type="number" min="1" step="0.5" value="${esc(d.full === '' ? '' : d.full)}" placeholder="如 10 / 100 / 120" onchange="hwDetailAutosave(${id})"></div>
     <div class="form-row"><label>完成情况</label>
-      <select class="inp" id="hwStatus">
+      <select class="inp" id="hwStatus" onchange="hwDetailAutosave(${id})">
         <option value="done" ${d.status === 'done' ? 'selected' : ''}>完成</option>
         <option value="partial" ${d.status === 'partial' ? 'selected' : ''}>部分完成</option>
         <option value="none" ${d.status === 'none' ? 'selected' : ''}>未完成</option>
       </select>
     </div>
-    <div class="form-row"><label>备注</label><textarea class="inp" id="hwNote" rows="2" placeholder="如：书写工整、订正及时…">${esc(d.note || '')}</textarea></div>`;
+    <div class="form-row"><label>备注</label><textarea class="inp" id="hwNote" rows="2" placeholder="如：书写工整、订正及时…" onchange="hwDetailAutosave(${id})">${esc(d.note || '')}</textarea></div>`;
   const foot = `<button class="btn primary" onclick="saveHwDetail(${id})">保存</button>
                 <button class="btn" onclick="closeModal()">取消</button>`;
   openModal('📚 家庭作业详情 · ' + esc(f.s.name), body, foot);
@@ -3365,6 +3376,21 @@ function saveHwDetail(id){
   applyHwDetail(r, d);
   save(); closeModal(); renderMain();
   toast('已保存家庭作业详情');
+}
+/* 字段失焦即静默保存：即使弹窗意外关闭，最新作业详情也已落盘 */
+function hwDetailAutosave(id){
+  const f = findStudentById(id); if (!f) return;
+  const r = rec(f.s, state.activeDate);
+  const d = {
+    time:   (document.getElementById('hwTime')  || {}).value || '',
+    score:  (document.getElementById('hwScore') || {}).value,
+    full:   (document.getElementById('hwFull')  || {}).value,
+    status: (document.getElementById('hwStatus')|| {}).value || 'done',
+    note:   (document.getElementById('hwNote')  || {}).value || ''
+  };
+  applyHwDetail(r, d);
+  save();
+  updateSaveStatus('saved');
 }
 /* 修改「小测 / 家庭作业」列名（日常反馈表表头点击） */
 function openLabelEditor(k){
