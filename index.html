@@ -563,6 +563,9 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .hw-det-badge.hw-done{background:var(--green-light);color:var(--green)}
 .hw-det-badge.hw-partial{background:#fff3d6;color:#b7791f}
 .hw-det-badge.hw-none{background:var(--red-light);color:var(--red)}
+.hw-det-badge.hw-pending{background:var(--surface-alt);color:var(--text-muted);border:1px dashed var(--border-strong)}
+.tfoot-row td{background:var(--surface-alt)}
+.tfoot-tag{display:inline-block;padding:1px 9px;border-radius:999px;background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:800;vertical-align:middle}
 .hw-btn{width:30px;height:30px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:14px;font-weight:800;color:var(--text-muted);transition:.15s}
 .hw-btn:hover{border-color:var(--accent)}
 .hw-btn.on{background:var(--green-light);border-color:#a7e0b8;color:var(--green)}
@@ -794,6 +797,18 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .sel{border:1px solid var(--border);border-radius:9px;padding:7px 10px;background:var(--surface);font-size:12.5px;font-weight:600}
 .pf-sel{border:1px solid var(--border);border-radius:8px;padding:5px 8px;background:var(--surface);font-size:12.5px;font-weight:600;width:100%;max-width:170px;cursor:pointer}
 .pf-sel:focus{outline:2px solid var(--accent-light)}
+.pf-name-cell{display:flex;align-items:center;gap:7px}
+.pf-num{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 5px;border-radius:7px;background:var(--surface-alt);border:1px solid var(--border);color:var(--text-muted);font-size:11px;font-weight:800;flex:0 0 auto}
+.pf-avatar-img{width:26px;height:26px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);flex:0 0 auto}
+.pf-field{margin-bottom:10px}
+.pf-field label{display:block;font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:4px}
+.pf-field .sel{width:100%}
+.pf-custom-head{display:flex;align-items:center;justify-content:space-between;margin:14px 0 6px}
+.pf-custom-list{display:flex;flex-direction:column;gap:6px}
+.pf-custom{display:flex;gap:6px;align-items:center}
+.pf-custom .pf-cl{flex:0 0 38%}
+.pf-custom .pf-cv{flex:1}
+.pf-empty{border:1.5px dashed var(--border-strong);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--text-muted);text-align:center;background:var(--surface-alt)}
 .medal{font-size:16px}
 tr.nodata{opacity:.45}
 
@@ -3337,9 +3352,13 @@ function multiBtnHtml(s, d, field){
 /* 家庭作业单元格：分数输入/完成模式 + 📝 详情按钮 + 完成情况徽标 */
 function renderHwCell(s, r, h){
   const d = hwDetailOf(r);
+  const hasScore = String(r.homework || '').trim() !== '';
   const correctBadge = (d && (d.status === 'none' || d.status === 'partial') && d.correct === 'pending')
     ? `<span class="hw-det-badge hw-correct" title="作业未完成且未订正">待订正</span>` : '';
-  const badge = (d ? `<span class="hw-det-badge hw-${d.status || 'done'}">${hwStatusLabel(d.status)}</span>` : '') + correctBadge;
+  const statusBadge = hasScore
+    ? (d ? `<span class="hw-det-badge hw-${d.status || 'done'}">${hwStatusLabel(d.status)}</span>` : '')
+    : `<span class="hw-det-badge hw-pending" title="点击 📝 录入得分与完成情况">待录入</span>`;
+  const badge = statusBadge + correctBadge;
   const detBtn = `<button class="hw-det-btn ${d ? 'on' : ''}" title="作业详情（完成时间/得分/本次满分/完成情况）" onclick="openHwDetail(${s.id})">📝</button>`;
   if (state.hwMode === 'done') {
     return `<span class="hw-done-group">
@@ -3395,8 +3414,8 @@ function renderRoster(){
     </tr>`;
   }).join('');
 
-  const foot = (label, pick) => `<tr>
-      <td colspan="4" style="text-align:right">${label}</td>
+  const foot = (label, pick) => `<tr class="tfoot-row">
+      <td colspan="4" style="text-align:right"><span class="tfoot-tag">${label}</span></td>
       <td class="c ${qs ? valClass(pick(qs)) : ''}">${qs ? fmt1(pick(qs)) : '—'}</td>
       <td class="c ${hs ? valClass(pick(hs)) : ''}">${hs ? fmt1(pick(hs)) : '—'}</td>
       <td></td>
@@ -5984,7 +6003,7 @@ function renderProfile(){
       || String(p.class || '').toLowerCase().includes(q)
       || String(p.school || '').toLowerCase().includes(q)
       || (p.tags || []).some(t => String(t).toLowerCase().includes(q));
-  }).map(id => {
+  }).map((id, i) => {
     const p = sp[id] || {};
     const inClass = enrolled.has(id);
     const custom = (p.custom || []).filter(x => x && x.label);
@@ -5993,12 +6012,12 @@ function renderProfile(){
     const tags = (p.tags || []).filter(Boolean);
     const avatar = p.photo
       ? `<img class="pf-avatar-img" src="${esc(p.photo)}" alt="">`
-      : `<span class="pf-avatar">${esc((p.name || '?').slice(0, 1))}</span>`;
+      : '';
     const tagsTxt = tags.length
       ? `<span class="pf-tags">${tags.slice(0, 2).map(t => `<span class="pf-tag">${esc(t)}</span>`).join('')}${tags.length > 2 ? `<span class="pf-tag more">+${tags.length - 2}</span>` : ''}</span>`
       : '—';
     return `<tr>
-      <td class="nm"><span class="pf-name-cell">${avatar}<button class="stu-link" onclick="openProfileEditor('${id}')" title="点击填写 / 编辑基础信息">${esc(p.name || '未命名')}</button></span></td>
+      <td class="nm"><span class="pf-name-cell"><span class="pf-num">${i + 1}</span>${avatar}<button class="stu-link" onclick="openProfileEditor('${id}')" title="点击填写 / 编辑基础信息">${esc(p.name || '未命名')}</button></span></td>
       <td>${profileSelect(id, 'class', p.class)}</td>
       <td>${profileSelect(id, 'school', p.school)}</td>
       <td>${tagsTxt}</td>
@@ -6048,7 +6067,7 @@ function renderProfileEditor(){
         <b>📋 自定义字段</b>
         <button class="btn sm" onclick="addProfileCustom()">＋ 添加字段</button>
       </div>
-      <div class="pf-custom-list">${customHtml || '<div class="muted" style="padding:6px 0">暂无自定义字段，点「＋ 添加字段」自行添加（如：家长联系方式、特长、性格特点…）</div>'}</div>
+      <div class="pf-custom-list">${customHtml || '<div class="pf-empty">暂无自定义字段 · 点「＋ 添加字段」添加（如：家长电话、特长、性格特点…）</div>'}</div>
     </div>
   `, `<button class="btn primary" onclick="saveProfileEditor('${ui.profileDraftId}')">💾 保存</button>
      <button class="btn" onclick="closeModal()">取消</button>`, 520);
