@@ -1074,6 +1074,26 @@ th.atc-d.we-sun small{color:var(--red)}
 .hist-item .hi-ico{font-size:16px}
 .hist-item .hi-n{font-weight:800}
 .hist-item .hi-t{color:var(--text-muted);font-size:10.5px;margin-top:2px}
+/* ===== 抽奖台：形态切换 + 盲盒 ===== */
+.ld-mode{display:flex;gap:6px;justify-content:center;margin:2px 0 10px}
+.ld-box-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;padding:6px 0 4px}
+.ld-box{position:relative;width:152px;height:132px;cursor:pointer;filter:drop-shadow(0 12px 22px rgba(8,40,30,.38))}
+.ld-box-body{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:142px;height:98px;border-radius:0 0 16px 16px;
+  background:linear-gradient(160deg,#1d9e75,#0f6e56);box-shadow:inset 0 0 0 3px rgba(255,255,255,.28)}
+.ld-box-body::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;
+  border:2px dashed rgba(255,255,255,.5)}
+.ld-box-lid{position:absolute;top:0;left:50%;transform:translateX(-50%);width:152px;height:46px;border-radius:16px 16px 6px 6px;
+  background:linear-gradient(160deg,#2bb98c,#138a68);box-shadow:inset 0 0 0 3px rgba(255,255,255,.32);transform-origin:bottom center;z-index:3;
+  transition:transform .55s cubic-bezier(.3,1.4,.5,1)}
+.ld-box-ico{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);font-size:36px;z-index:2;opacity:0;transition:opacity .3s .28s}
+.ld-box.opening{animation:boxShake .5s ease-in-out 2}
+.ld-box.opening .ld-box-lid{transform:translateX(-50%) translateY(-48px) rotate(-16deg)}
+.ld-box.open .ld-box-lid{transform:translateX(-50%) translateY(-54px) rotate(-22deg)}
+.ld-box.open .ld-box-ico{opacity:1}
+.ld-box.opening .ld-box-ico{opacity:1}
+@keyframes boxShake{0%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-6px) rotate(-3deg)}75%{transform:translateX(6px) rotate(3deg)}}
+.ld-spinning .ld-box-wrap .draw-btn{animation:pulseGlow 1s ease-in-out infinite}
+@keyframes pulseGlow{0%,100%{box-shadow:0 10px 26px rgba(245,158,11,.46)}50%{box-shadow:0 10px 34px rgba(245,158,11,.9)}}
 
 /* 中奖庆祝层 */
 #confettiRoot{position:fixed;inset:0;pointer-events:none;z-index:1750;overflow:hidden}
@@ -7692,6 +7712,10 @@ function buildLdPanel(resultHtml){
             ${ui.ldEmbed ? '' : '<button class="close-x" onclick="closeLuckyDraw()">×</button>'}
           </div>
         </div>
+        <div class="ld-mode">
+          <button class="seg-btn ${ui.ldMode!=='box'?'on':''}" onclick="setLdMode('wheel')">🎡 转盘</button>
+          <button class="seg-btn ${ui.ldMode==='box'?'on':''}" onclick="setLdMode('box')">🎁 盲盒</button>
+        </div>
         <div class="ld-controls">
           <select class="sel" style="flex:1;min-width:170px" onchange="ui.ldStudentKey=this.value;ldRender()">
             ${allStudents().length ? allStudents().map(({ s, c }) => {
@@ -7704,6 +7728,17 @@ function buildLdPanel(resultHtml){
           <span class="pts-show">可用积分 ${pts}</span>
         </div>
 
+        ${ui.ldMode==='box' ? `
+        <div class="ld-box-wrap">
+          <div class="ld-box" id="ldBox" onclick="if(!ui.ldSpinning)openBox()">
+            <div class="ld-box-lid"></div>
+            <div class="ld-box-body"><span class="ld-box-ico">🎁</span></div>
+          </div>
+          <button class="draw-btn" id="ldBoxBtn" ${can ? '' : 'disabled'} onclick="openBox()">
+            ${ui.ldSpinning ? '🎁 开启中…' : `🎁 开盲盒（${LCOST()} 积分）`}
+          </button>
+        </div>
+        ` : `
         <div class="wheel-wrap">
           <div class="wheel-glow"></div>
           <div class="wheel-ring"></div>
@@ -7718,6 +7753,7 @@ function buildLdPanel(resultHtml){
         <button class="draw-btn" id="ldBtn" ${can ? '' : 'disabled'} onclick="spinWheel()">
           ${ui.ldSpinning ? '🌀 转动中…' : `🎯 开始抽奖（${LCOST()} 积分）`}
         </button>
+        `}
         ${(f && pts < LCOST()) ? `<div class="hint" style="color:#fecaca;font-weight:700;border-color:rgba(248,113,113,.4);background:rgba(248,113,113,.12)">积分不足 ${LCOST()} 分，暂时不能抽奖哦～</div>` : ''}
 
         <div class="ld-result ${resultHtml ? 'win' : ''}" id="ldResult">
@@ -7732,7 +7768,7 @@ function buildLdPanel(resultHtml){
 
       <div class="ld-right">
         <div class="row" style="justify-content:space-between;margin-bottom:10px">
-          <b style="font-size:13.5px">🕘 抽奖历史</b>
+          <b style="font-size:13.5px">🏆 中奖记录墙 <span class="muted" style="font-weight:600">${state.ldHistory.length}</span></b>
           ${state.ldHistory.length ? `<button class="btn sm danger" onclick="clearLdHistory()">清空</button>` : ''}
         </div>
         ${state.ldHistory.length ? state.ldHistory.map(h => `
@@ -7806,37 +7842,63 @@ function spinWheel(){
   setTimeout(() => {
     stopPointerKnock();
     ui.ldSpinning = false;
-    const now = new Date();
-    const time = now.toTimeString().slice(0, 8);
     const stu = f.s;
-    stu.spentPoints = (stu.spentPoints || 0) + LCOST();
-    stu.ptsLog = stu.ptsLog || [];
-    stu.ptsLog.push({ date: todayStr(), time, amount: -LCOST(), reason: `抽奖消耗（${seg.label}）`, source: 'luckydraw' });
-
     let extra = '';
     if (seg.key === 'milktea') extra = milkTeaFlavor(stu);
-
-    const entry = { id: 'h' + uid(), studentName: stu.name, className: f.c.name,
-      key: seg.key, label: seg.label, icon: seg.icon, date: todayStr(), time, extra };
-    state.ldHistory.unshift(entry);
-    if (state.ldHistory.length > 50) state.ldHistory = state.ldHistory.slice(0, 50);
-    save();
-
-    let html = `<div class="rr-ico">${seg.icon}</div><div class="rr-t">${esc(seg.label)}</div>`;
-    if (seg.key === 'milktea') {
-      html += `<div class="rr-d">🧋 推荐饮品：<b>${esc(extra)}</b></div>`;
-    } else if (seg.key === 'universal') {
-      html += `<div class="rr-d">${esc(seg.desc || '')}</div>
-        <div class="uni-opts">${uniKeys().map(o =>
-          `<button class="btn" onclick="chooseUniversal('${entry.id}','${o.key}')">${o.icon} ${esc(o.label)}</button>`
-        ).join('')}</div>`;
-    } else {
-      html += `<div class="rr-d">${esc(seg.desc || '')}</div>`;
-    }
-    ldRender(html);
-    showWinCard(seg, stu.name, f.c.name, extra, entry.id);
-    toast(`🎉 ${stu.name} 抽中了「${seg.label}」${extra ? '·' + extra : ''}`);
+    finishDraw(seg, extra);
   }, 5300);
+}
+/* 抽奖结算（转盘与盲盒共用）：扣分、记历史、渲染结果与庆祝 */
+function finishDraw(seg, extra){
+  const f = ldStudent();
+  if (!f) return;
+  const stu = f.s;
+  const time = new Date().toTimeString().slice(0, 8);
+  stu.spentPoints = (stu.spentPoints || 0) + LCOST();
+  stu.ptsLog = stu.ptsLog || [];
+  stu.ptsLog.push({ date: todayStr(), time, amount: -LCOST(), reason: `抽奖消耗（${seg.label}）`, source: 'luckydraw' });
+  const entry = { id: 'h' + uid(), studentName: stu.name, className: f.c.name,
+    key: seg.key, label: seg.label, icon: seg.icon, date: todayStr(), time, extra };
+  state.ldHistory.unshift(entry);
+  if (state.ldHistory.length > 50) state.ldHistory = state.ldHistory.slice(0, 50);
+  save();
+  let html = `<div class="rr-ico">${seg.icon}</div><div class="rr-t">${esc(seg.label)}</div>`;
+  if (seg.key === 'milktea') {
+    html += `<div class="rr-d">🧋 推荐饮品：<b>${esc(extra)}</b></div>`;
+  } else if (seg.key === 'universal') {
+    html += `<div class="rr-d">${esc(seg.desc || '')}</div>
+      <div class="uni-opts">${uniKeys().map(o =>
+        `<button class="btn" onclick="chooseUniversal('${entry.id}','${o.key}')">${o.icon} ${esc(o.label)}</button>`
+      ).join('')}</div>`;
+  } else {
+    html += `<div class="rr-d">${esc(seg.desc || '')}</div>`;
+  }
+  ldRender(html);
+  showWinCard(seg, stu.name, f.c.name, extra, entry.id);
+  toast(`🎉 ${stu.name} 抽中了「${seg.label}」${extra ? '·' + extra : ''}`);
+}
+function setLdMode(v){ ui.ldMode = v; ldRender(); }
+function openBox(){
+  const f = ldStudent();
+  if (!f) return toast('请先选择学生');
+  if (availablePoints(f.s) < LCOST()) return toast('积分不足');
+  if (ui.ldSpinning) return;
+  const seg = pickWeighted();
+  ui.ldSpinning = true;
+  const box = document.getElementById('ldBox');
+  const btn = document.getElementById('ldBoxBtn');
+  const panel = document.querySelector('.ld-panel');
+  if (panel) panel.classList.add('ld-spinning');
+  if (btn) { btn.disabled = true; btn.textContent = '🎁 开启中…'; }
+  if (box) { box.classList.remove('open'); void box.offsetWidth; box.classList.add('opening'); }
+  setTimeout(() => {
+    ui.ldSpinning = false;
+    if (panel) panel.classList.remove('ld-spinning');
+    let extra = '';
+    if (seg.key === 'milktea') extra = milkTeaFlavor(f.s);
+    finishDraw(seg, extra);
+    if (box) { box.classList.remove('opening'); box.classList.add('open'); }
+  }, 1850);
 }
 /* 万能券可选子项：优先取现有奖项中的四张券，缺失则回退出厂配置，避免用户删项后崩溃 */
 function uniKeys(){
