@@ -1165,8 +1165,7 @@ th.atc-d.we-sun small{color:var(--red)}
 .pe-tab:hover{border-color:var(--accent);color:var(--accent)}
 .pe-tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .pe-mod{display:flex;flex-direction:column;gap:10px}
-.mod-bar{display:flex;height:18px;border-radius:9px;overflow:hidden;background:var(--surface-alt);border:1px solid var(--border);margin-bottom:9px}
-.mod-seg{height:100%;transition:width .3s}
+/* 模块构成已改为环形图（moduleDonutSvg），旧条形样式弃用 */
 .mod-legend{display:flex;flex-wrap:wrap;gap:14px}
 .mod-lg{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--text-secondary)}
 .mod-lg i{width:12px;height:12px;border-radius:3px;flex:0 0 auto}
@@ -1285,34 +1284,9 @@ th.atc-d.we-sun small{color:var(--red)}
 .sp-bar{display:flex;height:6px;border-radius:4px;overflow:hidden;background:var(--surface-alt);margin-top:6px;gap:1px}
 .sp-bar span{height:100%;transition:width .3s}
 .stu-pts:hover{box-shadow:0 3px 12px rgba(30,70,150,.1);border-color:var(--border-strong)}
-/* 学生积分卡片网格：一屏看全所有学生 */
-.ps-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(186px,1fr));gap:12px}
-.ps-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:13px 14px;cursor:pointer;
-  transition:.14s;box-shadow:0 2px 8px rgba(30,70,150,.06);position:relative;overflow:hidden}
-.ps-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(30,70,150,.16);border-color:var(--accent)}
-.ps-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--accent),var(--accent-dark))}
-.psc-top{display:flex;align-items:center;gap:9px}
-.psc-rank{font-size:15px;font-weight:900;min-width:24px;text-align:center}
-.psc-info{flex:1;min-width:0}
-.psc-name{font-size:14.5px;font-weight:800;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.psc-cls{font-size:11px;color:var(--text-muted);font-weight:600}
-.psc-total{font-size:20px;font-weight:900;color:var(--accent-dark);line-height:1}
-.psc-total i{font-size:11px;font-weight:700;font-style:normal;color:var(--text-muted);margin-left:1px}
-.psc-bar{display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--surface-alt);margin:10px 0 11px;gap:1px}
-.psc-bar span{height:100%;transition:width .3s}
-.psc-acts{display:flex;gap:7px}
-.psc-add{flex:1;border:1.5px solid var(--green);background:var(--green-light);color:var(--green);border-radius:9px;
-  padding:6px 0;font-size:12px;font-weight:800;cursor:pointer;transition:.12s}
-.psc-add:hover{background:var(--green);color:#fff}
-.psc-ld{flex:1;border:1.5px solid var(--border);background:#fff;color:var(--text-secondary);border-radius:9px;
-  padding:6px 0;font-size:12px;font-weight:800;cursor:pointer;transition:.12s}
-.psc-ld:hover{border-color:var(--accent);color:var(--accent);background:var(--surface-alt)}
-.sp-total{background:var(--accent);color:#fff;border-radius:999px;padding:5px 13px;font-size:14px;font-weight:800;flex:0 0 auto}
-.log-item{display:flex;gap:9px;align-items:center;background:#fff;border:1px solid var(--border);
-  border-radius:10px;padding:8px 11px;margin-bottom:6px;font-size:12.5px}
+/* 旧学生积分卡片（ps-card/psc-*）已由排行榜 rank-row 替代，样式弃用 */
 .log-amt{font-weight:800;flex:0 0 auto}
 .log-amt.plus{color:var(--green)}.log-amt.minus{color:var(--red)}
-.log-meta{color:var(--text-muted);font-size:10.5px}
 /* ===== 积分统计升级：看板 / 排行榜 / 明细（C 数据仪表盘风） ===== */
 .ps-tabs{display:flex;gap:6px;margin:2px 0 14px;flex-wrap:wrap}
 .ps-tab{padding:8px 16px;border:1.5px solid var(--border);background:#fff;border-radius:999px;font-size:13px;font-weight:800;color:var(--text-secondary);cursor:pointer;transition:.14s}
