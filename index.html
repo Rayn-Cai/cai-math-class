@@ -1387,6 +1387,38 @@ th.atc-d.we-sun small{color:var(--red)}
   .ov-grid, .pv-grid, .sc-stats{ grid-template-columns: repeat(2, 1fr); }
   .ov-card .ov-v{ font-size: 22px; }
 }
+/* ===== 积分闭环：小卖部 / 兑换 ===== */
+.shop-wrap{display:flex;flex-direction:column;gap:12px}
+.shop-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.shop-cur{font-size:13px}
+.pts-avail{color:var(--accent);font-weight:800;font-size:15px}
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.shop-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;transition:.18s}
+.shop-card:hover{box-shadow:0 4px 14px rgba(15,110,86,.12);transform:translateY(-2px)}
+.shop-card.disabled{opacity:.55;filter:grayscale(.35)}
+.shop-ico{font-size:34px;line-height:1}
+.shop-name{font-weight:800;font-size:14px}
+.shop-desc{font-size:11.5px;color:var(--text-muted);min-height:16px}
+.shop-meta{display:flex;gap:10px;font-size:12px;margin:2px 0 4px}
+.shop-cost{color:var(--accent);font-weight:700}
+.shop-stock{color:var(--text-muted)}
+.redeem-log{margin-top:4px;border-top:1px dashed var(--border);padding-top:10px}
+.redeem-log h4{font-size:13.5px;margin:0 0 8px}
+.redeem-item{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)}
+.ri-ico{font-size:20px}
+.ri-body{flex:1;min-width:0}
+.ri-meta{font-size:11px;color:var(--text-muted)}
+.shop-mgr{display:flex;flex-direction:column;gap:10px}
+.shop-mgr-list{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow:auto}
+.smg-row{display:grid;grid-template-columns:46px 1fr 64px 64px 1fr auto auto;gap:6px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 8px}
+.smg-ico{width:100%;text-align:center;font-size:18px}
+.smg-active{font-size:12px;display:flex;align-items:center;gap:4px;white-space:nowrap}
+@media (max-width:640px){
+  .shop-grid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr))}
+  .smg-row{grid-template-columns:40px 1fr 56px;grid-auto-flow:row;row-gap:8px}
+  .smg-row .smg-desc{grid-column:1/-1}
+  .smg-row .smg-active{grid-column:1/-1}
+}
 
 </style>
 </head>
@@ -1757,6 +1789,15 @@ function normalizeState(){
   state.weeklyExams.students = state.weeklyExams.students || [];
   state.weeklyExams.records = state.weeklyExams.records || [];
   state.ldHistory = state.ldHistory || [];
+  /* 小卖部商品（积分兑换闭环）：教师管理，学生用积分兑换 */
+  if (!Array.isArray(state.shopItems) || !state.shopItems.length)
+    state.shopItems = [
+      { id:'sh1', name:'文具盲盒', icon:'✏️', cost:20, stock:30, desc:'随机精美文具一份', active:true },
+      { id:'sh2', name:'免作业券', icon:'🎫', cost:50, stock:10, desc:'可兑换一次免做家庭作业', active:true },
+      { id:'sh3', name:'教师签名卡', icon:'📸', cost:80, stock:5, desc:'班主任亲签收藏卡', active:true },
+      { id:'sh4', name:'课堂点歌', icon:'🎵', cost:30, stock:20, desc:'点一首喜欢的歌课间播放', active:true },
+    ];
+  state.redeemLogs = state.redeemLogs || [];
   if (!state.tierCfg || typeof state.tierCfg !== 'object') state.tierCfg = { bronze:60, silver:120, gold:200 };
   if (!state.activeDate) state.activeDate = todayStr();
   if (!state.activeTab) state.activeTab = 'roster';
@@ -1791,6 +1832,11 @@ function normalizeState(){
       exam: { mathFull: 120, mathFullBonus: 5, mathHigh: 100, mathHighBonus: 3, totalHigh: 500, totalHighBonus: 3, improve: 15, improveBonus: 2, cap: 10 },
       weekly: { full: 100, fullBonus: 3, high: 85, highBonus: 2, cap: 5 },
     };
+  }
+  /* v3：新增「作业订正加分」字段，旧数据补齐默认值 */
+  if ((state.points.version || 0) < 3) {
+    state.points.version = 3;
+    if (state.points.roster && state.points.roster.hwCorrectBonus == null) state.points.roster.hwCorrectBonus = 1;
   }
   if (!Array.isArray(state.tabOrder) || !state.tabOrder.length)
     state.tabOrder = TABS.map(t => t.key);
@@ -2012,7 +2058,7 @@ function showImage(url){
    所有积分均由数据自动累计，无需手动逐条加；规则改后历史积分即时重算。 */
 function defaultPoints(){
   return {
-    version: 2,
+    version: 3,
     roster: {
       att: { present: 1, late: 1, leave: 0 }, // 出勤基础分
       quizFull: 100, quizFullBonus: 2,         // 小测满分(100)额外奖励
@@ -2021,6 +2067,7 @@ function defaultPoints(){
       bothBonus: 2,                            // 小测与作业同日均满分加成
       behaviorPerTag: 0,                       // 课堂表现每标签积分（默认 0）
       absorptionPerTag: 0,                     // 课堂吸收每标签积分（默认 0）
+      hwCorrectBonus: 1,                       // 作业订正完成额外奖励
       cap: 7,                                 // 单日积分上限
     },
     checkin: {
@@ -2062,6 +2109,7 @@ function dayPoints(r){
   if (q !== null && q === P.quizFull) p += P.quizFullBonus;
   else if (q !== null && q >= P.quizHigh) p += P.quizHighBonus;
   if (h !== null && h === P.hwFull) p += P.hwFullBonus;
+  if (r.hwDetail && r.hwDetail.correct === 'done') p += (P.hwCorrectBonus || 0);
   if (q !== null && q === P.quizFull && h !== null && h === P.hwFull) p += P.bothBonus;
   (r.behavior || []).forEach(() => { p += P.behaviorPerTag; });
   (r.absorption || []).forEach(() => { p += P.absorptionPerTag; });
@@ -8138,7 +8186,7 @@ function peReadAll(){
       quizHigh: peNum('pe_roster_qh'), quizHighBonus: peNum('pe_roster_qhb'),
       hwFull: peNum('pe_roster_hf'), hwFullBonus: peNum('pe_roster_hb'),
       bothBonus: peNum('pe_roster_both'),
-      behaviorPerTag: peNum('pe_roster_bpt'), absorptionPerTag: peNum('pe_roster_apt'),
+      behaviorPerTag: peNum('pe_roster_bpt'), absorptionPerTag: peNum('pe_roster_apt'), hwCorrectBonus: peNum('pe_roster_hcb'),
       cap: peNum('pe_roster_cap'),
     },
     checkin: {
@@ -8173,6 +8221,7 @@ function peModuleInputs(key, P){
       <div class="pe-row"><span class="pe-lbl">📚 作业满分奖励</span>满分线 ${n('pe_roster_hf', r.hwFull)} 分 → 额外 +${n('pe_roster_hb', r.hwFullBonus)}</div>
       <div class="pe-row"><span class="pe-lbl">🌟 双满分加成</span>小测与作业同日均满分 → 额外 +${n('pe_roster_both', r.bothBonus)}</div>
       <div class="pe-row"><span class="pe-lbl">🎭 课堂表现 / 吸收</span>每标签 +${n('pe_roster_bpt', r.behaviorPerTag)} / +${n('pe_roster_apt', r.absorptionPerTag)}</div>
+      <div class="pe-row"><span class="pe-lbl">✏️ 作业订正加分</span>订正完成（已订正）→ 额外 +${n('pe_roster_hcb', r.hwCorrectBonus)}</div>
       <div class="pe-row"><span class="pe-lbl">🔒 单日上限</span>${n('pe_roster_cap', r.cap)} 分</div>`;
   }
   if (key === 'checkin') {
@@ -8348,9 +8397,10 @@ function psFilteredLogs(){
   allStudents().forEach(({ s, c }) => (s.ptsLog || []).forEach(l =>
     flogs.push({ ...l, name: s.name, className: c.name })));
   flogs.sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
-  if (src === 'add') flogs = flogs.filter(l => l.amount > 0 && l.source !== 'luckydraw');
-  else if (src === 'sub') flogs = flogs.filter(l => l.amount < 0 && l.source !== 'luckydraw');
+  if (src === 'add') flogs = flogs.filter(l => l.amount > 0 && l.source !== 'luckydraw' && l.source !== 'redeem');
+  else if (src === 'sub') flogs = flogs.filter(l => l.amount < 0 && l.source !== 'luckydraw' && l.source !== 'redeem');
   else if (src === 'lottery') flogs = flogs.filter(l => l.source === 'luckydraw');
+  else if (src === 'redeem') flogs = flogs.filter(l => l.source === 'redeem');
   if (range === '7' || range === '30') {
     const cutoff = shiftDate(todayStr(), -(range === '7' ? 7 : 30));
     flogs = flogs.filter(l => l.date >= cutoff);
@@ -8363,7 +8413,7 @@ function exportPointsLog(){
   if (!flogs.length) return toast('当前筛选无积分记录');
   const rows = [['日期','时间','姓名','班级','类型','变动','原因']];
   flogs.forEach(l => rows.push([l.date, l.time, l.name, l.className,
-    l.source === 'luckydraw' ? '抽奖' : (l.amount > 0 ? '加分' : '扣分'), l.amount, l.reason || '']));
+    l.source === 'redeem' ? '兑换' : l.source === 'luckydraw' ? '抽奖' : (l.amount > 0 ? '加分' : '扣分'), l.amount, l.reason || '']));
   downloadText(`积分明细_${todayStr()}.csv`, toCSV(rows));
   toast('已导出积分明细');
 }
@@ -8415,7 +8465,7 @@ function renderPointsStats(){
   const TIER_COLORS = { gold:'#caa54a', silver:'#9aa7b5', bronze:'#c08457', none:'#7c8a96' };
 
   const tab = ui.psTab || 'overview';
-  const TABS = [['overview','📊 概览看板'],['rank','🏅 排行榜'],['detail','🧾 积分明细']];
+  const TABS = [['overview','📊 概览看板'],['rank','🏅 排行榜'],['detail','🧾 积分明细'],['shop','🛒 小卖部']];
 
   const overviewHtml = `
     <div class="kpi-band">
@@ -8469,7 +8519,7 @@ function renderPointsStats(){
   const flogs = psFilteredLogs();
   const detailHtml = `
     <div class="tl-filters">
-      <div class="seg">${[['all','全部'],['add','加分'],['sub','扣分'],['lottery','抽奖']].map(([v,l]) =>
+      <div class="seg">${[['all','全部'],['add','加分'],['sub','扣分'],['lottery','抽奖'],['redeem','兑换']].map(([v,l]) =>
         `<button class="seg-btn ${(ui.psFilterSrc||'all')===v?'on':''}" onclick="setPsFilterSrc('${v}')">${l}</button>`).join('')}</div>
       <div class="seg">${[['all','全部'],['7','近7天'],['30','近30天']].map(([v,l]) =>
         `<button class="seg-btn ${(ui.psFilterRange||'all')===v?'on':''}" onclick="setPsFilterRange('${v}')">${l}</button>`).join('')}</div>
@@ -8487,6 +8537,40 @@ function renderPointsStats(){
           <span class="log-amt ${l.amount>0?'plus':'minus'}">${l.amount>0?'+':''}${l.amount}</span>
         </div>`).join('') : '<div class="empty" style="padding:30px">暂无符合条件的积分记录</div>'}
     </div>`;
+
+  const shopHtml = (() => {
+    const f = findStudentByKey(ui.psStudentKey);
+    const stu = f ? f.s : null;
+    const avail = stu ? availablePoints(stu) : 0;
+    const items = state.shopItems || [];
+    const logs = (state.redeemLogs || []).slice(0, 30);
+    const card = it => {
+      const on = it.active && it.stock > 0 && avail >= it.cost;
+      const btn = it.active ? (it.stock > 0 ? (avail >= it.cost ? '兑换' : '积分不足') : '已售罄') : '已下架';
+      return `<div class="shop-card ${it.active && it.stock > 0 ? '' : 'disabled'}">
+        <div class="shop-ico">${esc(it.icon || '🛍️')}</div>
+        <div class="shop-name">${esc(it.name)}</div>
+        <div class="shop-desc">${esc(it.desc || '')}</div>
+        <div class="shop-meta"><span class="shop-cost">${it.cost} 分</span><span class="shop-stock">库存 ${it.stock}</span></div>
+        <button class="btn ${on ? 'primary' : ''}" ${on ? '' : 'disabled'} onclick="redeemItem('${it.id}')">${btn}</button>
+      </div>`;
+    };
+    return `<div class="shop-wrap">
+      <div class="shop-bar">
+        <div class="shop-cur">兑换人：<b>${stu ? esc(stu.name) : '未选择'}</b> · 可用积分 <b class="pts-avail">${avail}</b></div>
+        <button class="btn sm" onclick="openShopManager()">⚙ 管理商品</button>
+      </div>
+      ${stu ? `<div class="shop-grid">${items.length ? items.map(card).join('') : '<div class="empty" style="grid-column:1/-1">暂无商品，点「管理商品」添加</div>'}</div>`
+            : `<div class="empty" style="padding:26px">请在上方「快捷加减积分」先选择一名学生作为兑换人</div>`}
+      <div class="redeem-log"><h4>🧾 兑换记录 <span class="muted">${state.redeemLogs.length}</span></h4>
+        ${logs.length ? logs.map(l => `<div class="redeem-item">
+          <span class="ri-ico">${esc(l.icon || '🛍️')}</span>
+          <div class="ri-body"><div><b>${esc(l.studentName)}</b> 兑换 <b>${esc(l.itemName)}</b></div><div class="ri-meta">${l.date} ${l.time} · ${l.cost} 分</div></div>
+          <button class="btn sm ghost" onclick="undoRedeem('${l.id}')">撤销</button>
+        </div>`).join('') : '<div class="empty" style="padding:14px 6px">暂无兑换记录</div>'}
+      </div>
+    </div>`;
+  })();
 
   document.getElementById('psRoot').innerHTML = `
   <div class="overlay" onclick="if(event.target===this)closePointsStats()">
@@ -8528,7 +8612,7 @@ function renderPointsStats(){
           ${TABS.map(([v,l]) => `<button class="ps-tab ${tab===v?'on':''}" onclick="setPsTab('${v}')">${l}</button>`).join('')}
         </div>
 
-        ${tab === 'overview' ? overviewHtml : tab === 'rank' ? rankHtml : detailHtml}
+        ${tab === 'overview' ? overviewHtml : tab === 'rank' ? rankHtml : tab === 'detail' ? detailHtml : shopHtml}
 
         <div class="ps-sec" style="margin-top:16px">
           <h4>🎰 幸运抽奖台</h4>
@@ -8539,6 +8623,82 @@ function renderPointsStats(){
   </div>`;
   ui.ldEmbed = true;
   renderLuckyDrawEmbed();
+}
+function openShopManager(){ renderShopManager(); }
+function renderShopManager(){
+  const items = state.shopItems || [];
+  openModal('🛒 小卖部商品管理', `
+    <div class="shop-mgr">
+      <button class="btn sm primary" onclick="addShopItem()">➕ 新增商品</button>
+      <div class="shop-mgr-list">
+        ${items.length ? items.map(it => `
+          <div class="smg-row" data-id="${it.id}">
+            <input class="sel smg-ico" value="${esc(it.icon || '')}" onchange="setShopItem('${it.id}','icon',this.value)">
+            <input class="sel smg-name" value="${esc(it.name)}" onchange="setShopItem('${it.id}','name',this.value)" placeholder="商品名">
+            <input class="sel smg-cost" type="number" min="0" value="${it.cost}" onchange="setShopItem('${it.id}','cost',this.value)">
+            <input class="sel smg-stock" type="number" min="0" value="${it.stock}" onchange="setShopItem('${it.id}','stock',this.value)">
+            <input class="sel smg-desc" value="${esc(it.desc || '')}" onchange="setShopItem('${it.id}','desc',this.value)" placeholder="描述">
+            <label class="smg-active"><input type="checkbox" ${it.active ? 'checked' : ''} onchange="setShopItem('${it.id}','active',this.checked)"> 上架</label>
+            <button class="btn sm danger" onclick="delShopItem('${it.id}')">🗑</button>
+          </div>`).join('') : '<div class="empty">暂无商品，点「新增商品」添加</div>'}
+      </div>
+      <div class="hint">学生用积分在「🛒 小卖部」Tab 兑换；兑换后自动扣积分、减库存并生成记录（可撤销）。</div>
+    </div>`, `<button class="btn" onclick="closeModal()">完成</button>`, 640);
+}
+function setShopItem(id, field, val){
+  const it = (state.shopItems || []).find(x => x.id === id); if (!it) return;
+  if (field === 'cost' || field === 'stock') val = Math.max(0, +val || 0);
+  if (field === 'active') val = !!val;
+  it[field] = val; save(); renderShopManager();
+  if (ui.psTab === 'shop') renderPointsStats();
+}
+function addShopItem(){
+  state.shopItems = state.shopItems || [];
+  state.shopItems.push({ id:'sh' + uid(), name:'新商品', icon:'🛍️', cost:10, stock:10, desc:'', active:true });
+  save(); renderShopManager();
+}
+function delShopItem(id){
+  state.shopItems = (state.shopItems || []).filter(x => x.id !== id);
+  save(); renderShopManager();
+  if (ui.psTab === 'shop') renderPointsStats();
+}
+function redeemItem(itemId){
+  const item = (state.shopItems || []).find(x => x.id === itemId);
+  if (!item) return toast('商品不存在');
+  if (!item.active) return toast('该商品已下架');
+  if (item.stock <= 0) return toast('该商品已售罄');
+  const f = findStudentByKey(ui.psStudentKey);
+  if (!f) return toast('请先在上方选择兑换学生');
+  const stu = f.s;
+  const avail = availablePoints(stu);
+  if (avail < item.cost) return toast(`${stu.name} 积分不足（需 ${item.cost} 分，现有 ${avail} 分）`);
+  const rid = 'rd' + uid(), time = new Date().toTimeString().slice(0, 8), d = todayStr();
+  stu.spentPoints = (stu.spentPoints || 0) + item.cost;
+  stu.ptsLog = stu.ptsLog || [];
+  stu.ptsLog.push({ date:d, time, amount:-item.cost, reason:`兑换 ${item.name}`, source:'redeem', rid });
+  item.stock -= 1;
+  state.redeemLogs = state.redeemLogs || [];
+  state.redeemLogs.unshift({ id:rid, key:ui.psStudentKey, sid:String(stu.id), studentName:stu.name, itemId, itemName:item.name, icon:item.icon, cost:item.cost, date:d, time });
+  if (state.redeemLogs.length > 100) state.redeemLogs = state.redeemLogs.slice(0, 100);
+  save();
+  fireConfetti(40);
+  renderPointsStats();
+  toast(`🛍️ ${stu.name} 成功兑换「${item.name}」`);
+}
+function undoRedeem(id){
+  const logs = state.redeemLogs || [];
+  const idx = logs.findIndex(x => x.id === id);
+  if (idx < 0) return toast('记录不存在');
+  const log = logs[idx];
+  const item = (state.shopItems || []).find(x => x.id === log.itemId);
+  if (item) item.stock += 1;
+  const f = findStudentByKey(log.key);
+  if (f) {
+    f.s.spentPoints = Math.max(0, (f.s.spentPoints || 0) - log.cost);
+    f.s.ptsLog = (f.s.ptsLog || []).filter(l => l.rid !== id);
+  }
+  logs.splice(idx, 1);
+  save(); renderPointsStats(); toast('已撤销该兑换');
 }
 function applyPointAdjust(){
   const key = document.getElementById('psStu').value;
