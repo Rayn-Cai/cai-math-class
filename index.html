@@ -1313,6 +1313,49 @@ th.atc-d.we-sun small{color:var(--red)}
 .log-amt{font-weight:800;flex:0 0 auto}
 .log-amt.plus{color:var(--green)}.log-amt.minus{color:var(--red)}
 .log-meta{color:var(--text-muted);font-size:10.5px}
+/* ===== 积分统计升级：看板 / 排行榜 / 明细（C 数据仪表盘风） ===== */
+.ps-tabs{display:flex;gap:6px;margin:2px 0 14px;flex-wrap:wrap}
+.ps-tab{padding:8px 16px;border:1.5px solid var(--border);background:#fff;border-radius:999px;font-size:13px;font-weight:800;color:var(--text-secondary);cursor:pointer;transition:.14s}
+.ps-tab:hover{border-color:var(--accent);color:var(--accent)}
+.ps-tab.on{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 2px 8px rgba(15,110,86,.28)}
+.kpi-band{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.kpi{background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.kpi-lbl{font-size:12px;color:var(--text-muted);font-weight:700}
+.kpi-val{font-size:26px;font-weight:900;line-height:1.1;margin-top:4px}
+.kpi-val i{font-size:12px;font-weight:700;font-style:normal;color:var(--text-muted);margin-left:2px}
+.board{display:grid;grid-template-columns:300px 1fr;gap:14px}
+.board-card{background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.board-card h4{font-size:13.5px;margin-bottom:10px;color:var(--text-secondary)}
+.donut{display:block;margin:0 auto}
+.mod-legend{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:10px}
+.trend-svg{display:block;width:100%;height:150px}
+.trend-single{padding:20px;text-align:center;color:var(--text-muted);font-size:13px}
+.tier-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.tier-chip{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:800;color:var(--text-secondary);background:var(--surface-alt);border:1px solid var(--border);border-radius:999px;padding:5px 12px}
+.tier-chip b{color:var(--tc)}
+.rank-list{display:flex;flex-direction:column;gap:8px}
+.rank-row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;cursor:pointer;transition:.14s}
+.rank-row:hover{border-color:var(--accent);box-shadow:0 4px 14px rgba(15,110,86,.12);transform:translateY(-1px)}
+.rank-no{font-size:16px;font-weight:900;min-width:26px;text-align:center}
+.tier-badge{width:26px;height:26px;border-radius:8px;color:#fff;font-size:13px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+.rank-mid{flex:1;min-width:0}
+.rank-name{font-size:14px;font-weight:800}
+.rank-cls{font-size:11px;color:var(--text-muted);font-weight:600;margin-left:4px}
+.tier-prog{height:6px;border-radius:3px;background:var(--surface-alt);overflow:hidden;margin:6px 0 3px}
+.tier-prog span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--sky));transition:width .4s}
+.rank-next{font-size:11px;color:var(--text-muted)}
+.rank-total{font-size:20px;font-weight:900;color:var(--accent-dark);flex:0 0 auto}
+.rank-total i{font-size:11px;font-weight:700;font-style:normal;color:var(--text-muted);margin-left:1px}
+.tl-filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.seg{display:inline-flex;gap:4px;flex-wrap:wrap}
+.tl-list{display:flex;flex-direction:column;gap:6px;max-height:440px;overflow-y:auto}
+.tl-item{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px}
+.tl-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--green)}
+.tl-dot.minus{background:var(--red)}
+.tl-body{flex:1;min-width:0}
+.tl-line{font-size:13px}
+.tl-meta{font-size:10.5px;color:var(--text-muted)}
+@media (max-width:720px){ .kpi-band{grid-template-columns:repeat(2,1fr)} .board{grid-template-columns:1fr} }
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.86);z-index:1500;display:flex;align-items:center;justify-content:center;padding:26px}
 .lightbox img{max-width:100%;max-height:100%;border-radius:10px}
 @media print{.sidebar{display:none}}
@@ -1720,6 +1763,7 @@ function normalizeState(){
   state.weeklyExams.students = state.weeklyExams.students || [];
   state.weeklyExams.records = state.weeklyExams.records || [];
   state.ldHistory = state.ldHistory || [];
+  if (!state.tierCfg || typeof state.tierCfg !== 'object') state.tierCfg = { bronze:60, silver:120, gold:200 };
   if (!state.activeDate) state.activeDate = todayStr();
   if (!state.activeTab) state.activeTab = 'roster';
   /* 可自定义配置：首次或旧数据缺省时，用出厂默认值补齐 */
@@ -8200,6 +8244,116 @@ function applyPointsRules(){
   closeModal(); toast('积分规则已更新'); renderPointsStats();
 }
 function closePointsStats(){ document.getElementById('psRoot').innerHTML = ''; }
+/* ===== 积分统计升级：段位 / 趋势 / 看板 / 明细 / 排行榜 ===== */
+function pointTier(p){
+  const t = state.tierCfg || { bronze:60, silver:120, gold:200 };
+  p = +p || 0;
+  if (p >= t.gold)   return { key:'gold',   label:'金', name:'金牌学员', color:'#caa54a', order:3 };
+  if (p >= t.silver) return { key:'silver', label:'银', name:'银牌学员', color:'#9aa7b5', order:2 };
+  if (p >= t.bronze) return { key:'bronze', label:'铜', name:'铜牌学员', color:'#c08457', order:1 };
+  return { key:'none', label:'新', name:'新晋学员', color:'#7c8a96', order:0 };
+}
+function pointsTrend(){
+  const logs = [];
+  allStudents().forEach(({ s, c }) => (s.ptsLog || []).forEach(l =>
+    logs.push({ ...l, name: s.name, className: c.name })));
+  logs.sort((a, b) => (a.date + ' ' + a.time).localeCompare(b.date + ' ' + b.time));
+  let cum = 0; return logs.map(l => { cum += (+l.amount || 0); return { date: l.date, cum: Math.round(cum*10)/10 }; });
+}
+function pointsKpi(){
+  let earned = 0, spent = 0, n = 0;
+  allStudents().forEach(({ s }) => { earned += calcTotalPoints(s) + (s.manualPts || 0); spent += s.spentPoints || 0; n++; });
+  const available = Math.round((earned - spent) * 10) / 10;
+  return { earned: Math.round(earned*10)/10, spent: Math.round(spent*10)/10, available, perCapita: n ? Math.round(available/n*10)/10 : 0, n };
+}
+function moduleDonutSvg(modTotals, grand){
+  const segs = [
+    { k:'roster',  c:'#0f6e56', l:'日常反馈' },
+    { k:'checkin', c:'#16a34a', l:'打卡登记' },
+    { k:'exam',    c:'#ea7c1c', l:'考试成绩' },
+    { k:'weekly',  c:'#1d9e75', l:'周测月考' },
+  ];
+  const R = 52, C = 2 * Math.PI * R, cx = 70, cy = 70;
+  let off = 0; const arcs = [];
+  segs.forEach(s => {
+    const v = modTotals[s.k] || 0;
+    const frac = grand ? v / grand : 0;
+    const len = frac * C;
+    arcs.push(`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${s.c}" stroke-width="16" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"></circle>`);
+    off += len;
+  });
+  return `<svg class="donut" viewBox="0 0 140 140" width="140" height="140">${arcs.join('')}<text x="${cx}" y="${cy-3}" text-anchor="middle" style="font-size:20px;font-weight:900;fill:var(--text)">${grand}</text><text x="${cx}" y="${cy+14}" text-anchor="middle" style="font-size:11px;fill:var(--text-muted)">累计积分</text></svg>`;
+}
+function trendSvg(arr){
+  if (!arr.length) return '<div class="empty" style="padding:24px">暂无积分流水记录</div>';
+  if (arr.length === 1) { const d = arr[0]; return `<div class="trend-single">当前累计 <b style="color:var(--accent-dark);font-size:20px">${d.cum}</b> 分（仅 1 条记录）</div>`; }
+  const W = 520, H = 150, pad = 24;
+  const xs = arr.map((_, i) => pad + i / (arr.length - 1) * (W - pad*2));
+  const max = Math.max(...arr.map(d => d.cum), 1);
+  const ys = arr.map(d => H - pad - d.cum / max * (H - pad*2));
+  const line = arr.map((d, i) => `${i ? 'L' : 'M'}${xs[i].toFixed(1)} ${ys[i].toFixed(1)}`).join(' ');
+  const area = `M${xs[0].toFixed(1)} ${H-pad} ` + arr.map((d,i)=>`L${xs[i].toFixed(1)} ${ys[i].toFixed(1)}`).join(' ') + ` L${xs[xs.length-1].toFixed(1)} ${H-pad} Z`;
+  const last = arr[arr.length-1];
+  return `<svg class="trend-svg" viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none">
+    <defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f6e56" stop-opacity=".22"/><stop offset="1" stop-color="#0f6e56" stop-opacity="0"/></linearGradient></defs>
+    <path d="${area}" fill="url(#tg)"/>
+    <path d="${line}" fill="none" stroke="#0f6e56" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="${xs[xs.length-1].toFixed(1)}" cy="${ys[ys.length-1].toFixed(1)}" r="4" fill="#0f6e56"/>
+    <text x="6" y="14" style="font-size:10px;fill:var(--text-muted)">${arr[0].date}</text>
+    <text x="${W-6}" y="14" text-anchor="end" style="font-size:10px;fill:var(--text-muted)">${last.date}</text>
+    <text x="${xs[xs.length-1].toFixed(1)}" y="${(ys[ys.length-1]-8).toFixed(1)}" text-anchor="end" style="font-size:11px;font-weight:800;fill:var(--accent-dark)">${last.cum}</text>
+  </svg>`;
+}
+function psFilteredLogs(){
+  const src = ui.psFilterSrc || 'all';
+  const range = ui.psFilterRange || 'all';
+  const q = (ui.psSearch || '').trim().toLowerCase();
+  let flogs = [];
+  allStudents().forEach(({ s, c }) => (s.ptsLog || []).forEach(l =>
+    flogs.push({ ...l, name: s.name, className: c.name })));
+  flogs.sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
+  if (src === 'add') flogs = flogs.filter(l => l.amount > 0 && l.source !== 'luckydraw');
+  else if (src === 'sub') flogs = flogs.filter(l => l.amount < 0 && l.source !== 'luckydraw');
+  else if (src === 'lottery') flogs = flogs.filter(l => l.source === 'luckydraw');
+  if (range === '7' || range === '30') {
+    const cutoff = shiftDate(todayStr(), -(range === '7' ? 7 : 30));
+    flogs = flogs.filter(l => l.date >= cutoff);
+  }
+  if (q) flogs = flogs.filter(l => (l.name||'').toLowerCase().includes(q) || (l.className||'').toLowerCase().includes(q) || (l.reason||'').toLowerCase().includes(q));
+  return flogs;
+}
+function exportPointsLog(){
+  const flogs = psFilteredLogs();
+  if (!flogs.length) return toast('当前筛选无积分记录');
+  const rows = [['日期','时间','姓名','班级','类型','变动','原因']];
+  flogs.forEach(l => rows.push([l.date, l.time, l.name, l.className,
+    l.source === 'luckydraw' ? '抽奖' : (l.amount > 0 ? '加分' : '扣分'), l.amount, l.reason || '']));
+  downloadText(`积分明细_${todayStr()}.csv`, toCSV(rows));
+  toast('已导出积分明细');
+}
+function setPsTab(v){ ui.psTab = v; renderPointsStats(); }
+function setPsFilterSrc(v){ ui.psFilterSrc = v; renderPointsStats(); }
+function setPsFilterRange(v){ ui.psFilterRange = v; renderPointsStats(); }
+function setPsSearch(v){ ui.psSearch = v; renderPointsStats(); }
+function openTierEditor(){
+  const t = state.tierCfg || { bronze:60, silver:120, gold:200 };
+  openModal('⚙ 段位阈值设置', `
+    <div class="pts-edit">
+      <div class="pe-row"><span class="pe-lbl">铜牌</span>达到 <input class="pe-in" id="tierB" type="number" value="${t.bronze}"> 分</div>
+      <div class="pe-row"><span class="pe-lbl">银牌</span>达到 <input class="pe-in" id="tierS" type="number" value="${t.silver}"> 分</div>
+      <div class="pe-row"><span class="pe-lbl">金牌</span>达到 <input class="pe-in" id="tierG" type="number" value="${t.gold}"> 分</div>
+      <div class="hint">段位用于排行榜徽章与晋升庆祝。需满足 铜 &lt; 银 &lt; 金。</div>
+    </div>`, `
+    <button class="btn primary" onclick="saveTierCfg()">保存</button>
+    <button class="btn" onclick="closeModal()">取消</button>`);
+}
+function saveTierCfg(){
+  const b = +document.getElementById('tierB').value, s = +document.getElementById('tierS').value, g = +document.getElementById('tierG').value;
+  if (![b,s,g].every(n => n > 0)) return toast('请输入正数阈值');
+  if (!(b < s && s < g)) return toast('需满足 铜 < 银 < 金');
+  state.tierCfg = { bronze:b, silver:s, gold:g }; save(); closeModal(); renderPointsStats();
+  toast('段位阈值已更新');
+}
 function renderPointsStats(){
   if (!ui.psStudentKey) {
     const first = allStudents()[0];
@@ -8209,26 +8363,94 @@ function renderPointsStats(){
     .map(({ s, c }) => ({ s, c, total: availablePoints(s), bd: pointsBreakdown(s) }))
     .sort((a, b) => b.total - a.total);
 
-  const logs = [];
-  allStudents().forEach(({ s, c }) => (s.ptsLog || []).forEach(l => {
-    logs.push({ ...l, name: s.name, className: c.name });
-  }));
-  logs.sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
-
   const MOD_META = [
-    { key:'roster',  label:'📋 日常反馈表', color:'#0f6e56' },
-    { key:'checkin', label:'✅ 打卡登记',   color:'#16a34a' },
-    { key:'exam',    label:'📊 考试成绩',   color:'#f59e0b' },
-    { key:'weekly',  label:'📝 周测月考',   color:'#a855f7' },
+    { key:'roster',  label:'日常反馈表', color:'#0f6e56' },
+    { key:'checkin', label:'打卡登记',   color:'#16a34a' },
+    { key:'exam',    label:'考试成绩',   color:'#ea7c1c' },
+    { key:'weekly',  label:'周测月考',   color:'#1d9e75' },
   ];
   const modTotals = { roster:0, checkin:0, exam:0, weekly:0 };
-  ranked.forEach(r => { modTotals.roster += r.bd.roster; modTotals.checkin += r.bd.checkin; modTotals.exam += r.bd.exam; modTotals.weekly += r.bd.weekly; });
+  ranked.forEach(r => { MOD_META.forEach(m => modTotals[m.key] += r.bd[m.key]); });
   const grand = modTotals.roster + modTotals.checkin + modTotals.exam + modTotals.weekly;
-  const overview = `<div class="ps-sec" style="margin-bottom:16px">
-    <h4>🧩 各模块积分构成（全班累计 <b>${grand}</b> 分）</h4>
-    <div class="mod-bar">${MOD_META.map(m => `<span class="mod-seg" style="width:${grand ? (modTotals[m.key] / grand * 100) : 0}%;background:${m.color}" title="${m.label} ${modTotals[m.key]} 分"></span>`).join('')}</div>
-    <div class="mod-legend">${MOD_META.map(m => `<span class="mod-lg"><i style="background:${m.color}"></i>${m.label} <b>${modTotals[m.key]}</b></span>`).join('')}</div>
-  </div>`;
+  const kpi = pointsKpi();
+  const trend = pointsTrend();
+  const tierCounts = { gold:0, silver:0, bronze:0, none:0 };
+  ranked.forEach(r => { tierCounts[pointTier(r.total).key]++; });
+  const TIER_COLORS = { gold:'#caa54a', silver:'#9aa7b5', bronze:'#c08457', none:'#7c8a96' };
+
+  const tab = ui.psTab || 'overview';
+  const TABS = [['overview','📊 概览看板'],['rank','🏅 排行榜'],['detail','🧾 积分明细']];
+
+  const overviewHtml = `
+    <div class="kpi-band">
+      ${[['班级可用积分', kpi.available, '分', 'var(--accent)'],
+         ['累计获得', kpi.earned, '分', 'var(--green)'],
+         ['已消耗', kpi.spent, '分', 'var(--orange)'],
+         ['人均可用', kpi.perCapita, '分', 'var(--sky)']].map(([l,v,u,c]) =>
+        `<div class="kpi"><div class="kpi-lbl">${l}</div><div class="kpi-val" style="color:${c}">${v}<i>${u}</i></div></div>`).join('')}
+    </div>
+    <div class="board">
+      <div class="board-card">
+        <h4>🧩 各模块积分构成</h4>
+        ${moduleDonutSvg(modTotals, grand)}
+        <div class="mod-legend">${MOD_META.map(m => `<span class="mod-lg"><i style="background:${m.color}"></i>${m.label} <b>${modTotals[m.key]}</b></span>`).join('')}</div>
+      </div>
+      <div class="board-card">
+        <h4>📈 班级积分累计趋势</h4>
+        ${trendSvg(trend)}
+        <div class="muted" style="margin-top:6px">基于积分流水（手动加分 / 扣分 / 抽奖消耗）的累计净值</div>
+      </div>
+    </div>`;
+
+  const rankHtml = `
+    <div class="tier-summary">
+      ${[['gold','金牌',tierCounts.gold],['silver','银牌',tierCounts.silver],['bronze','铜牌',tierCounts.bronze],['none','新晋',tierCounts.none]]
+        .map(([k,nm,cnt]) => `<span class="tier-chip" style="--tc:${TIER_COLORS[k]}">${nm} <b>${cnt}</b></span>`).join('')}
+      <button class="btn sm" onclick="openTierEditor()">⚙ 段位设置</button>
+    </div>
+    <div class="rank-list">
+      ${ranked.map((r, idx) => {
+        const t = pointTier(r.total); const cfg = state.tierCfg || { bronze:60, silver:120, gold:200 };
+        let pct = 100, next = '已是最高段位';
+        if (t.key === 'none'){ pct = r.total / cfg.bronze * 100; next = '距铜牌 ' + Math.max(0, cfg.bronze - r.total) + ' 分'; }
+        else if (t.key === 'bronze'){ pct = (r.total - cfg.bronze) / (cfg.silver - cfg.bronze) * 100; next = '距银牌 ' + Math.max(0, cfg.silver - r.total) + ' 分'; }
+        else if (t.key === 'silver'){ pct = (r.total - cfg.silver) / (cfg.gold - cfg.silver) * 100; next = '距金牌 ' + Math.max(0, cfg.gold - r.total) + ' 分'; }
+        pct = Math.max(0, Math.min(100, pct));
+        const medal = ['🥇','🥈','🥉'][idx] || ('#' + (idx + 1));
+        return `<div class="rank-row" onclick="psQuickAdd('${r.c.id}','${r.s.id}')" title="点击给 ${esc(r.s.name)} 加 / 扣分">
+          <span class="rank-no">${medal}</span>
+          <span class="tier-badge" style="background:${t.color}">${t.label}</span>
+          <div class="rank-mid">
+            <div class="rank-name">${esc(r.s.name)} <span class="rank-cls">${esc(r.c.name)}</span></div>
+            <div class="tier-prog"><span style="width:${pct}%"></span></div>
+            <div class="rank-next">${next}</div>
+          </div>
+          <span class="rank-total">${r.total}<i>分</i></span>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  const flogs = psFilteredLogs();
+  const detailHtml = `
+    <div class="tl-filters">
+      <div class="seg">${[['all','全部'],['add','加分'],['sub','扣分'],['lottery','抽奖']].map(([v,l]) =>
+        `<button class="seg-btn ${(ui.psFilterSrc||'all')===v?'on':''}" onclick="setPsFilterSrc('${v}')">${l}</button>`).join('')}</div>
+      <div class="seg">${[['all','全部'],['7','近7天'],['30','近30天']].map(([v,l]) =>
+        `<button class="seg-btn ${(ui.psFilterRange||'all')===v?'on':''}" onclick="setPsFilterRange('${v}')">${l}</button>`).join('')}</div>
+      <input class="sel" id="psSearch" style="flex:1;min-width:140px" placeholder="搜索姓名 / 班级 / 原因" value="${esc(ui.psSearch||'')}" oninput="setPsSearch(this.value)">
+      <button class="btn sm primary" onclick="exportPointsLog()">⬇ 导出 CSV</button>
+    </div>
+    <div class="tl-list">
+      ${flogs.length ? flogs.slice(0, 200).map(l => `
+        <div class="tl-item">
+          <span class="tl-dot ${l.amount>0?'plus':'minus'}"></span>
+          <div class="tl-body">
+            <div class="tl-line"><b>${esc(l.name)}</b> <span class="sp-cls">${esc(l.className)}</span> · ${esc(l.reason || '')}</div>
+            <div class="tl-meta">${l.date} ${l.time}</div>
+          </div>
+          <span class="log-amt ${l.amount>0?'plus':'minus'}">${l.amount>0?'+':''}${l.amount}</span>
+        </div>`).join('') : '<div class="empty" style="padding:30px">暂无符合条件的积分记录</div>'}
+    </div>`;
 
   document.getElementById('psRoot').innerHTML = `
   <div class="overlay" onclick="if(event.target===this)closePointsStats()">
@@ -8242,21 +8464,21 @@ function renderPointsStats(){
       </div>
       <div class="ps-body">
         <div class="ps-sec" style="margin-bottom:14px">
-          <h4>✏️ 快捷加减积分（也可直接点下方学生卡片添加）</h4>
+          <h4>✏️ 快捷加减积分</h4>
           <div class="adj-row">
             <select class="sel" id="psStu" style="min-width:190px" onchange="ui.psStudentKey=this.value">
               ${allStudents().length ? allStudents().map(({ s, c }) => {
                 const k = c.id + ':' + s.id;
                 return `<option value="${k}" ${k === ui.psStudentKey ? 'selected' : ''}>${esc(c.name)} · ${esc(s.name)}（${availablePoints(s)} 分）</option>`;
-              }).join('') : '<option value="">暂无学生，请先添加学生</option>'}
+              }).join('') : '<option value="">暂无学生</option>'}
             </select>
             <button class="op-btn ${ui.psOp === 'add' ? 'on-add' : ''}" onclick="ui.psOp='add';renderPointsStats()">➕ 加分</button>
             <button class="op-btn ${ui.psOp === 'sub' ? 'on-sub' : ''}" onclick="ui.psOp='sub';renderPointsStats()">➖ 扣分</button>
             <div class="amt-chips">
-              ${[1,2,5,10].map(n => `<button class="amt-chip ${ui.psAmt === n ? 'on' : ''}" onclick="setPsAmt(${n})">+${n}</button>`).join('')}
+              ${[1,2,5,10].map(n => `<button class="amt-chip ${ui.psAmt === n ? 'on' : ''}" data-n="${n}" onclick="setPsAmt(${n})">+${n}</button>`).join('')}
               <input class="sel" id="psAmt" type="number" min="1" step="1" value="${ui.psAmt || 1}" style="width:74px" placeholder="数量">
             </div>
-            <input class="sel" id="psReason" style="flex:1;min-width:180px" placeholder="调整原因（必填），如：课堂表现优秀">
+            <input class="sel" id="psReason" style="flex:1;min-width:180px" placeholder="调整原因（必填）">
           </div>
           <div class="adj-row" style="margin-top:9px">
             <button class="btn ${ui.psOp === 'sub' ? 'danger' : 'primary'}" onclick="applyPointAdjust()">确认${ui.psOp === 'sub' ? '扣分' : '加分'}</button>
@@ -8266,46 +8488,13 @@ function renderPointsStats(){
           ${ui.psOp === 'sub' ? '<div class="hint" style="color:var(--red);margin-top:8px">⚠️ 当前为扣分模式，确认后将从该学生积分中扣除。</div>' : ''}
         </div>
 
-        ${overview}
-
-        <div class="ps-sec" style="margin-bottom:14px">
-          <h4>🏅 学生积分一览（${ranked.length} 人 · 点击卡片快速加 / 扣分）</h4>
-          <div class="ps-cards">
-            ${ranked.map((r, idx) => {
-              const b = r.bd;
-              const medal = ['🥇','🥈','🥉'][idx] || ('#' + (idx + 1));
-              const tot = b.roster + b.checkin + b.exam + b.weekly || 1;
-              const seg = (v, c) => `<span style="width:${(v / tot * 100).toFixed(1)}%;background:${c}"></span>`;
-              return `<div class="ps-card" onclick="psQuickAdd('${r.c.id}','${r.s.id}')" title="点击给 ${esc(r.s.name)} 加 / 扣分">
-                <div class="psc-top">
-                  <span class="psc-rank">${medal}</span>
-                  <div class="psc-info"><div class="psc-name">${esc(r.s.name)}</div><div class="psc-cls">${esc(r.c.name)}</div></div>
-                  <span class="psc-total">${r.total}<i>分</i></span>
-                </div>
-                <div class="psc-bar">${seg(b.roster,'#0f6e56')}${seg(b.checkin,'#16a34a')}${seg(b.exam,'#f59e0b')}${seg(b.weekly,'#a855f7')}</div>
-                <div class="psc-acts">
-                  <button class="psc-add" onclick="event.stopPropagation();psQuickAdd('${r.c.id}','${r.s.id}')">＋ 加分</button>
-                  <button class="psc-ld" onclick="event.stopPropagation();psUseInLottery('${r.c.id}','${r.s.id}')">🎰 抽奖</button>
-                </div>
-              </div>`;
-            }).join('')}
-          </div>
+        <div class="ps-tabs">
+          ${TABS.map(([v,l]) => `<button class="ps-tab ${tab===v?'on':''}" onclick="setPsTab('${v}')">${l}</button>`).join('')}
         </div>
 
-        <div class="ps-sec">
-          <h4>🧾 积分变动记录（最近 ${Math.min(logs.length, 100)} 条）</h4>
-          ${logs.length ? logs.slice(0, 100).map(l => `
-            <div class="log-item">
-              <span>${l.source === 'manual' ? '✏️' : '🎰'}</span>
-              <div style="flex:1;min-width:0">
-                <div><b>${esc(l.name)}</b> <span class="sp-cls">${esc(l.className)}</span> · ${esc(l.reason || '')}</div>
-                <div class="log-meta">${l.date} ${l.time}</div>
-              </div>
-              <span class="log-amt ${l.amount > 0 ? 'plus' : 'minus'}">${l.amount > 0 ? '+' : ''}${l.amount}</span>
-            </div>`).join('') : '<div class="empty" style="padding:24px 6px">暂无积分变动记录</div>'}
-        </div>
+        ${tab === 'overview' ? overviewHtml : tab === 'rank' ? rankHtml : detailHtml}
 
-        <div class="ps-sec" style="margin-top:18px">
+        <div class="ps-sec" style="margin-top:16px">
           <h4>🎰 幸运抽奖台</h4>
           <div id="ldEmbed"></div>
         </div>
@@ -8325,12 +8514,15 @@ function applyPointAdjust(){
   if (!reason) return toast('请填写调整原因');
   const delta = ui.psOp === 'sub' ? -amt : amt;
   const stu = f.s;
+  const beforeOrder = pointTier(availablePoints(stu)).order;
   stu.manualPts = (stu.manualPts || 0) + delta;
   stu.ptsLog = stu.ptsLog || [];
   stu.ptsLog.push({ date: todayStr(), time: new Date().toTimeString().slice(0, 8), amount: delta, reason, source: 'manual' });
   save();
+  const after = pointTier(availablePoints(stu));
   renderPointsStats();
   toast(`${stu.name} ${delta > 0 ? '加' : '扣'} ${Math.abs(delta)} 分`);
+  if (after.order > beforeOrder) { fireConfetti(130); setTimeout(() => toast(`🏆 ${stu.name} 晋升为${after.name}！`), 320); }
 }
 function setPsAmt(n){
   ui.psAmt = n;
@@ -8386,11 +8578,15 @@ function psQuickConfirm(cid, sid){
   if (!reason){ const e = document.getElementById('psErr'); if (e) e.textContent = '请填写调整原因'; return; }
   const delta = ui.psOp === 'sub' ? -amt : amt;
   const stu = f.s;
+  const beforeOrder = pointTier(availablePoints(stu)).order;
   stu.manualPts = (stu.manualPts || 0) + delta;
   stu.ptsLog = stu.ptsLog || [];
   stu.ptsLog.push({ date: todayStr(), time: new Date().toTimeString().slice(0, 8), amount: delta, reason, source: 'manual' });
-  save(); closeModal(); renderPointsStats();
+  save(); closeModal();
+  const after = pointTier(availablePoints(stu));
+  renderPointsStats();
   toast(`${stu.name} ${delta > 0 ? '加' : '扣'} ${Math.abs(delta)} 分`);
+  if (after.order > beforeOrder) { fireConfetti(130); setTimeout(() => toast(`🏆 ${stu.name} 晋升为${after.name}！`), 320); }
 }
 /* ==================================================================
    七、导出 / 备份 / 恢复 / 截图
