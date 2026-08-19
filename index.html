@@ -1420,6 +1420,26 @@ th.atc-d.we-sun small{color:var(--red)}
   .smg-row .smg-active{grid-column:1/-1}
 }
 
+/* ===== #141 流畅：过渡动画 + 移动端强化 ===== */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.kpi-band,.board,.rank-list,.shop-wrap{animation:fadeUp .22s ease-out}
+.btn,.nav-btn,.mini,.seg-btn,.tab{will-change:transform}
+.btn:active,.nav-btn:active,.mini:active,.seg-btn:active,.tab:active,.class-row:active{transform:scale(.96)}
+.modal-head h3{transition:.16s}
+/* 移动端：侧栏转为顶部横向班级切换条，主区全宽 */
+@media (max-width:720px){
+  .app{flex-direction:column}
+  .sidebar{width:100%;min-width:0;flex-direction:row;align-items:center;gap:8px;padding:8px 10px;overflow-x:auto;overflow-y:hidden;max-height:none}
+  .brand,.side-title,.todo-box{display:none}
+  .class-list{flex-direction:row;flex:1;min-width:0}
+  .class-row{min-width:128px}
+  .class-add{width:auto;padding:9px 12px;white-space:nowrap}
+  .side-action{width:auto;white-space:nowrap;padding:8px 10px}
+  .tbl-wrap thead th,.tbl-wrap td{white-space:nowrap}
+  .board-card{padding:12px}
+  .kpi-band{gap:8px}
+}
+
 </style>
 </head>
 <body>
