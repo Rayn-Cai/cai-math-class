@@ -1439,6 +1439,12 @@ th.atc-d.we-sun small{color:var(--red)}
   .board-card{padding:12px}
   .kpi-band{gap:8px}
 }
+/* #141 分页器 */
+.pager{display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 0 2px}
+.pg-btn{padding:7px 18px;border:1px solid var(--border);background:var(--card-bg);border-radius:var(--radius-sm);cursor:pointer;font-size:14px;transition:all .15s}
+.pg-btn:hover:not(:disabled){background:var(--accent);color:#fff;border-color:var(--accent)}
+.pg-btn:disabled{opacity:.4;cursor:not-allowed}
+.pg-info{font-size:13px;color:var(--text-muted)}
 
 </style>
 </head>
@@ -1634,6 +1640,7 @@ const ui = {
   ckMonth: '',   // 打卡登记当前查看的月份（YYYY-MM），空则跟随当前日期
   rosterBatch: false, // 日常反馈表：批量录入模式
   quickBar: false,    // 今日快捷操作面板
+  rosterPage: 0,      // 日常反馈表分页（0-indexed）
 };
 
 function todayStr(d){
@@ -3494,7 +3501,7 @@ function renderHwCell(s, r, h){
   const fullTxt = `<button class="hw-full-btn" title="本次作业满分 ${fv} 分 · 点击修改（全班同步）" onclick="editHwFull()">/<b>${fv}</b></button>`;
   return `<span class="hw-score-wrap"><input class="score-in ${scoreClass(h)}" id="in-homework-${s.id}" value="${esc(r.homework)}"
         inputmode="decimal" max="${fv}" placeholder="-"
-        oninput="setScore(${s.id},'homework',this.value)" onchange="renderMain()">${fullTxt}</span>${detBtn}${badge}`;
+        oninput="setScore(${s.id},'homework',this.value)" onchange="renderMain()" onkeydown="rosterKeyNav(event)">${fullTxt}</span>${detBtn}${badge}`;
 }
 
 function renderRoster(){
@@ -3507,8 +3514,16 @@ function renderRoster(){
   const ready = rankReady(cls, d);
   const qs = statsOf(cls, d, 'quiz'), hs = statsOf(cls, d, 'homework');
 
+  /* #141 分页：学生多时只渲染当前页，避免大表格卡顿 */
+  const PG_SIZE = 25;
+  const totalStu = rows.length;
+  const totalPages = Math.max(1, Math.ceil(totalStu / PG_SIZE));
+  const curPage = Math.min(ui.rosterPage || 0, totalPages - 1);
+  ui.rosterPage = curPage;
+  const pgStart = curPage * PG_SIZE;
+
   let rankNo = 0;
-  const body = rows.map(row => {
+  const allRowHtml = rows.map(row => {
     const { s, r, leave } = row;
     const q = row.q, h = row.h;
     let rankCell = '<span class="rank-badge">-</span>';
@@ -3529,13 +3544,14 @@ function renderRoster(){
       </td>
       <td class="c"><input class="score-in ${quizScoreClass(q)}" id="in-quiz-${s.id}" value="${esc(r.quiz)}"
           inputmode="decimal" max="${state.quizScale || 100}" placeholder="-"
-          oninput="setScore(${s.id},'quiz',this.value)" onchange="renderMain()"></td>
+          oninput="setScore(${s.id},'quiz',this.value)" onchange="renderMain()" onkeydown="rosterKeyNav(event)"></td>
       <td class="c">${renderHwCell(s, r, h)}</td>
       <td>${multiBtnHtml(s, d, 'behavior')}</td>
       <td>${multiBtnHtml(s, d, 'absorption')}</td>
       <td class="c"><button class="icon-btn" title="删除学生" onclick="delStudent(${s.id})">🗑</button></td>
     </tr>`;
-  }).join('');
+  });
+  const body = totalStu > PG_SIZE ? allRowHtml.slice(pgStart, pgStart + PG_SIZE).join('') : allRowHtml.join('');
 
   const foot = (label, pick) => `<tr class="tfoot-row">
       <td colspan="3" style="text-align:right"><span class="tfoot-tag">${label}</span></td>
@@ -3580,7 +3596,7 @@ function renderRoster(){
   <div class="batch-bar">
     <button class="btn ${ui.rosterBatch ? 'primary' : ''}" onclick="toggleRosterBatch()">⚡ ${ui.rosterBatch ? '退出批量录入' : '批量录入'}</button>
     <button class="btn ${ui.quickBar ? 'primary' : ''}" onclick="toggleQuickBar()" title="一键全勤 / 作业全完成 / 全班同分等">🚀 今日快捷</button>
-    <span class="batch-tip">${ui.rosterBatch ? '紧凑模式：姓名·出勤·小测·作业，回车跳到下一格，改完自动保存' : '需要快速录全班？点「批量录入」进入紧凑表格；点「今日快捷」批量设置全勤/作业'}</span>
+    <span class="batch-tip">${ui.rosterBatch ? '紧凑模式：姓名·出勤·小测·作业，回车跳到下一格，改完自动保存' : '日常表支持回车跳格、↑↓跨行跳转；学生多时自动分页。点「批量录入」进入紧凑表格'}</span>
   </div>
   ${ui.quickBar ? quickBarHtml(cls, d) : ''}
   ${ui.rosterBatch ? renderBatchTable(cls, d) : ''}
@@ -3605,6 +3621,11 @@ function renderRoster(){
       ${rows.length ? `<tfoot>${foot('平均分', v => v.avg)}${foot('最高分', v => v.max)}${foot('最低分', v => v.min)}</tfoot>` : ''}
     </table>
   </div>
+  ${totalPages > 1 && !ui.rosterBatch ? `<div class="pager">
+    <button class="pg-btn" onclick="setRosterPage(${curPage - 1})" ${curPage === 0 ? 'disabled' : ''}>‹ 上一页</button>
+    <span class="pg-info">第 ${curPage + 1} / ${totalPages} 页 · 共 ${totalStu} 名学生</span>
+    <button class="pg-btn" onclick="setRosterPage(${curPage + 1})" ${curPage >= totalPages - 1 ? 'disabled' : ''}>下一页 ›</button>
+  </div>` : ''}
 
   <div class="row" style="margin-top:13px">
     <input class="lesson-input" id="newStuName" style="max-width:230px" placeholder="输入学生姓名"
@@ -3616,6 +3637,31 @@ function renderRoster(){
 }
 function toggleRosterBatch(){ ui.rosterBatch = !ui.rosterBatch; renderMain(); }
 const BATCH_NAV = "if(event.key==='Enter'){event.preventDefault();var a=document.querySelectorAll('.batch-inp');var i=[].indexOf.call(a,this);if(i>=0&&i<a.length-1)a[i+1].focus();else this.blur();}";
+/* #141 日常表键盘导航：回车跳到下一个分数输入框，↑↓跨行同列跳转 */
+function rosterKeyNav(e){
+  var k = e.key;
+  if (k === 'Enter') {
+    e.preventDefault();
+    var a = document.querySelectorAll('.score-in');
+    var i = [].indexOf.call(a, e.target);
+    if (i >= 0 && i < a.length - 1) a[i + 1].focus();
+    else e.target.blur();
+  } else if (k === 'ArrowDown' || k === 'ArrowUp') {
+    e.preventDefault();
+    var trs = [].slice.call(document.querySelectorAll('tbody tr'));
+    var cur = e.target.closest ? e.target.closest('tr') : null;
+    if (!cur) return;
+    var idx = trs.indexOf(cur);
+    if (idx < 0) return;
+    var ni = k === 'ArrowDown' ? idx + 1 : idx - 1;
+    if (ni >= 0 && ni < trs.length) {
+      var inp = trs[ni].querySelector('.score-in');
+      if (inp) inp.focus();
+    }
+  }
+}
+/* #141 分页导航 */
+function setRosterPage(n){ ui.rosterPage = Math.max(0, n); renderMain(); }
 /* 批量录入紧凑表：仅 出勤/小测/作业，回车在 .batch-inp 间顺序跳格，改完即存 */
 function renderBatchTable(cls, d){
   const rows = cls.students.map(s => {
