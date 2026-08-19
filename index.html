@@ -53,16 +53,16 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 </script>
 <style>
 :root{
-  --bg:#eef4fd; --surface:#ffffff; --surface-alt:#f6faff;
-  --text:#12233d; --text-secondary:#41546f; --text-muted:#7d8ca3;
-  --border:#e2ecf9; --border-strong:#c3d8f2;
-  --accent:#2563eb; --accent-light:#dbeafe; --accent-dark:#1d4ed8;
-  --accent-soft:#eff6ff; --accent-deep:#1e3a8a; --sky:#38bdf8;
+  --bg:#eef1f4; --surface:#ffffff; --surface-alt:#f3f6f8;
+  --text:#0f1b24; --text-secondary:#3a4a57; --text-muted:#7c8a96;
+  --border:#dde3e8; --border-strong:#c2cdd5;
+  --accent:#0f6e56; --accent-light:#e1f5ee; --accent-dark:#0c5441;
+  --accent-soft:#eef6f3; --accent-deep:#07392d; --sky:#1d9e75;
   --green:#16a34a; --green-light:#dcfce7;
   --red:#dc2626; --red-light:#fee2e2;
   --yellow:#ca8a04; --yellow-light:#fef9c3;
   --orange:#ea7c1c; --orange-light:#fef3e2;
-  --radius:16px; --radius-sm:10px; --radius-lg:20px;
+  --radius:10px; --radius-sm:8px; --radius-lg:12px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -72,13 +72,13 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;outline:none}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:8px}
-::-webkit-scrollbar-thumb:hover{background:#9dbcea}
+::-webkit-scrollbar-thumb:hover{background:#aebcc4}
 ::-webkit-scrollbar-track{background:transparent}
 
 .app{display:flex;height:100vh;overflow:hidden}
 
 /* ============ SIDEBAR ============ */
-.sidebar{width:220px;min-width:220px;background:linear-gradient(180deg,#3b82f6 0%,#1d4ed8 62%,#1e40af 100%);
+.sidebar{width:220px;min-width:220px;background:linear-gradient(180deg,#123b30 0%,#0d2a22 100%);
   color:#fff;display:flex;flex-direction:column;gap:14px;padding:18px 13px;overflow-y:auto}
 .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.35)}
 .brand{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0 8px;
@@ -97,7 +97,7 @@ input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;outlin
 .class-row{position:relative;display:flex;align-items:stretch;border-radius:var(--radius-sm);overflow:hidden;
   background:rgba(255,255,255,.16);transition:.16s}
 .class-row:hover{background:rgba(255,255,255,.28)}
-.class-row.active{background:#fff;box-shadow:0 4px 12px rgba(20,55,120,.2)}
+.class-row.active{background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.22)}
 .class-btn{display:flex;align-items:center;justify-content:space-between;gap:6px;
   padding:10px 4px 10px 12px;background:none;color:#fff;font-weight:700;text-align:left;flex:1;min-width:0}
 .class-row.active .class-btn{color:var(--accent-dark)}
@@ -274,7 +274,7 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .ep-row .ep-del:hover{background:var(--red);color:#fff}
 .ep-select{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--input-bg);color:var(--text)}
 .ep-empty{font-size:12.5px;color:var(--text-muted);padding:6px 0;opacity:.85}
-.ep-suggest{margin-top:14px;background:var(--accent-soft,#eff6ff);border:1px dashed var(--accent,#2563eb);border-radius:10px;padding:10px 12px}
+.ep-suggest{margin-top:14px;background:var(--accent-soft,#eef6f3);border:1px dashed var(--accent,#0f6e56);border-radius:10px;padding:10px 12px}
 /* === 进门小测一览 === */
 .quiz-overview{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px}
 .qo-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -299,14 +299,14 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .qo-lv b{font-size:24px;line-height:1.1;margin-top:2px}
 .qo-lv i{font-style:normal;font-size:11px;font-weight:600;opacity:.8}
 .qo-lv.lv-excellent{background:#eafaf1;border:1px solid #bfe9d3;color:#0f9d58}
-.qo-lv.lv-good{background:#eef5ff;border:1px solid #c4d8f5;color:#2563eb}
+.qo-lv.lv-good{background:#eef5ff;border:1px solid #c4d8f5;color:#0f6e56}
 .qo-lv.lv-pass{background:#fff8e6;border:1px solid #f3dfa2;color:#b8860b}
 .qo-lv.lv-poor{background:#fff0f0;border:1px solid #f3b9b9;color:var(--red)}
-.ep-suggest-title{font-size:12px;font-weight:800;color:var(--accent-deep,#1e3a8a);margin-bottom:7px}
+.ep-suggest-title{font-size:12px;font-weight:800;color:var(--accent-deep,#07392d);margin-bottom:7px}
 .ep-chips{display:flex;flex-wrap:wrap;gap:7px}
-.ep-chip{border:1px solid var(--accent,#2563eb);background:#fff;color:var(--accent-deep,#1e3a8a);border-radius:999px;
+.ep-chip{border:1px solid var(--accent,#0f6e56);background:#fff;color:var(--accent-deep,#07392d);border-radius:999px;
   padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;transition:.15s}
-.ep-chip:hover{background:var(--accent,#2563eb);color:#fff}
+.ep-chip:hover{background:var(--accent,#0f6e56);color:#fff}
 /* 加练规则 */
 .ep-auto{font-style:normal;font-size:10px;font-weight:800;background:var(--orange-light);color:var(--orange);
   border-radius:4px;padding:1px 4px;margin-left:5px;vertical-align:middle}
@@ -317,7 +317,7 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .ep-daytip{opacity:.75;font-size:12.5px;line-height:1.6}
 .ep-mini{border:1px solid var(--border);background:var(--surface);color:var(--text-secondary);border-radius:6px;
   padding:2px 9px;font-size:11px;font-weight:700;cursor:pointer;margin-left:6px}
-.ep-mini:hover{border-color:var(--accent,#2563eb);color:var(--accent,#2563eb)}
+.ep-mini:hover{border-color:var(--accent,#0f6e56);color:var(--accent,#0f6e56)}
 .ep-mini.danger:hover{border-color:var(--red);color:var(--red)}
 .epr-tip{background:var(--surface-alt);border-radius:8px;padding:9px 12px;font-size:12.5px;line-height:1.7;margin-bottom:12px}
 .epr-line{display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 0;cursor:pointer}
@@ -328,8 +328,8 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .ep-opts{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
 .ep-opt{border:1px solid var(--border);background:var(--surface);color:var(--text-secondary);border-radius:999px;
   padding:3px 10px;font-size:11.5px;font-weight:700;cursor:pointer;transition:.15s}
-.ep-opt:hover{border-color:var(--accent,#2563eb)}
-.ep-opt.on{background:var(--accent,#2563eb);border-color:var(--accent,#2563eb);color:#fff}
+.ep-opt:hover{border-color:var(--accent,#0f6e56)}
+.ep-opt.on{background:var(--accent,#0f6e56);border-color:var(--accent,#0f6e56);color:#fff}
 .ep-opt.on.t-negative{background:var(--red);border-color:var(--red)}
 .ep-opt.on.t-positive{background:var(--green);border-color:var(--green)}
 .ep-opt.on.t-neutral{background:var(--yellow);border-color:var(--yellow)}
@@ -469,13 +469,13 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .ck-th{padding:5px 2px;min-width:31px;cursor:pointer;user-select:none;line-height:1.25}
 .ck-th .ck-dd{font-size:12px;font-weight:800;color:var(--text-secondary)}
 .ck-th .ck-wd{font-size:9.5px;font-weight:700;opacity:.65}
-.ck-th:hover{background:var(--accent-soft,#eff6ff)}
-.ck-th.today{background:var(--accent-soft,#eff6ff);box-shadow:inset 0 -2px 0 var(--accent,#2563eb)}
+.ck-th:hover{background:var(--accent-soft,#eef6f3)}
+.ck-th.today{background:var(--accent-soft,#eef6f3);box-shadow:inset 0 -2px 0 var(--accent,#0f6e56)}
 .ck-th.off .ck-wd{color:var(--orange)}
 .ck-td{padding:0;height:30px;min-width:31px;cursor:pointer;position:relative;transition:.12s}
 .ck-td .ck-sym{font-size:12.5px;font-weight:800;line-height:1}
 .ck-td .ck-at{position:absolute;left:0;right:0;bottom:1px;font-style:normal;font-size:8px;font-weight:700;opacity:.85}
-.ck-td:hover{outline:2px solid var(--accent,#2563eb);outline-offset:-2px;z-index:2}
+.ck-td:hover{outline:2px solid var(--accent,#0f6e56);outline-offset:-2px;z-index:2}
 .ck-td.ck-done{background:var(--green-light);color:var(--green)}
 .ck-td.ck-makeup{background:var(--orange-light);color:var(--orange);padding-bottom:8px}
 .ck-td.ck-miss{background:var(--red);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
@@ -645,7 +645,7 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .ov-card.red .ov-v{color:var(--red)}
 .ov-card.amber{background:linear-gradient(135deg,#fffbeb,#fef3c7);border-color:#fde68a}
 .ov-card.amber .ov-v{color:#b45309}
-.ov-card.blue{background:linear-gradient(135deg,#eff6ff,#dbeafe);border-color:#bfdbfe}
+.ov-card.blue{background:linear-gradient(135deg,#eef6f3,#e1f5ee);border-color:#9fe1cb}
 .ov-card.blue .ov-v{color:var(--accent-dark)}
 .ov-sec{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow)}
 .ov-sec-t{font-weight:800;font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
@@ -737,7 +737,7 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .batch-tip{font-size:12px;color:var(--text-muted)}
 
 /* 家长只读视图 */
-.pv-banner{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--accent-dark)}
+.pv-banner{background:linear-gradient(135deg,#eef6f3,#e1f5ee);border:1px solid #9fe1cb;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--accent-dark)}
 .pv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
 .rank-sum{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
 .rs{flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;text-align:center}
@@ -803,7 +803,7 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .frow-thumb{width:48px;height:48px;border-radius:11px;background:var(--surface-alt);overflow:hidden;flex:0 0 auto;cursor:zoom-in;display:flex;align-items:center;justify-content:center}
 .frow-thumb img{width:100%;height:100%;object-fit:cover}
 .file-tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;margin-right:7px;vertical-align:middle}
-.file-tag.gl{background:#eef5ff;color:#2563eb;border:1px solid #c4d8f5}
+.file-tag.gl{background:#eef5ff;color:#0f6e56;border:1px solid #c4d8f5}
 .file-tag.pp{background:#fff8e6;color:#b8860b;border:1px solid #f3dfa2}
 .upload-type{display:flex;gap:14px;flex-wrap:wrap;margin-top:2px}
 .upload-opt{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer}
@@ -844,7 +844,7 @@ tr.nodata{opacity:.45}
 /* 汇总条 */
 .att-sum{display:flex;align-items:stretch;gap:11px;flex-wrap:wrap;margin-bottom:14px}
 .att-total{flex:1 1 300px;display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:var(--radius);
-  background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 8px 22px rgba(29,78,216,.24);
+  background:linear-gradient(135deg,#0f6e56,#0c5441);color:#fff;box-shadow:0 8px 22px rgba(29,78,216,.24);
   position:relative;overflow:hidden}
 .att-total::after{content:"";position:absolute;right:-26px;top:-26px;width:120px;height:120px;border-radius:50%;
   background:rgba(255,255,255,.12)}
@@ -885,7 +885,7 @@ tbody .atc-name,tbody .atc-cls{background:var(--surface)}
 .atc-d{min-width:104px;width:104px;text-align:center;vertical-align:middle}
 th.atc-d{font-size:12px;font-weight:800;color:var(--text-secondary)}
 th.atc-d small{display:block;font-size:9.5px;font-weight:700;color:var(--text-muted);letter-spacing:.5px}
-th.atc-d.we-sat small{color:#2563eb}
+th.atc-d.we-sat small{color:#0f6e56}
 th.atc-d.we-sun small{color:var(--red)}
 /* 周末浅底 + 今日高亮 */
 .atc-d.we{background:#f2f7fe}
@@ -980,7 +980,7 @@ th.atc-d.we-sun small{color:var(--red)}
   display:grid;grid-template-columns:1fr 316px;box-shadow:0 30px 80px rgba(10,35,90,.45);
   animation:mdIn .26s cubic-bezier(.2,.9,.3,1.2)}
 .ld-left{padding:20px 26px 22px;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:13px;
-  background:radial-gradient(120% 90% at 50% -10%,#1e3a8a 0%,#152e6e 45%,#0f2350 100%);color:#eaf2ff}
+  background:radial-gradient(120% 90% at 50% -10%,#07392d 0%,#152e6e 45%,#0f2350 100%);color:#eaf2ff}
 .ld-left::-webkit-scrollbar-thumb{background:rgba(255,255,255,.28)}
 .ld-right{background:var(--surface-alt);padding:16px;overflow-y:auto}
 /* 内嵌到积分统计面板下方的抽奖台（无遮罩、跟随滚动） */
@@ -994,7 +994,7 @@ th.atc-d.we-sun small{color:var(--red)}
 .ld-head .close-x{color:rgba(255,255,255,.66)}
 .ld-head .close-x:hover{color:#fff}
 .ld-gear{padding:6px 13px;border-radius:999px;border:1.5px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);
-  font-size:12px;font-weight:700;color:#dbeafe;transition:.16s}
+  font-size:12px;font-weight:700;color:#e1f5ee;transition:.16s}
 .ld-gear:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5)}
 .ld-controls{width:100%;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
 .ld-controls .sel{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.26);color:#fff}
@@ -1083,7 +1083,7 @@ th.atc-d.we-sun small{color:var(--red)}
 .win-overlay{position:fixed;inset:0;z-index:1800;display:flex;align-items:center;justify-content:center;
   background:rgba(8,22,55,.58);backdrop-filter:blur(4px);animation:ovIn .2s}
 .win-card{position:relative;width:min(390px,88vw);border-radius:26px;padding:30px 26px 22px;text-align:center;
-  background:linear-gradient(165deg,#1e40af 0%,#1d4ed8 48%,#2563eb 100%);color:#fff;overflow:hidden;
+  background:linear-gradient(165deg,#0c5441 0%,#0c5441 48%,#0f6e56 100%);color:#fff;overflow:hidden;
   box-shadow:0 26px 70px rgba(5,18,52,.6),inset 0 0 0 2px rgba(255,255,255,.16);
   animation:winCardIn .5s cubic-bezier(.16,1.5,.4,1)}
 @keyframes winCardIn{0%{transform:scale(.6) translateY(30px);opacity:0}100%{transform:none;opacity:1}}
@@ -1098,7 +1098,7 @@ th.atc-d.we-sun small{color:var(--red)}
 @keyframes winIco{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-9px) rotate(4deg)}}
 .win-label{font-size:27px;font-weight:900;margin:12px 0 4px;letter-spacing:1px;
   background:linear-gradient(93deg,#fff5cf,#fff,#cfe6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-.win-who{font-size:13.5px;font-weight:700;color:#bfdbfe}
+.win-who{font-size:13.5px;font-weight:700;color:#9fe1cb}
 .win-desc{font-size:12.5px;color:rgba(226,238,255,.86);margin-top:9px;line-height:1.65}
 .win-extra{margin-top:11px;display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);
   border-radius:12px;padding:8px 17px;font-size:14px;font-weight:800}
@@ -1133,7 +1133,7 @@ th.atc-d.we-sun small{color:var(--red)}
 .lds-pctwrap{display:flex;flex-direction:column;gap:3px;min-width:84px}
 .lds-pcttxt{font-size:11.5px;font-weight:900;color:var(--accent-dark)}
 .lds-bar{height:6px;border-radius:999px;background:var(--border);overflow:hidden}
-.lds-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#60a5fa,#2563eb);transition:width .25s}
+.lds-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#5dc9a8,#0f6e56);transition:width .25s}
 .lds-ops{display:flex;gap:3px;justify-content:flex-end}
 .lds-ops .icon-btn{width:26px;height:26px;border-radius:7px;font-size:12px}
 .lds-foot-tip{font-size:11.5px;color:var(--text-muted);margin-top:10px;line-height:1.7}
@@ -1157,7 +1157,7 @@ th.atc-d.we-sun small{color:var(--red)}
 .pe-in{width:62px;padding:6px 8px;font-size:13px;border:1.5px solid var(--border-strong);border-radius:8px;
   font-weight:800;text-align:center;background:#fff;transition:.14s}
 .pe-in:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.14)}
-.pe-preview{margin-top:4px;padding:11px 13px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:9px;
+.pe-preview{margin-top:4px;padding:11px 13px;background:linear-gradient(135deg,#eef6f3,#e1f5ee);border:1px solid #9fe1cb;border-radius:9px;
   font-size:12.5px;font-weight:700;color:var(--accent-dark);line-height:1.6;word-break:break-word}
 .pe-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .pe-tab{padding:8px 13px;border:1.5px solid var(--border);background:#fff;border-radius:999px;font-size:12.5px;font-weight:700;
@@ -1187,7 +1187,7 @@ th.atc-d.we-sun small{color:var(--red)}
 /* 学生档案弹窗 */
 .sc-head{display:flex;align-items:center;gap:14px;margin:-18px -20px 16px;padding:18px 20px;
   background:linear-gradient(135deg,#eaf1ff,#f7faff);border-bottom:1px solid var(--border);border-radius:14px 14px 0 0}
-.sc-avatar{width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;
+.sc-avatar{width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#1d9e75,#0c5441);color:#fff;
   display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;flex:0 0 auto;
   box-shadow:0 6px 16px rgba(37,99,235,.35)}
 .sc-name{font-size:20px;font-weight:800;color:var(--text)}
@@ -1382,7 +1382,7 @@ const DB_STORE = 'files';
 const TEACHER_NAME = '';
 
 const SCORE_FIELDS = [
-  { key:'quiz',     label:'小测',     short:'小测', color:'#2563eb', icon:'📝' },
+  { key:'quiz',     label:'小测',     short:'小测', color:'#0f6e56', icon:'📝' },
   { key:'homework', label:'家庭作业', short:'作业', color:'#16a34a', icon:'📚' },
   { key:'behavior', label:'课堂表现', short:'表现', color:'#ea7c1c', icon:'🐱' },
 ];
@@ -1494,7 +1494,7 @@ const TABS = [
    二、默认数据（可自定义：班级 / 学生名单 / 颜色）
    ================================================================== */
 /* 班级配色池：新建班级时按顺序自动分配，也可在班级设置里手动改 */
-const CLASS_COLORS = ['#3b6fe0','#e0693b','#16a34a','#d946a0','#2563eb','#0891b2','#ca8a04','#dc2626'];
+const CLASS_COLORS = ['#3b6fe0','#e0693b','#16a34a','#d946a0','#0f6e56','#0891b2','#ca8a04','#dc2626'];
 
 function uid(){ return Date.now() * 1000 + Math.floor(Math.random() * 1000); }
 function makeStudents(names){
@@ -2752,7 +2752,7 @@ function classTrendChartHtml(cls){
   const y = v => PT + ih - (v / 100) * ih;
   const hwLabel = state.hwMode === 'done' ? '作业完成率' : '作业均分';
   const series = [
-    { key: 'quiz', color: '#2563eb', label: '小测均分', pts: qPts },
+    { key: 'quiz', color: '#0f6e56', label: '小测均分', pts: qPts },
     { key: 'hw', color: '#16a34a', label: hwLabel, pts: hPts },
   ];
   let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
@@ -2773,8 +2773,8 @@ function classTrendChartHtml(cls){
       svg += `<circle cx="${x(p.i)}" cy="${y(p.v)}" r="4" fill="#fff" stroke="${se.color}" stroke-width="2.5"/>`;
     });
   });
-  svg += `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT + ih}" stroke="#c3d8f2"/>`;
-  svg += `<line x1="${PL}" y1="${PT + ih}" x2="${W - PR}" y2="${PT + ih}" stroke="#c3d8f2"/>`;
+  svg += `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT + ih}" stroke="#c2cdd5"/>`;
+  svg += `<line x1="${PL}" y1="${PT + ih}" x2="${W - PR}" y2="${PT + ih}" stroke="#c2cdd5"/>`;
   svg += `</svg>`;
   const trendOf = key => {
     const arr = data.filter(p => p[key] !== null);
@@ -3674,7 +3674,7 @@ function studentRadar(m){
     const a = ang(i), lx = cx + (R + 13) * Math.cos(a), ly = cy + (R + 13) * Math.sin(a);
     const anchor = Math.abs(Math.cos(a)) < 0.3 ? 'middle' : (Math.cos(a) > 0 ? 'start' : 'end');
     return `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" font-size="10.5" fill="#475569" text-anchor="${anchor}">${ax[0]}</text>`
-      + `<text x="${lx.toFixed(1)}" y="${(ly + 14).toFixed(1)}" font-size="9.5" fill="#2563eb" text-anchor="${anchor}">${ax[1]}</text>`;
+      + `<text x="${lx.toFixed(1)}" y="${(ly + 14).toFixed(1)}" font-size="9.5" fill="#0f6e56" text-anchor="${anchor}">${ax[1]}</text>`;
   }).join('');
   const dataPts = axes.map((ax, i) => pt(i, ax[1]).map(v => v.toFixed(1)).join(',')).join(' ');
   return `<svg viewBox="0 0 184 200" width="210" height="228" style="max-width:100%">
@@ -4156,7 +4156,7 @@ function printReportCard(){
     *{box-sizing:border-box}
     body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#1c2434;margin:0;background:#fff}
     .rc-wrap{max-width:760px;margin:0 auto;padding:34px 40px}
-    .rc-head{text-align:center;border-bottom:3px double #2563eb;padding-bottom:14px;margin-bottom:20px}
+    .rc-head{text-align:center;border-bottom:3px double #0f6e56;padding-bottom:14px;margin-bottom:20px}
     .rc-title{font-size:30px;font-weight:800;letter-spacing:16px;color:#1c2434}
     .rc-sub{font-size:13px;color:#6b7686;margin-top:6px}
     .rc-info{display:grid;grid-template-columns:1fr 1fr;gap:9px 28px;font-size:14.5px;margin-bottom:20px}
@@ -4168,15 +4168,15 @@ function printReportCard(){
     .rc-stat b{display:block;font-size:21px;margin:4px 0 2px}
     .rc-stat span{font-size:11.5px;color:#6b7686}
     .rc-sec{margin-bottom:20px}
-    .rc-sec-t{font-size:15px;font-weight:800;margin-bottom:9px;padding-left:10px;border-left:4px solid #2563eb}
+    .rc-sec-t{font-size:15px;font-weight:800;margin-bottom:9px;padding-left:10px;border-left:4px solid #0f6e56}
     .rc-scroll{max-height:none;overflow:visible}
     .rc-tbl{width:100%;border-collapse:collapse;font-size:13px}
     .rc-tbl th,.rc-tbl td{border:1px solid #d5dce7;padding:6.5px 9px}
     .rc-tbl th{background:#f1f5f9;font-weight:700;text-align:center}
     .rc-tbl .c{text-align:center}
-    .rc-zk{font-size:13.5px;color:#2563eb;font-weight:700;margin:2px 0 8px}
+    .rc-zk{font-size:13.5px;color:#0f6e56;font-weight:700;margin:2px 0 8px}
     .rc-remark{font-size:13px;color:#6b7686;margin:2px 0 8px;line-height:1.7}
-    .rc-foot{display:flex;justify-content:space-between;margin-top:34px;font-size:13.5px;color:#6b7686;border-top:1px dashed #c3d8f2;padding-top:12px}
+    .rc-foot{display:flex;justify-content:space-between;margin-top:34px;font-size:13.5px;color:#6b7686;border-top:1px dashed #c2cdd5;padding-top:12px}
     @page{margin:16mm}
     @media print{body{margin:0}}`;
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>成绩单 - ${esc(window.__rcShotName || '')}</title><style>${css}</style></head><body>${src.outerHTML}</body></html>`);
@@ -4254,14 +4254,14 @@ function openTermReport(sid){
       .tr-print{max-width:720px;margin:0 auto;padding:32px 36px}
       .tr-print h1{font-size:24px;text-align:center;letter-spacing:6px;margin:0 0 4px}
       .tr-print .tr-sub{text-align:center;color:#6b7686;font-size:13px;margin-bottom:18px}
-      .tr-print h2{font-size:15px;border-left:4px solid #2563eb;padding-left:9px;margin:16px 0 8px}
+      .tr-print h2{font-size:15px;border-left:4px solid #0f6e56;padding-left:9px;margin:16px 0 8px}
       .tr-print p,.tr-print li{font-size:13.5px;line-height:1.9;color:#2a3345}
       .tr-print .tr-meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:#6b7686;margin-bottom:6px}
       .tr-print table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
       .tr-print th,.tr-print td{border:1px solid #d5dce7;padding:6px 9px}
       .tr-print th{background:#f1f5f9}
       .tr-print .c{text-align:center}
-      .tr-print .tr-foot{margin-top:30px;display:flex;justify-content:space-between;font-size:13px;color:#6b7686;border-top:1px dashed #c3d8f2;padding-top:10px}
+      .tr-print .tr-foot{margin-top:30px;display:flex;justify-content:space-between;font-size:13px;color:#6b7686;border-top:1px dashed #c2cdd5;padding-top:10px}
       @page{margin:16mm}`;
     w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>学期报告</title><style>${css}</style></head><body>${src.outerHTML}</body></html>`);
     w.document.close();
@@ -5667,8 +5667,8 @@ function renderDist(){
     svg += `<text x="${x0 + bw / 2}" y="${PT + ih + 32}" font-size="10.5" fill="#9aa4b4" text-anchor="middle">${ratio}%</text>`;
     cum += c.n;
   });
-  svg += `<line x1="${PL}" y1="${PT + ih}" x2="${W - PR}" y2="${PT + ih}" stroke="#c3d8f2"/>`;
-  svg += `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT + ih}" stroke="#c3d8f2"/>`;
+  svg += `<line x1="${PL}" y1="${PT + ih}" x2="${W - PR}" y2="${PT + ih}" stroke="#c2cdd5"/>`;
+  svg += `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT + ih}" stroke="#c2cdd5"/>`;
   svg += `</svg>`;
   /* —— 分布表 —— */
   let cumPct = 0;
@@ -5731,7 +5731,7 @@ function renderTrend(){
   const pass = Math.max(0, Math.min(base, +state.trendPass || 60));
   const scope = state.trendScope || 'both';
   const allSeries = [
-    { key:'quiz', color:'#2563eb', label:LBL('quiz') + '（满分 ' + (state.quizScale || 100) + '）' },
+    { key:'quiz', color:'#0f6e56', label:LBL('quiz') + '（满分 ' + (state.quizScale || 100) + '）' },
     { key:'homework', color:'#16a34a', label:LBL('homework') + '（满分 ' + (state.hwScale || 10) + '，或每次实际满分）' },
   ];
   const series = allSeries.filter(se => scope === 'both' || scope === se.key);
@@ -5792,8 +5792,8 @@ function renderTrend(){
       svg += `<text x="${x(p.i)}" y="${py - 11}" font-size="10.5" font-weight="700" fill="${se.color}" text-anchor="middle">${p.v}</text>`;
     });
   });
-  svg += `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT + ih}" stroke="#c3d8f2"/>`;
-  svg += `<line x1="${PL}" y1="${PT + ih}" x2="${W - PR}" y2="${PT + ih}" stroke="#c3d8f2"/>`;
+  svg += `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT + ih}" stroke="#c2cdd5"/>`;
+  svg += `<line x1="${PL}" y1="${PT + ih}" x2="${W - PR}" y2="${PT + ih}" stroke="#c2cdd5"/>`;
   svg += `</svg>`;
 
   const avgOf = key => {
@@ -6684,10 +6684,10 @@ function examAnaTrend(cls){
   const mathPts = periods.map(p => ({ label: p, val: examPeriodStats(cls, p).mathAvg }));
   const totalPts = periods.map(p => ({ label: p, val: examPeriodStats(cls, p).totalAvg }));
   const series = [
-    { name: '数学均分', color: '#2563eb', points: mathPts },
+    { name: '数学均分', color: '#0f6e56', points: mathPts },
     { name: '总分均分', color: '#f59e0b', points: totalPts },
   ];
-  const legend = `<div class="ana-legend"><span><i style="background:#2563eb"></i>数学均分</span><span><i style="background:#f59e0b"></i>总分均分</span></div>`;
+  const legend = `<div class="ana-legend"><span><i style="background:#0f6e56"></i>数学均分</span><span><i style="background:#f59e0b"></i>总分均分</span></div>`;
   return legend + svgLineChart(series, { xLabels: periods.map(esc), height: 300 });
 }
 function examAnaRank(cls, period, by){
@@ -7247,7 +7247,7 @@ function commitSchoolGrade(){
 }
 
 /* -------- 周测月考趋势分析（纯 SVG 折线图，离线可用）-------- */
-const TREND_COLORS = ['#2563eb','#f59e0b','#22c55e','#ef4444','#a855f7','#06b6d4','#ec4899','#64748b'];
+const TREND_COLORS = ['#0f6e56','#f59e0b','#22c55e','#ef4444','#a855f7','#06b6d4','#ec4899','#64748b'];
 function schoolOfWeeklyStudent(studentId){
   const t = state.weeklyExams.students.find(x => String(x.id) === String(studentId));
   return t ? (t.school || '未填学校') : '未填学校';
@@ -7273,10 +7273,10 @@ function svgLineChart(series, opts){
     g += `<text x="${padL - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="#8a94a6">${Math.round(v)}</text>`;
   }
   xl.forEach((lb, i) => { const x = xAt(i); g += `<text x="${x}" y="${H - padB + 18}" text-anchor="middle" font-size="10.5" fill="#8a94a6">${esc(lb)}</text>`; });
-  g += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + ih}" stroke="#c3d8f2" stroke-width="1.5"/>`;
-  g += `<line x1="${padL}" y1="${padT + ih}" x2="${W - padR}" y2="${padT + ih}" stroke="#c3d8f2" stroke-width="1.5"/>`;
+  g += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + ih}" stroke="#c2cdd5" stroke-width="1.5"/>`;
+  g += `<line x1="${padL}" y1="${padT + ih}" x2="${W - padR}" y2="${padT + ih}" stroke="#c2cdd5" stroke-width="1.5"/>`;
   series.forEach(s => {
-    const col = s.color || '#2563eb';
+    const col = s.color || '#0f6e56';
     const w = s.width || 2.5;
     const dash = s.dashed ? ' stroke-dasharray="5 4"' : '';
     const r = (s.bold ? 3.4 : 2.4);
@@ -7336,7 +7336,7 @@ function weeklyTrendData(){
         name: s.name, color: TREND_COLORS[(i + 1) % TREND_COLORS.length], width: 1.6, dashed: true, points: s.points,
       }));
       const avgSeries = {
-        name: selSchool + '·平均', color: '#1d4ed8', width: 3.4, bold: true,
+        name: selSchool + '·平均', color: '#0c5441', width: 3.4, bold: true,
         points: dates.map(d => {
           const vs = recs.filter(r => schoolOfWeeklyStudent(r.studentId) === selSchool && r.date === d).map(r => num(r.score));
           const avg = vs.length ? Math.round(vs.reduce((a, b) => a + b, 0) / vs.length * 10) / 10 : null;
@@ -7849,7 +7849,7 @@ function fireConfetti(n){
   const root = document.getElementById('confettiRoot');
   if (!root) return 0;
   const count = n || 90;
-  const colors = ['#fbbf24','#f59e0b','#2563eb','#60a5fa','#38bdf8','#ef4444','#22c55e','#ffffff','#a855f7'];
+  const colors = ['#fbbf24','#f59e0b','#0f6e56','#5dc9a8','#5dc9a8','#ef4444','#22c55e','#ffffff','#a855f7'];
   let h = '';
   for (let i = 0; i < count; i++) {
     const left = Math.random() * 100;
@@ -7926,7 +7926,7 @@ function ldsTableHtml(){
       ${segs.map((seg, i) => {
         const pct = Math.max(0, seg.weight || 0) / sum * 100;
         return `<tr data-k="${seg.key}">
-          <td><input type="color" class="lds-color" value="${seg.color || '#2563eb'}"
+          <td><input type="color" class="lds-color" value="${seg.color || '#0f6e56'}"
                 oninput="ldSegSet('${seg.key}','color',this.value)"></td>
           <td class="lds-ico"><input type="text" value="${esc(seg.icon || '')}" maxlength="4"
                 oninput="ldSegSet('${seg.key}','icon',this.value)" placeholder="🎁"></td>
@@ -8024,7 +8024,7 @@ function ldSegDel(key){
 }
 function ldSegAdd(){
   if (!state.lottery) state.lottery = { cost: LD_COST, segments: LD_SEGMENTS.map(o => ({ ...o })) };
-  const palette = ['#2563eb','#38bdf8','#22c55e','#f59e0b','#ef4444','#a855f7','#14b8a6','#f472b6'];
+  const palette = ['#0f6e56','#5dc9a8','#22c55e','#f59e0b','#ef4444','#a855f7','#14b8a6','#f472b6'];
   state.lottery.segments.push({ key: 'seg' + uid(), label: '新奖项', icon: '🎁', weight: 10,
     color: palette[state.lottery.segments.length % palette.length], desc: '' });
   save();
@@ -8216,7 +8216,7 @@ function renderPointsStats(){
   logs.sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
 
   const MOD_META = [
-    { key:'roster',  label:'📋 日常反馈表', color:'#2563eb' },
+    { key:'roster',  label:'📋 日常反馈表', color:'#0f6e56' },
     { key:'checkin', label:'✅ 打卡登记',   color:'#16a34a' },
     { key:'exam',    label:'📊 考试成绩',   color:'#f59e0b' },
     { key:'weekly',  label:'📝 周测月考',   color:'#a855f7' },
@@ -8282,7 +8282,7 @@ function renderPointsStats(){
                   <div class="psc-info"><div class="psc-name">${esc(r.s.name)}</div><div class="psc-cls">${esc(r.c.name)}</div></div>
                   <span class="psc-total">${r.total}<i>分</i></span>
                 </div>
-                <div class="psc-bar">${seg(b.roster,'#2563eb')}${seg(b.checkin,'#16a34a')}${seg(b.exam,'#f59e0b')}${seg(b.weekly,'#a855f7')}</div>
+                <div class="psc-bar">${seg(b.roster,'#0f6e56')}${seg(b.checkin,'#16a34a')}${seg(b.exam,'#f59e0b')}${seg(b.weekly,'#a855f7')}</div>
                 <div class="psc-acts">
                   <button class="psc-add" onclick="event.stopPropagation();psQuickAdd('${r.c.id}','${r.s.id}')">＋ 加分</button>
                   <button class="psc-ld" onclick="event.stopPropagation();psUseInLottery('${r.c.id}','${r.s.id}')">🎰 抽奖</button>
