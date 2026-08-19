@@ -3374,11 +3374,10 @@ function renderHwCell(s, r, h){
   const hasScore = String(r.homework || '').trim() !== '';
   const correctBadge = (d && (d.status === 'none' || d.status === 'partial') && d.correct === 'pending')
     ? `<span class="hw-det-badge hw-correct" title="作业未完成且未订正">待订正</span>` : '';
-  const statusBadge = hasScore
-    ? (d ? `<span class="hw-det-badge hw-${d.status || 'done'}">${hwStatusLabel(d.status)}</span>` : '')
-    : `<span class="hw-det-badge hw-pending" title="点击 📝 录入得分与完成情况">待录入</span>`;
-  const badge = statusBadge + correctBadge;
-  const detBtn = `<button class="hw-det-btn ${d ? 'on' : ''}" title="作业详情（完成时间/得分/本次满分/完成情况）" onclick="openHwDetail(${s.id})">📝</button>`;
+  const pendingBadge = !hasScore
+    ? `<span class="hw-det-badge hw-pending" title="点击 📝 录入得分与完成情况">待录入</span>` : '';
+  const badge = pendingBadge + correctBadge;
+  const detBtn = `<button class="hw-det-btn ${d ? 'on' : ''}" title="作业详情（得分/本次满分/完成情况/订正）" onclick="openHwDetail(${s.id})">📝</button>`;
   if (state.hwMode === 'done') {
     return `<span class="hw-done-group">
         <button class="hw-btn ${r.hwDone ? 'on' : ''}" onclick="setHwDone(${s.id},true)" title="标记完成">✓</button>
@@ -4631,16 +4630,15 @@ function editHwFull(){
     `<button class="btn" onclick="closeModal()">取消</button>
      <button class="btn primary" onclick="setHwFull((document.getElementById('hwFullInput')||{}).value)">保存</button>`, 420);
 }
-/* ===== 家庭作业详情（完成时间 / 得分 / 本次满分 / 完成情况 / 备注）===== */
+/* ===== 家庭作业详情（得分 / 本次满分 / 完成情况 / 订正 / 备注）===== */
 function hwDetailOf(r){ return (r && r.hwDetail) ? r.hwDetail : null; }
 function hwStatusLabel(st){ return ({ done:'完成', partial:'部分完成', none:'未完成', '':'—' })[st] || '—'; }
 function openHwDetail(id){
   const f = findStudentById(id); if (!f) return;
   const r = rec(f.s, state.activeDate);
-  const d = hwDetailOf(r) || { time:'', score: r.homework || '', full: r.hwFull || state.hwScale || 10, status:'done', correct:'na', note:'' };
+  const d = hwDetailOf(r) || { score: r.homework || '', full: r.hwFull || state.hwScale || 10, status:'done', correct:'na', note:'' };
   const body = `
     <div class="hint">为 <b>${esc(f.s.name)}</b> 记录 ${state.activeDate} 的家庭作业情况。可自定义「本次满分」（如 10 / 100 / 120），趋势图与统计将按实际满分折算。</div>
-    <div class="form-row"><label>完成时间</label><input class="inp" id="hwTime" type="time" value="${esc(d.time || '')}" onchange="hwDetailAutosave(${id})"></div>
     <div class="form-row"><label>得分</label><input class="inp" id="hwScore" type="number" min="0" step="0.5" value="${esc(d.score === '' ? '' : d.score)}" placeholder="本次实得" onchange="hwDetailAutosave(${id})"></div>
     <div class="form-row"><label>本次满分</label><input class="inp" id="hwFull" type="number" min="1" step="0.5" value="${esc(d.full === '' ? '' : d.full)}" placeholder="如 10 / 100 / 120" onchange="hwDetailAutosave(${id})"></div>
     <div class="form-row"><label>完成情况</label>
@@ -4663,7 +4661,6 @@ function openHwDetail(id){
 }
 function applyHwDetail(r, d){
   r.hwDetail = {
-    time:   d.time   || '',
     score:  d.score  === '' || d.score  === undefined ? '' : (+d.score),
     full:   d.full   === '' || d.full   === undefined ? '' : (+d.full),
     status: d.status || 'done',
@@ -4677,7 +4674,6 @@ function saveHwDetail(id){
   const f = findStudentById(id); if (!f) return;
   const r = rec(f.s, state.activeDate);
   const d = {
-    time:   (document.getElementById('hwTime')  || {}).value || '',
     score:  (document.getElementById('hwScore') || {}).value,
     full:   (document.getElementById('hwFull')  || {}).value,
     status: (document.getElementById('hwStatus')|| {}).value || 'done',
@@ -4693,7 +4689,6 @@ function hwDetailAutosave(id){
   const f = findStudentById(id); if (!f) return;
   const r = rec(f.s, state.activeDate);
   const d = {
-    time:   (document.getElementById('hwTime')  || {}).value || '',
     score:  (document.getElementById('hwScore') || {}).value,
     full:   (document.getElementById('hwFull')  || {}).value,
     status: (document.getElementById('hwStatus')|| {}).value || 'done',
