@@ -1446,6 +1446,79 @@ th.atc-d.we-sun small{color:var(--red)}
 .pg-btn:disabled{opacity:.4;cursor:not-allowed}
 .pg-info{font-size:13px;color:var(--text-muted)}
 
+/* ============ 升级版仪表盘：精致化微交互（#145） ============ */
+.btn{transition:transform .14s ease, box-shadow .14s ease, background .14s ease}
+.btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(15,110,86,.18)}
+.btn:active{transform:translateY(0) scale(.98)}
+.seg-btn,.tab,.sm-chip,.sm-mini{transition:transform .14s ease, background .14s ease, color .14s ease}
+.sidebar{background:linear-gradient(168deg,#0c5544 0%,#0a352b 100%)}
+.tab.active{box-shadow:inset 0 0 0 1px rgba(255,255,255,.22), 0 4px 12px rgba(15,110,86,.18)}
+.modal{box-shadow:0 24px 60px rgba(7,57,45,.28)}
+[class*="card"],[class*="panel"],[class*="kpi"],[class*="board"]{transition:transform .16s ease, box-shadow .16s ease}
+[class*="card"]:hover,[class*="panel"]:hover,[class*="kpi"]:hover,[class*="board"]:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(15,110,86,.12)}
+
+/* ============ 🤖 智能中心（#146-#149） ============ */
+.smart-wrap{max-width:1000px;margin:0 auto;padding:6px 2px 30px}
+.sm-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:4px 2px 14px}
+.sm-title{font-size:20px;font-weight:800;color:var(--text)}
+.sm-sub{font-size:12.5px;color:var(--text-muted);margin-top:3px}
+.sm-set{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--text-secondary)}
+.sm-set label{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.sm-set-in{color:var(--text-muted)}
+.sm-num{width:46px;padding:4px 6px;border:1px solid var(--border);border-radius:7px;text-align:center}
+.sm-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 6px 20px rgba(15,110,86,.08);padding:18px;margin-bottom:16px}
+.sm-card-t{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:800;color:var(--text);margin-bottom:14px}
+.sm-dot{width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,#0f6e56,#14b8a6)}
+.sm-tip{font-size:11.5px;font-weight:600;color:var(--text-muted);margin-left:auto}
+.sm-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.sm-stat{background:var(--accent-soft);border-radius:var(--radius);padding:12px}
+.sm-stat.warn{background:var(--red-light)}
+.sm-stat .v{font-size:22px;font-weight:800;color:var(--accent)}
+.sm-stat.warn .v{color:var(--red)}
+.sm-stat .k{font-size:11.5px;color:var(--text-muted);margin-top:3px}
+.sm-rows{display:flex;flex-direction:column;gap:2px}
+.sm-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-top:1px solid var(--border)}
+.sm-row:first-child{border-top:none}
+.sm-nm{font-weight:700;min-width:54px}
+.sm-sub{font-size:11.5px;color:var(--text-muted);flex:1}
+.sm-sub b.low{color:var(--red)}
+.sm-bar{width:90px;height:7px;background:var(--surface-alt);border-radius:999px;overflow:hidden;flex:none}
+.sm-bar > i{display:block;height:100%;background:linear-gradient(90deg,#0f6e56,#14b8a6);border-radius:999px}
+.sm-bar.low > i{background:linear-gradient(90deg,#e2554f,#f0927d)}
+.sm-hact{display:flex;align-items:center;gap:4px;flex:none}
+.sm-mini{width:26px;height:26px;border-radius:7px;background:var(--surface-alt);font-weight:700;font-size:15px;line-height:1}
+.sm-mini:hover{background:var(--accent);color:#fff}
+.sm-num2{width:48px;padding:4px 5px;border:1px solid var(--border);border-radius:7px;text-align:center}
+.sm-badge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.sm-badge.low{color:var(--red)}.sm-badge.low{background:var(--red-light)}
+.sm-badge.ok{background:var(--accent-light);color:var(--accent)}
+.sm-foot{margin-top:12px;text-align:right}
+.sm-empty{padding:16px;color:var(--text-muted);font-size:13px;background:var(--surface-alt);border-radius:var(--radius);text-align:center}
+.sm-empty-sm{padding:8px;font-size:12px}
+.sm-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.sm-panel{background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:13px}
+.sm-panel h4{font-size:12.5px;color:var(--accent);margin-bottom:9px}
+.sm-pr{margin:7px 0;font-size:12.5px}
+.sm-pr-t{font-weight:800;margin-right:8px}
+.sm-pr-t.up{color:var(--green)}.sm-pr-t.down{color:var(--red)}
+.sm-pr-i{display:inline-block;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:2px 9px;margin:2px 4px 2px 0;font-size:11.5px}
+.sm-iv{margin:6px 0}
+.sm-iv-h{font-size:12.5px;color:var(--text)}
+.sm-iv-ad{font-size:11.5px;color:var(--accent-dark);background:var(--accent-light);border-radius:8px;padding:6px 9px;margin-top:4px}
+.sm-row2{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.sm-sel{padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;min-width:140px}
+.sm-chips{display:flex;gap:7px}
+.sm-chip{font-size:12px;padding:6px 14px;border-radius:999px;border:1px solid var(--border);color:var(--text-secondary);background:var(--surface);cursor:pointer}
+.sm-chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.sm-ta{width:100%;min-height:96px;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:13px;line-height:1.7;color:var(--text);resize:vertical}
+.sm-iv-row{gap:12px;align-items:flex-start}
+.sm-mini2{padding:6px 12px;font-size:12px;white-space:nowrap}
+@media(max-width:680px){
+  .sm-stat-row{grid-template-columns:repeat(2,1fr)}
+  .sm-grid2{grid-template-columns:1fr}
+  .sm-row{flex-wrap:wrap}
+  .sm-bar{width:60px}
+}
 </style>
 </head>
 <body>
@@ -1582,6 +1655,7 @@ const TABS = [
   { key:'weekly',    label:'周测月考',   icon:'📆' },
   { key:'summary',   label:'成绩汇总',   icon:'🗂️' },
   { key:'export',    label:'导出报告',   icon:'📤' },
+  { key:'smart',     label:'智能中心',   icon:'🤖' },
 ];
 
 
@@ -1593,7 +1667,8 @@ const CLASS_COLORS = ['#3b6fe0','#e0693b','#16a34a','#d946a0','#0f6e56','#0891b2
 
 function uid(){ return Date.now() * 1000 + Math.floor(Math.random() * 1000); }
 function makeStudents(names){
-  return names.map(n => ({ id: uid(), name: n, records: {}, mistakes: [], spentPoints:0, manualPts:0, ptsLog:[] }));
+  return names.map(n => ({ id: uid(), name: n, records: {}, mistakes: [], spentPoints:0, manualPts:0, ptsLog:[],
+    hoursTotal:0, hoursUsed:0 }));
 }
 /* 出厂即空：班级与学生全部由界面自主添加 */
 function buildDefaultData(){
@@ -1603,6 +1678,7 @@ function buildDefaultData(){
     activeDate: todayStr(),
     activeTab: 'roster',
     todos: [],
+    autoHours: true, hoursPerClass: 1, hourWarn: 4, dismissedInterventions: {},
     mistakeStudentId: null,
     trendStudentId: null,
     gradeLines: [],
@@ -1617,8 +1693,9 @@ function buildDefaultData(){
    三、全局状态 + 存储
    ================================================================== */
 let state = {
-  classes: [], activeClassId: 1, activeDate: todayStr(), activeTab: 'roster',
-  todos: [], mistakeStudentId: null, trendStudentId: null,
+  classes: [], activeClassId: 1,   activeDate: todayStr(), activeTab: 'roster',
+  todos: [], autoHours: true, hoursPerClass: 1, hourWarn: 4, dismissedInterventions: {},
+  mistakeStudentId: null, trendStudentId: null,
   gradeLines: [], examPapers: [],
   weeklyExams: { students: [], records: [] },
   ldHistory: [],
@@ -1641,6 +1718,8 @@ const ui = {
   rosterBatch: false, // 日常反馈表：批量录入模式
   quickBar: false,    // 今日快捷操作面板
   rosterPage: 0,      // 日常反馈表分页（0-indexed）
+  smartSid: '',       // 智能中心：评语生成所选学生
+  smartStyle: 'calm', // 评语风格：calm 平和 / enc 鼓励 / pro 专业
 };
 
 function todayStr(d){
@@ -1789,6 +1868,8 @@ function normalizeState(){
       s.spentPoints = s.spentPoints || 0;
       s.manualPts = s.manualPts || 0;
       s.ptsLog = s.ptsLog || [];
+      if (typeof s.hoursTotal !== 'number') s.hoursTotal = 0;
+      if (typeof s.hoursUsed !== 'number') s.hoursUsed = 0;
       /* 家庭作业详情字段自愈：已有记录补 hwDetail，兼容旧数据 */
       Object.keys(s.records || {}).forEach(d => {
         const rr = s.records[d];
@@ -1796,6 +1877,10 @@ function normalizeState(){
       });
     });
   });
+  if (typeof state.autoHours !== 'boolean') state.autoHours = true;
+  if (!state.hoursPerClass || +state.hoursPerClass <= 0) state.hoursPerClass = 1;
+  if (!state.hourWarn || +state.hourWarn <= 0) state.hourWarn = 4;
+  if (typeof state.dismissedInterventions !== 'object' || state.dismissedInterventions === null) state.dismissedInterventions = {};
   /* 学生档案：独立于班级的全局数据源（sid -> {id,name,school,class,remark,custom}）。
      班级新增学生自动进入档案；从班级删除学生，档案保留不变；档案仅可由管理员在「学生档案」页删除。 */
   state.studentProfiles = state.studentProfiles || {};
@@ -2658,6 +2743,7 @@ function renderMain(){
     overview: renderOverview, roster: renderRoster, attend: renderAttend, trend: renderTrend, checkin: renderCheckin,
     profile: renderProfile, exam: renderExam, files: renderFiles,
     weekly: renderWeekly, summary: renderSummary, export: renderExportTab,
+    smart: renderSmart,
   };
   const fn = map[state.activeTab] || renderRoster;
   c.innerHTML = fn();
@@ -4610,6 +4696,15 @@ function maybeParentView(){
 }
 function setAttendance(id, key){
   const f = findStudentById(id); if (!f) return;
+  const d = state.activeDate;
+  const attended = k => (k === 'present' || k === 'late');
+  const prev = (f.s.records[d] && f.s.records[d].attendance) || 'present';
+  if (state.autoHours) {
+    const was = attended(prev), now = attended(key);
+    const step = +state.hoursPerClass || 1;
+    if (was && !now) f.s.hoursUsed = Math.max(0, (+f.s.hoursUsed || 0) - step);
+    else if (!was && now) f.s.hoursUsed = (+f.s.hoursUsed || 0) + step;
+  }
   rec(f.s, state.activeDate).attendance = key;
   save(); renderMain();
 }
@@ -4887,7 +4982,7 @@ function addStudent(){
   const el = document.getElementById('newStuName');
   const name = (el.value || '').trim();
   if (!name) { el.focus(); return toast('请输入学生姓名'); }
-  activeClass().students.push({ id: uid(), name, records:{}, mistakes:[], spentPoints:0, manualPts:0, ptsLog:[] });
+  activeClass().students.push({ id: uid(), name, records:{}, mistakes:[], spentPoints:0, manualPts:0, ptsLog:[], hoursTotal:0, hoursUsed:0 });
   syncWeeklyExamStudents();
   save(); renderSidebar(); renderMain();
   const n = document.getElementById('newStuName');
@@ -4899,7 +4994,7 @@ function batchAddStudents(){
   if (!input) return;
   const names = input.split(/[,，、\s]+/).map(x => x.trim()).filter(Boolean);
   if (!names.length) return;
-  names.forEach(n => activeClass().students.push({ id: uid(), name:n, records:{}, mistakes:[], spentPoints:0, manualPts:0, ptsLog:[] }));
+  names.forEach(n => activeClass().students.push({ id: uid(), name:n, records:{}, mistakes:[], spentPoints:0, manualPts:0, ptsLog:[], hoursTotal:0, hoursUsed:0 }));
   syncWeeklyExamStudents();
   save(); renderSidebar(); renderMain();
   toast(`已批量添加 ${names.length} 名学生`);
@@ -9446,6 +9541,176 @@ window.addEventListener('message', (ev) => {
   // 4. 若已开启云同步自动保存，则启动定时器
   ghStartAutoSave();
 })();
+
+/* ==================================================================
+   🤖 智能中心（#145 视觉提质 + #146 续费预警 + #147 学情诊断
+              + #148 智能评语 + #149 掉队干预）— 本地规则引擎，无需联网
+   ================================================================== */
+function copyText(str){
+  if (!str) return toast('暂无内容');
+  const done = () => toast('已复制 ✅');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(str).then(done).catch(() => fallbackCopyStr(str, done));
+  else fallbackCopyStr(str, done);
+}
+function fallbackCopyStr(str, done){
+  const ta = document.createElement('textarea'); ta.value = str; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, 99999);
+  try { document.execCommand('copy'); done(); } catch (e) { toast('复制失败，请手动选择复制'); }
+  document.body.removeChild(ta);
+}
+function smartDates(cls){
+  const set = new Set();
+  cls.students.forEach(s => Object.keys(s.records || {}).forEach(d => set.add(d)));
+  return Array.from(set).filter(d => !(cls.attendanceOff && cls.attendanceOff[d])).sort();
+}
+function qAvg(s, arr){ let sum = 0, n = 0; arr.forEach(d => { const q = num(s.records[d] && s.records[d].quiz); if (q != null) { sum += q; n++; } }); return n ? sum / n : null; }
+function smartProgress(cls){
+  const ds = smartDates(cls);
+  if (ds.length < 2) return { up: [], down: [] };
+  const recent = ds.slice(-Math.min(7, ds.length)), prev = ds.slice(-14, -7);
+  const res = [];
+  cls.students.forEach(s => { const a = qAvg(s, recent), b = qAvg(s, prev); if (a != null && b != null && prev.length) res.push({ s, d: a - b }); });
+  return {
+    up: res.filter(x => x.d > 1).sort((a, b) => b.d - a.d).slice(0, 5),
+    down: res.filter(x => x.d < -1).sort((a, b) => a.d - b.d).slice(0, 5),
+  };
+}
+function smartKpi(cls){
+  const ds = smartDates(cls), recent = ds.slice(-Math.min(14, ds.length));
+  if (!recent.length) return null;
+  let att = 0, attN = 0, hwDone = 0, hwN = 0, qsum = 0, qn = 0;
+  cls.students.forEach(s => recent.forEach(d => {
+    const r = s.records[d]; if (!r) return;
+    attN++; const a = r.attendance; if (a === 'present' || a === 'late') att++;
+    hwN++;
+    if (state.hwMode === 'done') { if (r.hwDone === true) hwDone++; }
+    else { const st = r.hwDetail && r.hwDetail.status; if (st === 'full' || st === 'partial' || st === 'done' || (num(r.homework) != null && num(r.homework) > 0)) hwDone++; }
+    const q = num(r.quiz); if (q != null) { qsum += q; qn++; }
+  }));
+  return { quiz: qn ? Math.round(qsum / qn * 10) / 10 : null, hw: hwN ? Math.round(hwDone / hwN * 100) : null, att: attN ? Math.round(att / attN * 100) : null };
+}
+function renewalList(cls){
+  const warn = +state.hourWarn || 4;
+  const list = cls.students.map(s => {
+    const total = +s.hoursTotal || 0, used = +s.hoursUsed || 0, left = total - used;
+    return { s, total, used, left, low: total > 0 && left <= warn };
+  }).filter(x => x.total > 0);
+  list.sort((a, b) => (b.low ? 1 : 0) - (a.low ? 1 : 0) || a.left - b.left);
+  return list;
+}
+function ivType(reason){
+  if (reason.indexOf('小测') >= 0) return 'low';
+  if (reason.indexOf('缺勤') >= 0) return 'absent';
+  if (reason.indexOf('作业') >= 0) return 'hw';
+  if (reason.indexOf('订正') >= 0) return 'corr';
+  return 'other';
+}
+function ivAdvice(type){
+  return ({ low: '建议：小测薄弱，安排专项加练＋错题复盘', absent: '建议：联系家长确认原因，安排补课',
+    hw: '建议：提醒按时完成作业，必要时课后辅导', corr: '建议：督促作业订正，避免知识漏洞累积',
+    other: '建议：持续关注，必要时约谈家长' })[type] || '建议：持续关注';
+}
+function autoInterventionTodos(cls){
+  const warns = buildWarnings(cls), dim = state.dismissedInterventions || {}, out = [];
+  warns.forEach(({ s, reasons }) => reasons.forEach(r => {
+    const type = ivType(r), key = 'iv_' + s.id + '_' + type;
+    if (dim[key]) return;
+    out.push({ key, sid: s.id, name: s.name, reason: r.replace(/连续 \d+ 次/g, '').trim(), type });
+  }));
+  return out;
+}
+function genComment(sid, style){
+  const f = findStudentById(sid); if (!f) return '请选择一名学生。';
+  const s = f.s, cls = f.c, ds = smartDates(cls), recent = ds.slice(-Math.min(14, ds.length)), prev = ds.slice(-28, -14);
+  let att = 0, attN = 0; recent.forEach(d => { const r = s.records[d]; if (!r) return; attN++; const a = r.attendance; if (a === 'present' || a === 'late') att++; });
+  const attRate = attN ? Math.round(att / attN * 100) : null;
+  const qa = qAvg(s, recent), qb = qAvg(s, prev), qdelta = (qa != null && qb != null) ? Math.round((qa - qb) * 10) / 10 : null;
+  let hwDone = 0, hwN = 0; recent.forEach(d => { const r = s.records[d]; if (!r) return; hwN++; if (state.hwMode === 'done') { if (r.hwDone === true) hwDone++; } else { const st = r.hwDetail && r.hwDetail.status; if (st === 'full' || st === 'partial' || st === 'done' || (num(r.homework) != null && num(r.homework) > 0)) hwDone++; } });
+  const hwRate = hwN ? Math.round(hwDone / hwN * 100) : null;
+  const pts = availablePoints(s);
+  const attTxt = attRate == null ? '出勤记录待补充' : (attRate >= 95 ? '出勤全勤，纪律很好' : attRate >= 80 ? '出勤良好' : attRate >= 60 ? '出勤一般，需多关注' : '出勤偏低，建议了解原因');
+  const qTxt = qa == null ? '小测数据待补充' : (qdelta == null ? '小测均分 ' + (Math.round(qa * 10) / 10) : (qdelta > 0 ? '小测均分 ' + (Math.round(qa * 10) / 10) + '，较前期提升 ' + qdelta + ' 分' : qdelta < 0 ? '小测均分 ' + (Math.round(qa * 10) / 10) + '，较前期下降 ' + Math.abs(qdelta) + ' 分，需加强' : '小测均分稳定 ' + (Math.round(qa * 10) / 10)));
+  const hwTxt = hwRate == null ? '作业数据待补充' : (hwRate >= 95 ? '作业基本都能按时完成订正' : hwRate >= 80 ? '作业完成度不错' : hwRate >= 60 ? '作业偶有拖欠' : '作业完成度偏低，需督促');
+  const ptsTxt = '可用积分 ' + pts + ' 分';
+  const tone = ({ calm: '总体来看，孩子状态平稳，咱们一起保持节奏，稳步提升。', enc: '孩子很有潜力，只要坚持，进步一定会看得见，继续加油哦！💪', pro: '综上，建议针对性查漏补缺，配合家庭监督，预期可稳步改善。' })[style] || '';
+  return s.name + '同学本周' + attTxt + '。' + qTxt + '；' + hwTxt + '。' + ptsTxt + '。' + tone;
+}
+function genWechatWeekly(sid){
+  const f = findStudentById(sid); if (!f) return '请选择一名学生。';
+  return '【' + f.s.name + ' 本周学情反馈】\n' + genComment(sid, ui.smartStyle || 'calm') + '\n—— 老师寄语，供家长参考 🙏';
+}
+function renderSmart(){
+  const cls = activeClass();
+  if (!cls) return '<div class="blank-state"><div class="bs-icon">🤖</div><div class="bs-title">智能中心</div><div class="bs-desc">请先创建一个班级并录入学生，智能中心会自动为你分析学情、预警续费、生成评语与干预待办。</div></div>';
+  const kpi = smartKpi(cls), pr = smartProgress(cls), ren = renewalList(cls), warns = autoInterventionTodos(cls);
+  const warnCount = ren.filter(x => x.low).length;
+  if (!ui.smartSid || !findStudentById(ui.smartSid)) ui.smartSid = cls.students[0] ? cls.students[0].id : '';
+  const sid = ui.smartSid, comment = genComment(sid, ui.smartStyle);
+  const opts = cls.students.map(s => '<option value="' + s.id + '" ' + (String(s.id) === String(sid) ? 'selected' : '') + '>' + esc(s.name) + '</option>').join('');
+  const renHtml = ren.length ? '<div class="sm-rows">' + ren.map(x => {
+    const pct = x.total ? Math.round(x.used / x.total * 100) : 0;
+    return '<div class="sm-row"><span class="sm-nm">' + esc(x.s.name) + '</span>'
+      + '<span class="sm-sub">总' + x.total + ' · 已用' + x.used + ' · 剩 <b class="' + (x.low ? 'low' : '') + '">' + x.left + '</b></span>'
+      + '<span class="sm-bar ' + (x.low ? 'low' : '') + '"><i style="width:' + Math.min(100, pct) + '%"></i></span>'
+      + '<span class="sm-hact"><button class="sm-mini" onclick="adjustHours(' + x.s.id + ',-1)">－</button>'
+      + '<input class="sm-num2" type="number" value="' + x.used + '" onchange="setHoursUsed(' + x.s.id + ',this.value)">'
+      + '<button class="sm-mini" onclick="adjustHours(' + x.s.id + ',1)">＋</button>'
+      + '<input class="sm-num2" type="number" value="' + x.total + '" onchange="setHoursTotal(' + x.s.id + ',this.value)" title="总课时"></span>'
+      + (x.low ? '<span class="sm-badge low">需续费</span>' : '<span class="sm-badge ok">充足</span>') + '</div>';
+  }).join('') + '</div><div class="sm-foot"><button class="btn" onclick="copyRenewal()">📋 复制需续费名单</button></div>'
+    : '<div class="sm-empty">还没有学生登记课时。在「总课时」一栏输入即可，出勤会自动累加已用课时。</div>';
+  const prHtml = (pr.up.length ? '<div class="sm-pr"><span class="sm-pr-t up">进步 ▲</span>' + pr.up.map(x => '<span class="sm-pr-i">' + esc(x.s.name) + ' +' + (Math.round(x.d * 10) / 10) + '</span>').join('') + '</div>' : '')
+    + (pr.down.length ? '<div class="sm-pr"><span class="sm-pr-t down">退步 ▼</span>' + pr.down.map(x => '<span class="sm-pr-i">' + esc(x.s.name) + ' ' + (Math.round(x.d * 10) / 10) + '</span>').join('') + '</div>' : '')
+    + (!pr.up.length && !pr.down.length ? '<div class="sm-empty sm-empty-sm">样本不足或暂无明显波动</div>' : '');
+  const ivHtml = warns.length ? warns.slice(0, 6).map(w => '<div class="sm-iv"><div class="sm-iv-h"><b>' + esc(w.name) + '</b> · ' + esc(w.reason) + '</div><div class="sm-iv-ad">' + ivAdvice(w.type) + '</div></div>').join('')
+    : '<div class="sm-empty sm-empty-sm">暂无待干预学生 🎉</div>';
+  const ivRows = warns.length ? warns.map(w => '<div class="sm-row sm-iv-row"><span class="sm-nm">' + esc(w.name) + '</span><span class="sm-sub">' + esc(w.reason) + '</span><span class="sm-iv-ad">' + ivAdvice(w.type) + '</span><button class="btn ghost sm-mini2" onclick="dismissIntervention(\'' + w.key + '\')">标记已处理</button></div>').join('')
+    : '<div class="sm-empty">系统未检测到掉队学生，保持得不错！</div>';
+  return '<div class="smart-wrap">'
+    + '<div class="sm-head"><div><div class="sm-title">🤖 智能中心</div><div class="sm-sub">基于你录入的数据自动分析 · 无需联网</div></div>'
+    + '<div class="sm-set"><label><input type="checkbox" ' + (state.autoHours ? 'checked' : '') + ' onchange="toggleAutoHours()"> 出勤自动计课时</label>'
+    + '<span class="sm-set-in">每节 <input class="sm-num" type="number" min="1" value="' + state.hoursPerClass + '" onchange="setHoursPerClass(this.value)"> 课时</span>'
+    + '<span class="sm-set-in">预警线 <input class="sm-num" type="number" min="1" value="' + state.hourWarn + '" onchange="setHourWarn(this.value)"> 课时</span></div></div>'
+
+    + '<div class="sm-card"><div class="sm-card-t"><span class="sm-dot"></span>① 续费 / 课时预警看板<span class="sm-tip">剩余 ≤ ' + state.hourWarn + ' 课时自动标红</span></div>'
+    + '<div class="sm-stat-row"><div class="sm-stat ' + (warnCount ? 'warn' : '') + '"><div class="v">' + warnCount + '</div><div class="k">需续费</div></div>'
+    + '<div class="sm-stat"><div class="v">' + ren.length + '</div><div class="k">已登记课时</div></div>'
+    + '<div class="sm-stat"><div class="v">' + cls.students.length + '</div><div class="k">班级人数</div></div></div>'
+    + renHtml + '</div>'
+
+    + '<div class="sm-card"><div class="sm-card-t"><span class="sm-dot"></span>② 智能学情诊断</div>'
+    + (kpi ? '<div class="sm-stat-row"><div class="sm-stat"><div class="v">' + (kpi.quiz == null ? '—' : kpi.quiz) + '</div><div class="k">近14天小测均分</div></div>'
+      + '<div class="sm-stat"><div class="v">' + (kpi.hw == null ? '—' : kpi.hw + '%') + '</div><div class="k">作业完成率</div></div>'
+      + '<div class="sm-stat"><div class="v">' + (kpi.att == null ? '—' : kpi.att + '%') + '</div><div class="k">出勤率</div></div></div>'
+      : '<div class="sm-empty">录入小测 / 作业 / 出勤后，这里会自动生成学情概览。</div>')
+    + '<div class="sm-grid2"><div class="sm-panel"><h4>📈 进步 / 退步榜</h4>' + prHtml + '</div>'
+    + '<div class="sm-panel"><h4>🎯 待干预学生 + 自动建议</h4>' + ivHtml + '</div></div></div>'
+
+    + '<div class="sm-card"><div class="sm-card-t"><span class="sm-dot"></span>③ 智能评语 + 家校沟通包</div>'
+    + '<div class="sm-row2"><select class="sm-sel" onchange="setSmartSid(this.value)">' + opts + '</select>'
+    + '<div class="sm-chips"><span class="sm-chip ' + (ui.smartStyle === 'calm' ? 'on' : '') + '" onclick="setSmartStyle(\'calm\')">平和</span>'
+    + '<span class="sm-chip ' + (ui.smartStyle === 'enc' ? 'on' : '') + '" onclick="setSmartStyle(\'enc\')">鼓励</span>'
+    + '<span class="sm-chip ' + (ui.smartStyle === 'pro' ? 'on' : '') + '" onclick="setSmartStyle(\'pro\')">专业</span></div></div>'
+    + '<textarea class="sm-ta" id="smComment" readonly>' + esc(comment) + '</textarea>'
+    + '<div class="sm-foot"><button class="btn ghost" onclick="copyWechat()">📱 复制微信格式</button><button class="btn" onclick="copyComment()">📋 复制评语</button></div></div>'
+
+    + '<div class="sm-card"><div class="sm-card-t"><span class="sm-dot"></span>④ 掉队自动干预<span class="sm-tip">' + (warns.length ? warns.length + ' 项待处理' : '已全部处理 🎉') + '</span></div>' + ivRows + '</div>'
+    + '</div>';
+}
+/* ---- 智能中心交互处理 ---- */
+function setHoursTotal(sid, v){ const f = findStudentById(sid); if (!f) return; f.s.hoursTotal = Math.max(0, num(v) || 0); save(); renderSmart(); }
+function setHoursUsed(sid, v){ const f = findStudentById(sid); if (!f) return; f.s.hoursUsed = Math.min(f.s.hoursTotal, Math.max(0, num(v) || 0)); save(); renderSmart(); }
+function adjustHours(sid, delta){ const f = findStudentById(sid); if (!f) return; f.s.hoursUsed = Math.max(0, Math.min(f.s.hoursTotal, (+f.s.hoursUsed || 0) + delta)); save(); renderSmart(); }
+function dismissIntervention(key){ state.dismissedInterventions[key] = true; save(); renderSmart(); }
+function setSmartSid(v){ ui.smartSid = +v; renderSmart(); }
+function setSmartStyle(v){ ui.smartStyle = v; renderSmart(); }
+function copyRenewal(){ const cls = activeClass(); if (!cls) return; const list = renewalList(cls).filter(x => x.low); if (!list.length) return toast('暂无需续费学生'); copyText('【需续费名单】\n' + list.map(x => x.s.name + '：剩 ' + x.left + ' 课时（总' + x.total + '/已用' + x.used + '）').join('\n')); }
+function copyComment(){ copyText(genComment(ui.smartSid, ui.smartStyle)); }
+function copyWechat(){ copyText(genWechatWeekly(ui.smartSid)); }
+function toggleAutoHours(){ state.autoHours = !state.autoHours; save(); renderSmart(); }
+function setHourWarn(v){ state.hourWarn = Math.max(1, num(v) || 4); save(); renderSmart(); }
+function setHoursPerClass(v){ state.hoursPerClass = Math.max(1, num(v) || 1); save(); renderSmart(); }
+
 
 </script>
 </body>
