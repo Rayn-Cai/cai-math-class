@@ -1163,7 +1163,40 @@ th.atc-d.we-sun small{color:var(--red)}
 
 /* points stats */
 .ps-panel{background:#fff;border-radius:var(--radius-lg);width:100%;max-width:980px;max-height:92vh;
-  display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(15,45,105,.35)}
+  display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(15,45,105,.35);animation:psIn .2s ease-out}
+@keyframes psIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+.ps-anim{animation:psFade .18s ease-out}
+@keyframes psFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* 成就徽章 */
+.bdg-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.bdg{background:var(--surface-alt);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 12px;text-align:center;opacity:.55;filter:grayscale(.5);transition:.18s}
+.bdg.on{opacity:1;filter:none;background:linear-gradient(135deg,#fff7e6,#fff);border-color:#f0c674;box-shadow:0 6px 18px rgba(220,160,40,.18)}
+.bdg-ico{font-size:30px;line-height:1}
+.bdg-name{font-weight:800;margin-top:6px;font-size:14px;color:var(--text)}
+.bdg-desc{font-size:11.5px;color:var(--text-secondary);margin-top:3px;line-height:1.4}
+.bdg-on{margin-top:8px;font-size:11.5px;font-weight:800;color:#b8860b}
+.bdg-lock{margin-top:8px;font-size:11.5px;font-weight:700;color:#9aa3ad}
+.bdg-sec{background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.bdg-head{font-weight:800;margin-bottom:10px;font-size:14px}
+.sc-badges{display:flex;flex-wrap:wrap;gap:8px}
+.bdg-chip{display:inline-flex;align-items:center;gap:4px;background:#fff;border:1.5px solid var(--border);border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:800;color:var(--text-secondary)}
+.bdg-chip.on{background:linear-gradient(135deg,#fff7e6,#ffefcf);border-color:#f0c674;color:#b8860b}
+/* 积分挑战 */
+.ch-sec{background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.ch-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ch-bar b{font-size:14px}
+.ch-row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;margin-bottom:10px;transition:.14s}
+.ch-row.off{opacity:.55}
+.ch-ico{font-size:24px}
+.ch-mid{flex:1;min-width:0}
+.ch-name{font-weight:800;font-size:14px}
+.ch-reward{font-size:11.5px;font-weight:800;color:var(--accent-dark);background:var(--accent-soft);border-radius:6px;padding:1px 7px;margin-left:4px}
+.ch-desc{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.ch-stat{font-size:12px;color:var(--text-secondary);white-space:nowrap}
+.ch-mgr{display:flex;flex-direction:column;gap:10px}
+.ch-mgr-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+.ch-mgr-name{font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px}
+@media (max-width:720px){ .bdg-grid{grid-template-columns:repeat(2,1fr)} }
 .ps-body{overflow-y:auto;padding:18px 22px}
 .ps-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .ps-sec{background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
@@ -1868,6 +1901,8 @@ function normalizeState(){
       s.spentPoints = s.spentPoints || 0;
       s.manualPts = s.manualPts || 0;
       s.ptsLog = s.ptsLog || [];
+      s.streakAwarded = s.streakAwarded || [];   // 已发放连击奖励的里程碑天数
+      s.challengeGiven = s.challengeGiven || {}; // 已发放的挑战 id -> true
       if (typeof s.hoursTotal !== 'number') s.hoursTotal = 0;
       if (typeof s.hoursUsed !== 'number') s.hoursUsed = 0;
       /* 家庭作业详情字段自愈：已有记录补 hwDetail，兼容旧数据 */
@@ -2018,6 +2053,9 @@ function normalizeState(){
   if (!state.classes.some(c => c.id === state.activeClassId) && state.classes[0]) {
     state.activeClassId = state.classes[0].id;
   }
+  /* 积分激励增强：连续打卡连击奖励开关（默认开）+ 挑战任务模板 */
+  if (state.streakBonusOn === undefined) state.streakBonusOn = true;
+  if (!Array.isArray(state.challenges) || !state.challenges.length) state.challenges = CHALLENGE_DEFAULTS();
 }
 /* 早期版本 activeDate 可能为空，导致记录被写进 '' 这个空日期键。
    这里把空键内容迁移到今天，避免数据看起来「凭空消失」。*/
@@ -4175,6 +4213,7 @@ function openStudentCard(sid, readOnly){
     ${feedHtml}
     ${radarSec}
     ${cmpHtml}
+    ${fs ? `<div class="sc-sec"><div class="sc-sec-t">🏆 成就徽章（${evalBadges(fs).length}/${BADGE_DEFS.length}）</div><div class="sc-badges">${badgesChips(fs)}</div></div>` : ''}
     ${ckNeed > 0
       ? `<div class="sc-sec"><div class="sc-sec-t">✅ 打卡登记（${ckMonthStr}）</div>
         <div class="sc-ck-summary">应打卡 <b>${ckNeed}</b> 天 · 已完成 <b>${ckDone}</b> 天 · 补卡 <b>${ckMakeup}</b> 天 · 缺卡 <b class="ck-red">${ckMiss}</b> 天 · 完成率 <b>${ckRate}%</b></div>
@@ -4706,6 +4745,7 @@ function setAttendance(id, key){
     else if (!was && now) f.s.hoursUsed = (+f.s.hoursUsed || 0) + step;
   }
   rec(f.s, state.activeDate).attendance = key;
+  try { recomputeStreakBonus(f.s); } catch(e){}
   save(); renderMain();
 }
 function setScore(id, field, val){
@@ -8578,10 +8618,10 @@ function exportPointsLog(){
   downloadText(`积分明细_${todayStr()}.csv`, toCSV(rows));
   toast('已导出积分明细');
 }
-function setPsTab(v){ ui.psTab = v; renderPointsStats(); }
-function setPsFilterSrc(v){ ui.psFilterSrc = v; renderPointsStats(); }
-function setPsFilterRange(v){ ui.psFilterRange = v; renderPointsStats(); }
-function setPsSearch(v){ ui.psSearch = v; renderPointsStats(); }
+function setPsTab(v){ ui.psTab = v; renderPsContent(); }
+function setPsFilterSrc(v){ ui.psFilterSrc = v; renderPsContent(); }
+function setPsFilterRange(v){ ui.psFilterRange = v; renderPsContent(); }
+function setPsSearch(v){ ui.psSearch = v; renderPsContent(); }
 function openTierEditor(){
   const t = state.tierCfg || { bronze:60, silver:120, gold:200 };
   openModal('⚙ 段位阈值设置', `
@@ -8626,7 +8666,7 @@ function renderPointsStats(){
   const TIER_COLORS = { gold:'#caa54a', silver:'#9aa7b5', bronze:'#c08457', none:'#7c8a96' };
 
   const tab = ui.psTab || 'overview';
-  const TABS = [['overview','📊 概览看板'],['rank','🏅 排行榜'],['detail','🧾 积分明细'],['shop','🛒 小卖部']];
+  const TABS = [['overview','📊 概览看板'],['rank','🏅 排行榜'],['detail','🧾 积分明细'],['shop','🛒 小卖部'],['badges','🏆 徽章'],['challenge','🎯 挑战']];
 
   const overviewHtml = `
     <div class="kpi-band">
@@ -8773,7 +8813,7 @@ function renderPointsStats(){
           ${TABS.map(([v,l]) => `<button class="ps-tab ${tab===v?'on':''}" onclick="setPsTab('${v}')">${l}</button>`).join('')}
         </div>
 
-        ${tab === 'overview' ? overviewHtml : tab === 'rank' ? rankHtml : tab === 'detail' ? detailHtml : shopHtml}
+        <div id="psContent">${buildPsContent(tab)}</div>
 
         <div class="ps-sec" style="margin-top:16px">
           <h4>🎰 幸运抽奖台</h4>
@@ -9711,6 +9751,316 @@ function toggleAutoHours(){ state.autoHours = !state.autoHours; save(); renderSm
 function setHourWarn(v){ state.hourWarn = Math.max(1, num(v) || 4); save(); renderSmart(); }
 function setHoursPerClass(v){ state.hoursPerClass = Math.max(1, num(v) || 1); save(); renderSmart(); }
 
+/* ===== 积分激励增强：成就徽章 / 连续连击 / 挑战任务（均由数据自动判定，无需手动发放） ===== */
+const BADGE_DEFS = [
+  { key:'perfect',   icon:'🛡️', name:'全勤卫士', desc:'近 30 天无缺勤',      test: s => attStreakClean(s, 30) },
+  { key:'improver',  icon:'📈', name:'进步之星', desc:'近 7 天均分高于前 7 天', test: s => { const c = firstClassOf(s); if (!c) return false; const cmp = compareWindows(s, c, state.activeDate || todayStr(), 7); return !!(cmp && cmp.cur != null && cmp.prev != null && cmp.delta > 0); } },
+  { key:'hwpro',     icon:'✅', name:'作业达人', desc:'近 14 天作业全部完成', test: s => hwAllDone(s, 14) },
+  { key:'rich',      icon:'💎', name:'积分富豪', desc:'可用积分 ≥ 200',       test: s => availablePoints(s) >= 200 },
+  { key:'lucky',     icon:'🍀', name:'抽奖幸运星', desc:'抽中过奖品',          test: s => (s.ptsLog||[]).some(l => l.source === 'luckydraw' && l.amount < 0) },
+  { key:'streak',    icon:'🔥', name:'坚持打卡', desc:'连续出勤 ≥ 7 天',      test: s => streakOf(s) >= 7 },
+  { key:'fullmark',  icon:'🏆', name:'满分学霸', desc:'曾获小测 / 考试满分',  test: s => hasFullScore(s) },
+  { key:'giver',     icon:'🎁', name:'公益之星', desc:'兑换过 ≥ 3 件奖品',     test: s => (state.redeemLogs||[]).filter(l => String(l.sid) === String(s.id)).length >= 3 },
+];
+function firstClassOf(s){ return state.classes.find(c => (c.students||[]).some(x => String(x.id) === String(s.id))) || null; }
+function streakOf(s){
+  if (!s) return 0;
+  const rest = studentRestDays(s);
+  const dates = Object.keys(s.records || {}).filter(d => !rest.has(d)).sort();
+  let st = 0;
+  for (let i = dates.length - 1; i >= 0; i--) {
+    const a = attStatus(s, dates[i]);
+    if (a === 'present' || a === 'late') st++; else break;
+  }
+  return st;
+}
+function attStreakClean(s, n){
+  if (!s) return false;
+  const rest = studentRestDays(s);
+  const today = state.activeDate || todayStr();
+  for (let i = 0; i < n; i++) {
+    const d = shiftDate(today, -i);
+    if (rest.has(d)) continue;
+    const r = (s.records || {})[d];
+    if (!r) continue;
+    if (attStatus(s, d) === 'absent') return false;
+  }
+  return true;
+}
+function hwAllDone(s, n){
+  if (!s) return false;
+  const rest = studentRestDays(s);
+  const today = state.activeDate || todayStr();
+  let any = false;
+  for (let i = 0; i < n; i++) {
+    const d = shiftDate(today, -i);
+    if (rest.has(d)) continue;
+    const r = (s.records || {})[d];
+    if (!r) continue;
+    const h = hwEffective(r);
+    if (h == null) continue;
+    any = true;
+    const done = state.hwMode === 'done' ? (r.hwDone === true) : (h === hwFullFor(d, r));
+    if (!done) return false;
+  }
+  return any;
+}
+function hasFullScore(s){
+  if (!s) return false;
+  const qz = state.quizScale || 100;
+  for (const d in (s.records || {})) { const q = num((s.records[d] || {}).quiz); if (q != null && q === qz) return true; }
+  let found = false;
+  state.classes.forEach(c => {
+    if (found) return;
+    if (!(c.students||[]).some(x => String(x.id) === String(s.id))) return;
+    const es = (c.examScores || {})[String(s.id)]; if (!es) return;
+    EXAM_PERIODS.forEach(p => { if (es[p] && num(es[p].mathScore) === 120) found = true; });
+  });
+  return found;
+}
+function evalBadges(s){ if (!s) return []; return BADGE_DEFS.filter(b => { try { return !!b.test(s); } catch(e){ return false; } }); }
+
+const STREAK_MILESTONES = [7,14,21,30,45,60,90];
+function recomputeStreakBonus(s){
+  if (!s || state.streakBonusOn === false) return;
+  const st = streakOf(s);
+  if (st <= 0) return;
+  s.streakAwarded = s.streakAwarded || [];
+  s.ptsLog = s.ptsLog || [];
+  STREAK_MILESTONES.forEach(m => {
+    if (st >= m && s.streakAwarded.indexOf(m) < 0) {
+      const bonus = Math.max(1, Math.round(m / 7));
+      s.manualPts = (s.manualPts || 0) + bonus;
+      s.ptsLog.push({ date: todayStr(), time: new Date().toTimeString().slice(0,8), amount: bonus, reason: '连续出勤 ' + m + ' 天连击奖励', source: 'streak' });
+      s.streakAwarded.push(m);
+    }
+  });
+}
+
+function CHALLENGE_DEFAULTS(){
+  return [
+    { id:'c_quiz90', name:'小测达人', icon:'🎯', desc:'近 7 天小测均分 ≥ 90', reward:5,  on:true,  kind:'quizAvg', arg:90, win:7 },
+    { id:'c_streak7', name:'坚持打卡', icon:'🔥', desc:'连续出勤 ≥ 7 天',       reward:5,  on:true,  kind:'streak',  arg:7 },
+    { id:'c_hwall',  name:'作业全勤', icon:'✅', desc:'近 14 天作业全部完成',  reward:5,  on:true,  kind:'hwAll',   arg:14 },
+    { id:'c_rich',   name:'积分新星', icon:'💎', desc:'可用积分 ≥ 200',        reward:10, on:false, kind:'points', arg:200 },
+  ];
+}
+function challengeMet(ch, s){
+  if (ch.kind === 'quizAvg')  { const c = firstClassOf(s); if (!c) return false; const cmp = compareWindows(s, c, state.activeDate || todayStr(), ch.win || 7); return !!(cmp && cmp.cur != null && cmp.cur >= ch.arg); }
+  if (ch.kind === 'streak')   return streakOf(s) >= ch.arg;
+  if (ch.kind === 'hwAll')    return hwAllDone(s, ch.arg);
+  if (ch.kind === 'points')   return availablePoints(s) >= ch.arg;
+  return false;
+}
+function evalChallenges(){
+  const chs = (state.challenges || []).filter(c => c.on);
+  if (!chs.length) return toast('暂无可评定的挑战');
+  let n = 0;
+  allStudents().forEach(({ s }) => {
+    s.challengeGiven = s.challengeGiven || {};
+    chs.forEach(ch => {
+      if (s.challengeGiven[ch.id]) return;
+      if (challengeMet(ch, s)) {
+        s.manualPts = (s.manualPts || 0) + ch.reward;
+        s.ptsLog = s.ptsLog || [];
+        s.ptsLog.push({ date: todayStr(), time: new Date().toTimeString().slice(0,8), amount: ch.reward, reason: '挑战达标「' + ch.name + '」', source: 'challenge' });
+        s.challengeGiven[ch.id] = true;
+        n++;
+      }
+    });
+  });
+  save(); renderPointsStats();
+  toast('🏆 已为 ' + n + ' 名学生发放挑战奖励');
+}
+function setChallengeOn(id, on){ const ch = (state.challenges||[]).find(c => c.id === id); if (!ch) return; ch.on = !!on; save(); renderPsContent(); }
+function openChallengeManager(){
+  const rows = (state.challenges||[]).map(ch => `
+    <div class="ch-mgr-row">
+      <span class="ch-mgr-name">${ch.icon} ${esc(ch.name)} <span class="ch-reward">+${ch.reward}分</span></span>
+      <span class="muted">${esc(ch.desc)}</span>
+      <button class="btn sm ${ch.on ? 'ghost' : ''}" onclick="setChallengeOn('${ch.id}',${ch.on ? 0 : 1})">${ch.on ? '停用' : '启用'}</button>
+    </div>`).join('');
+  openModal('🎯 挑战任务管理', `<div class="ch-mgr">${rows || '<div class="empty" style="padding:16px">暂无挑战</div>'}</div>
+    <div class="muted" style="margin-top:8px">内置挑战模板由系统自动判定达标，已达标且未发放的学生会在「一键评定」时获得奖励积分（每项仅发一次）。</div>`);
+}
+
+function badgesHtml(){
+  const f = findStudentByKey(ui.psStudentKey);
+  const stu = f ? f.s : null;
+  const earned = stu ? evalBadges(stu) : [];
+  const onMap = {}; earned.forEach(b => onMap[b.key] = true);
+  const cards = BADGE_DEFS.map(b => `
+    <div class="bdg ${onMap[b.key] ? 'on' : ''}">
+      <div class="bdg-ico">${b.icon}</div>
+      <div class="bdg-name">${esc(b.name)}</div>
+      <div class="bdg-desc">${esc(b.desc)}</div>
+      <div class="${onMap[b.key] ? 'bdg-on' : 'bdg-lock'}">${onMap[b.key] ? '已获得' : '未达成'}</div>
+    </div>`).join('');
+  return `<div class="bdg-sec">
+    <div class="bdg-head">${stu ? ('🏆 ' + esc(stu.name) + ' 的成就徽章 · 已获得 ' + earned.length + '/' + BADGE_DEFS.length) : '请先在上方「快捷加减积分」选择一名学生'}</div>
+    <div class="bdg-grid">${cards}</div>
+    <div class="muted" style="margin-top:8px">徽章由系统根据出勤 / 小测 / 作业 / 积分 / 抽奖 / 兑换记录自动评定，无需手动发放。</div>
+  </div>`;
+}
+function badgesChips(s){
+  if (!s) return '<span class="muted">暂未编入班级</span>';
+  const earned = evalBadges(s);
+  if (!earned.length) return '<span class="muted">暂无徽章，加油！</span>';
+  return earned.map(b => `<span class="bdg-chip on" title="${esc(b.desc)}">${b.icon} ${esc(b.name)}</span>`).join('');
+}
+function challengeHtml(){
+  const chs = state.challenges || [];
+  const rows = chs.map(ch => {
+    const met = allStudents().filter(({ s }) => challengeMet(ch, s)).length;
+    const given = allStudents().filter(({ s }) => (s.challengeGiven||{})[ch.id]).length;
+    return `<div class="ch-row ${ch.on ? '' : 'off'}">
+      <span class="ch-ico">${ch.icon}</span>
+      <div class="ch-mid"><div class="ch-name">${esc(ch.name)} <span class="ch-reward">+${ch.reward}分</span></div><div class="ch-desc">${esc(ch.desc)}</div></div>
+      <div class="ch-stat">达标 ${met} 人 · 已发 ${given} 人</div>
+      <button class="btn sm ${ch.on ? 'ghost' : ''}" onclick="setChallengeOn('${ch.id}',${ch.on ? 0 : 1})">${ch.on ? '停用' : '启用'}</button>
+    </div>`;
+  }).join('');
+  return `<div class="ch-sec">
+    <div class="ch-bar"><b>🎯 积分挑战任务</b><button class="btn sm" onclick="openChallengeManager()">⚙ 管理挑战</button></div>
+    ${rows || '<div class="empty" style="padding:20px">暂无挑战，点「管理挑战」添加</div>'}
+    <button class="btn primary" style="margin-top:12px" onclick="evalChallenges()">🏆 一键评定并发放奖励</button>
+    <div class="muted" style="margin-top:8px">已达标且未发放的学生会自动获得奖励积分（每人每项仅发一次）。</div>
+  </div>`;
+}
+function buildPsContent(tab){
+  const ranked = allStudents()
+    .map(({ s, c }) => ({ s, c, total: availablePoints(s), bd: pointsBreakdown(s) }))
+    .sort((a, b) => b.total - a.total);
+  const MOD_META = [
+    { key:'roster',  label:'日常反馈表', color:'#0f6e56' },
+    { key:'checkin', label:'打卡登记',   color:'#16a34a' },
+    { key:'exam',    label:'考试成绩',   color:'#ea7c1c' },
+    { key:'weekly',  label:'周测月考',   color:'#1d9e75' },
+  ];
+  const modTotals = { roster:0, checkin:0, exam:0, weekly:0 };
+  ranked.forEach(r => { MOD_META.forEach(m => modTotals[m.key] += r.bd[m.key]); });
+  const grand = modTotals.roster + modTotals.checkin + modTotals.exam + modTotals.weekly;
+  const kpi = pointsKpi();
+  const trend = pointsTrend();
+  const tierCounts = { gold:0, silver:0, bronze:0, none:0 };
+  ranked.forEach(r => { tierCounts[pointTier(r.total).key]++; });
+  const TIER_COLORS = { gold:'#caa54a', silver:'#9aa7b5', bronze:'#c08457', none:'#7c8a96' };
+
+  const overviewHtml = `
+    <div class="kpi-band">
+      ${[['班级可用积分', kpi.available, '分', 'var(--accent)'],
+         ['累计获得', kpi.earned, '分', 'var(--green)'],
+         ['已消耗', kpi.spent, '分', 'var(--orange)'],
+         ['人均可用', kpi.perCapita, '分', 'var(--sky)']].map(([l,v,u,c]) =>
+        `<div class="kpi"><div class="kpi-lbl">${l}</div><div class="kpi-val" style="color:${c}">${v}<i>${u}</i></div></div>`).join('')}
+    </div>
+    <div class="board">
+      <div class="board-card">
+        <h4>🧩 各模块积分构成</h4>
+        ${moduleDonutSvg(modTotals, grand)}
+        <div class="mod-legend">${MOD_META.map(m => `<span class="mod-lg"><i style="background:${m.color}"></i>${m.label} <b>${modTotals[m.key]}</b></span>`).join('')}</div>
+      </div>
+      <div class="board-card">
+        <h4>📈 班级积分累计趋势</h4>
+        ${trendSvg(trend)}
+        <div class="muted" style="margin-top:6px">基于积分流水（手动加分 / 扣分 / 抽奖消耗）的累计净值</div>
+      </div>
+    </div>`;
+  const rankHtml = `
+    <div class="tier-summary">
+      ${[['gold','金牌',tierCounts.gold],['silver','银牌',tierCounts.silver],['bronze','铜牌',tierCounts.bronze],['none','新晋',tierCounts.none]]
+        .map(([k,nm,cnt]) => `<span class="tier-chip" style="--tc:${TIER_COLORS[k]}">${nm} <b>${cnt}</b></span>`).join('')}
+      <button class="btn sm" onclick="openTierEditor()">⚙ 段位设置</button>
+    </div>
+    <div class="rank-list">
+      ${ranked.map((r, idx) => {
+        const t = pointTier(r.total); const cfg = state.tierCfg || { bronze:60, silver:120, gold:200 };
+        let pct = 100, next = '已是最高段位';
+        if (t.key === 'none'){ pct = r.total / cfg.bronze * 100; next = '距铜牌 ' + Math.max(0, cfg.bronze - r.total) + ' 分'; }
+        else if (t.key === 'bronze'){ pct = (r.total - cfg.bronze) / (cfg.silver - cfg.bronze) * 100; next = '距银牌 ' + Math.max(0, cfg.silver - r.total) + ' 分'; }
+        else if (t.key === 'silver'){ pct = (r.total - cfg.silver) / (cfg.gold - cfg.silver) * 100; next = '距金牌 ' + Math.max(0, cfg.gold - r.total) + ' 分'; }
+        pct = Math.max(0, Math.min(100, pct));
+        const medal = ['🥇','🥈','🥉'][idx] || ('#' + (idx + 1));
+        return `<div class="rank-row" onclick="psQuickAdd('${r.c.id}','${r.s.id}')" title="点击给 ${esc(r.s.name)} 加 / 扣分">
+          <span class="rank-no">${medal}</span>
+          <span class="tier-badge" style="background:${t.color}">${t.label}</span>
+          <div class="rank-mid">
+            <div class="rank-name">${esc(r.s.name)} <span class="rank-cls">${esc(r.c.name)}</span></div>
+            <div class="tier-prog"><span style="width:${pct}%"></span></div>
+            <div class="rank-next">${next}</div>
+          </div>
+          <span class="rank-total">${r.total}<i>分</i></span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  const flogs = psFilteredLogs();
+  const detailHtml = `
+    <div class="tl-filters">
+      <div class="seg">${[['all','全部'],['add','加分'],['sub','扣分'],['lottery','抽奖'],['redeem','兑换']].map(([v,l]) =>
+        `<button class="seg-btn ${(ui.psFilterSrc||'all')===v?'on':''}" onclick="setPsFilterSrc('${v}')">${l}</button>`).join('')}</div>
+      <div class="seg">${[['all','全部'],['7','近7天'],['30','近30天']].map(([v,l]) =>
+        `<button class="seg-btn ${(ui.psFilterRange||'all')===v?'on':''}" onclick="setPsFilterRange('${v}')">${l}</button>`).join('')}</div>
+      <input class="sel" id="psSearch" style="flex:1;min-width:140px" placeholder="搜索姓名 / 班级 / 原因" value="${esc(ui.psSearch||'')}" oninput="setPsSearch(this.value)">
+      <button class="btn sm primary" onclick="exportPointsLog()">⬇ 导出 CSV</button>
+    </div>
+    <div class="tl-list">
+      ${flogs.length ? flogs.slice(0, 200).map(l => `
+        <div class="tl-item">
+          <span class="tl-dot ${l.amount>0?'plus':'minus'}"></span>
+          <div class="tl-body">
+            <div class="tl-line"><b>${esc(l.name)}</b> <span class="sp-cls">${esc(l.className)}</span> · ${esc(l.reason || '')}</div>
+            <div class="tl-meta">${l.date} ${l.time}</div>
+          </div>
+          <span class="log-amt ${l.amount>0?'plus':'minus'}">${l.amount>0?'+':''}${l.amount}</span>
+        </div>`).join('') : '<div class="empty" style="padding:30px">暂无符合条件的积分记录</div>'}
+    </div>`;
+  const shopHtml = (() => {
+    const f = findStudentByKey(ui.psStudentKey);
+    const stu = f ? f.s : null;
+    const avail = stu ? availablePoints(stu) : 0;
+    const items = state.shopItems || [];
+    const logs = (state.redeemLogs || []).slice(0, 30);
+    const card = it => {
+      const on = it.active && it.stock > 0 && avail >= it.cost;
+      const btn = it.active ? (it.stock > 0 ? (avail >= it.cost ? '兑换' : '积分不足') : '已售罄') : '已下架';
+      return `<div class="shop-card ${it.active && it.stock > 0 ? '' : 'disabled'}">
+        <div class="shop-ico">${esc(it.icon || '🛍️')}</div>
+        <div class="shop-name">${esc(it.name)}</div>
+        <div class="shop-desc">${esc(it.desc || '')}</div>
+        <div class="shop-meta"><span class="shop-cost">${it.cost} 分</span><span class="shop-stock">库存 ${it.stock}</span></div>
+        <button class="btn ${on ? 'primary' : ''}" ${on ? '' : 'disabled'} onclick="redeemItem('${it.id}')">${btn}</button>
+      </div>`;
+    };
+    return `<div class="shop-wrap">
+      <div class="shop-bar">
+        <div class="shop-cur">兑换人：<b>${stu ? esc(stu.name) : '未选择'}</b> · 可用积分 <b class="pts-avail">${avail}</b></div>
+        <button class="btn sm" onclick="openShopManager()">⚙ 管理商品</button>
+      </div>
+      ${stu ? `<div class="shop-grid">${items.length ? items.map(card).join('') : '<div class="empty" style="grid-column:1/-1">暂无商品，点「管理商品」添加</div>'}</div>`
+            : `<div class="empty" style="padding:26px">请在上方「快捷加减积分」先选择一名学生作为兑换人</div>`}
+      <div class="redeem-log"><h4>🧾 兑换记录 <span class="muted">${state.redeemLogs.length}</span></h4>
+        ${logs.length ? logs.map(l => `<div class="redeem-item">
+          <span class="ri-ico">${esc(l.icon || '🛍️')}</span>
+          <div class="ri-body"><div><b>${esc(l.studentName)}</b> 兑换 <b>${esc(l.itemName)}</b></div><div class="ri-meta">${l.date} ${l.time} · ${l.cost} 分</div></div>
+          <button class="btn sm ghost" onclick="undoRedeem('${l.id}')">撤销</button>
+        </div>`).join('') : '<div class="empty" style="padding:14px 6px">暂无兑换记录</div>'}
+      </div>
+    </div>`;
+  })();
+
+  if (tab === 'badges') return badgesHtml();
+  if (tab === 'challenge') return challengeHtml();
+  if (tab === 'overview') return overviewHtml;
+  if (tab === 'rank') return rankHtml;
+  if (tab === 'detail') return detailHtml;
+  return shopHtml;
+}
+function renderPsContent(){
+  const el = document.getElementById('psContent');
+  if (!el) { renderPointsStats(); return; }
+  el.innerHTML = buildPsContent(ui.psTab || 'overview');
+  try { el.classList.remove('ps-anim'); void el.offsetWidth; el.classList.add('ps-anim'); } catch(e){}
+}
 
 </script>
 </body>
