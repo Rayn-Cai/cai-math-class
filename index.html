@@ -2809,7 +2809,7 @@ function renderMain(){
     smart: renderSmart,
   };
   const fn = map[state.activeTab] || renderRoster;
-  c.innerHTML = fn();
+  try { c.innerHTML = fn(); } catch(e) { c.innerHTML = '<div class="blank-state"><div class="bs-icon">⚠️</div><div class="bs-title">页面渲染出错</div><div class="bs-desc">' + esc(e.message || String(e)) + '</div></div>'; console.error('renderMain[' + state.activeTab + ']', e); }
   if (state.activeTab === 'files') hydrateThumbs();
   if (state.activeTab === 'checkin') hydrateCheckinDocs();
   if (state.activeTab === 'attend') hydrateAttDocs();
@@ -9713,7 +9713,7 @@ function renderSmart(){
   const sid = ui.smartSid, comment = genComment(sid, ui.smartStyle);
   const shownComment = (ui.aiCache && ui.aiCache.sid === sid && ui.aiCache.scene === state.ai.scene) ? ui.aiCache.text : comment;
   const aiTag = (aiReady() && state.ai.enabled) ? '<span class="sm-tip ok">🤖 AI 已接入</span>' : '<span class="sm-tip">⚙️ 未接入 AI · 模板评语</span>';
-  const aiStatusHtml = !ui.aiStatus ? '' : (ui.aiStatus === 'loading' ? '<span class="sm-ai-st loading">⏳ AI 生成中…</span>' : ui.aiStatus === 'done' ? '<span class="sm-ai-st done">✅ AI 已生成，可复制</span>' : '<span class="sm-ai-st err">⚠️ ' + (ui.aiStatus.slice(4) || '生成失败') + '</span>');
+  const aiStatusHtml = !ui.aiStatus ? '' : (ui.aiStatus === 'loading' ? '<span class="sm-ai-st loading">⏳ AI 生成中…</span>' : ui.aiStatus === 'done' ? '<span class="sm-ai-st done">✅ AI 已生成，可复制</span>' : '<span class="sm-ai-st err">⚠️ ' + (ui.aiStatus.indexOf('err:') === 0 ? ui.aiStatus.slice(4) : '生成失败') + '</span>');
   const opts = cls.students.map(s => '<option value="' + s.id + '" ' + (String(s.id) === String(sid) ? 'selected' : '') + '>' + esc(s.name) + '</option>').join('');
   const sceneOpts = Object.keys(AI_SCENES).map(k => '<option value="' + k + '" ' + (state.ai.scene === k ? 'selected' : '') + '>' + AI_SCENES[k] + '</option>').join('');
   const renHtml = ren.length ? '<div class="sm-rows">' + ren.map(x => {
@@ -9776,9 +9776,9 @@ function setHoursUsed(sid, v){ const f = findStudentById(sid); if (!f) return; f
 function adjustHours(sid, delta){ const f = findStudentById(sid); if (!f) return; f.s.hoursUsed = Math.max(0, Math.min(f.s.hoursTotal, (+f.s.hoursUsed || 0) + delta)); save(); renderSmart(); }
 function dismissIntervention(key){ state.dismissedInterventions[key] = true; save(); renderSmart(); }
 function copyRenewal(){ const cls = activeClass(); if (!cls) return; const list = renewalList(cls).filter(x => x.low); if (!list.length) return toast('暂无需续费学生'); copyText('【需续费名单】\n' + list.map(x => x.s.name + '：剩 ' + x.left + ' 课时（总' + x.total + '/已用' + x.used + '）').join('\n')); }
-function setSmartSid(v){ ui.smartSid = +v; ui.aiCache = null; ui.aiStatus = ''; renderSmart(); }
-function setSmartStyle(v){ ui.smartStyle = v; ui.aiCache = null; ui.aiStatus = ''; renderSmart(); }
-function setSmartScene(v){ state.ai.scene = v; ui.aiCache = null; ui.aiStatus = ''; renderSmart(); }
+function setSmartSid(v){ ui.smartSid = +v; ui.aiCache = null; ui.aiStatus = ''; try{renderSmart();}catch(e){console.error('setSmartSid',e);} }
+function setSmartStyle(v){ ui.smartStyle = v; ui.aiCache = null; ui.aiStatus = ''; try{renderSmart();}catch(e){console.error('setSmartStyle',e);} }
+function setSmartScene(v){ state.ai.scene = v; ui.aiCache = null; ui.aiStatus = ''; try{renderSmart();}catch(e){console.error('setSmartScene',e);} }
 function shownCommentText(){
   const sid = ui.smartSid;
   if (ui.aiCache && ui.aiCache.sid === sid && ui.aiCache.scene === state.ai.scene) return ui.aiCache.text;
@@ -9791,7 +9791,7 @@ function genCommentByAI(){
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用'); }
   ui.aiStatus = 'loading'; renderSmart();
   genCommentAI(sid, state.ai.scene, (text, err) => {
-    if (err || !text) { ui.aiStatus = 'err:' + ((err && err.message) || '生成失败'); renderSmart(); return toast('AI 生成失败：' + ((err && err.message) || '未知错误') + '（已保留模板评语）'); }
+    if (err || !text) { const msg = (err && err.message) ? err.message : (err ? String(err) : '网络超时或无响应'); ui.aiStatus = 'err:' + msg; renderSmart(); return toast('AI 生成失败：' + msg + '（已保留模板评语）'); }
     ui.aiCache = { sid: sid, scene: state.ai.scene, text: text };
     ui.aiStatus = 'done'; renderSmart();
     toast('AI 评语已生成');
@@ -9835,10 +9835,11 @@ function aiChat(systemText, userText){
     method:'POST',
     headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + c.key },
     body: JSON.stringify(body)
-  }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  }).then(r => { if (!r.ok) return r.text().then(t => { throw new Error('HTTP ' + r.status + (t ? ': ' + t.slice(0, 200) : '')); }); return r.json(); })
     .then(j => {
       const t = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-      if (!t) throw new Error('空响应'); return t.trim();
+      if (!t) throw new Error('AI 返回空内容，请检查模型名是否正确');
+      return t.trim();
     });
 }
 const AI_SCENES = {
@@ -9927,7 +9928,10 @@ function openAISettings(){
 }
 function aiProvChange(){
   const k = (document.getElementById('aiProv')||{}).value || 'deepseek';
-  const el = document.getElementById('aiNote'); if (el) el.textContent = (AI_PROVIDERS[k]||AI_PROVIDERS.deepseek).note;
+  const prov = AI_PROVIDERS[k] || AI_PROVIDERS.deepseek;
+  const el = document.getElementById('aiNote'); if (el) el.textContent = prov.note;
+  const baseEl = document.getElementById('aiBase'); if (baseEl) baseEl.value = prov.base || '';
+  const modelEl = document.getElementById('aiModel'); if (modelEl) modelEl.value = prov.model || '';
 }
 function saveAISettings(){
   const k = (document.getElementById('aiProv')||{}).value || 'deepseek';
