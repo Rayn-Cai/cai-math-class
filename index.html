@@ -1569,6 +1569,37 @@ th.atc-d.we-sun small{color:var(--red)}
   .sm-row{flex-wrap:wrap}
   .sm-bar{width:60px}
 }
+
+/* ===== 智能中心界面增强 ===== */
+.smart-wrap{animation:fadeUp .3s ease-out}
+.sm-card{transition:box-shadow .2s ease, transform .15s ease}
+.sm-card:hover{box-shadow:0 10px 30px rgba(15,110,86,.12)}
+.sm-card-t{position:relative;padding-left:4px}
+.sm-card-t::before{content:'';position:absolute;left:-2px;top:2px;bottom:2px;width:3.5px;border-radius:3px;background:linear-gradient(180deg,var(--accent),var(--accent-dark));opacity:.7}
+.sm-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--accent);flex-shrink:0;box-shadow:0 0 6px rgba(15,184,166,.4)}
+.btn.ai{background:linear-gradient(135deg,#0f6e56,#14b8a6);color:#fff;border:none;box-shadow:0 4px 14px rgba(15,110,86,.3)}
+.btn.ai:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(15,110,86,.4)}
+.btn.ai:active{transform:translateY(0)}
+.sm-ta{transition:border-color .2s ease, box-shadow .2s ease}
+.sm-ta:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(15,184,166,.15);outline:none}
+.sm-sel{transition:border-color .2s ease, box-shadow .2s ease;cursor:pointer}
+.sm-sel:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(15,184,166,.15);outline:none}
+.sm-chip{user-select:none}
+.sm-chip:hover{border-color:var(--accent);color:var(--accent);transform:scale(1.04)}
+.sm-chip.on:hover{color:#fff}
+.sm-ai-st{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-size:12px;margin:8px 0 4px}
+.sm-ai-st.loading{background:var(--accent-light);color:var(--accent-dark)}
+.sm-ai-st.done{background:var(--green-light);color:var(--green-dark)}
+.sm-ai-st.err{background:var(--red-light);color:var(--red-dark)}
+.sm-stat{transition:transform .15s ease}
+.sm-stat:hover{transform:scale(1.02)}
+.sm-hact{display:inline-flex;align-items:center;gap:3px;flex-wrap:wrap}
+.sm-num2{text-align:center;transition:border-color .2s, background .2s}
+.sm-num2:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px rgba(15,184,166,.2)}
+.sm-num2.sm-total:focus{box-shadow:0 0 0 2px rgba(15,184,166,.35)}
+.sm-foot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.sm-foot .btn{font-size:12.5px;padding:7px 14px}
+.blank-state{animation:fadeUp .25s ease-out}
 </style>
 </head>
 <body>
@@ -1770,6 +1801,30 @@ const ui = {
   rosterPage: 0,      // 日常反馈表分页（0-indexed）
   smartSid: '',       // 智能中心：评语生成所选学生
   smartStyle: 'calm', // 评语风格：calm 平和 / enc 鼓励 / pro 专业
+};
+
+/* ===== AI 大模型配置常量（必须在 aiCfg/aiReady/renderSmart 之前声明，避免 TDZ） ===== */
+const AI_PROVIDERS = {
+  deepseek: { name:'DeepSeek 深度求索', base:'https://api.deepseek.com/v1', model:'deepseek-chat',
+    note:'中文能力强、价格极低，推荐首选；注册 deepseek.com 获取 API Key。' },
+  qwen: { name:'通义千问 Qwen（阿里）', base:'https://dashscope.aliyuncs.com/compatible-mode/v1', model:'qwen-plus',
+    note:'阿里云，中文优秀，有免费额度；DashScope 控制台获取 Key。' },
+  glm: { name:'智谱 GLM（清华）', base:'https://open.bigmodel.cn/api/paas/v4', model:'glm-4-flash',
+    note:'智谱开放平台，OpenAI 兼容，有免费模型。' },
+  kimi: { name:'Kimi（月之暗面）', base:'https://api.moonshot.cn/v1', model:'moonshot-v1-8k',
+    note:'超长上下文，适合喂入较长学生档案；Moonshot 控制台获取 Key。' },
+  hunyuan: { name:'腾讯混元', base:'https://api.hunyuan.cloud.tencent.com/v1', model:'hunyuan-lite',
+    note:'腾讯云大模型，按量计费；腾讯云控制台开通。' },
+  custom: { name:'自定义 OpenAI 兼容', base:'', model:'',
+    note:'填写任意兼容 /v1/chat/completions 的地址与模型名。' }
+};
+const AI_SCENES = {
+  weekly: '本周学情反馈',
+  praise: '进步表扬',
+  decline: '退步提醒',
+  absent: '缺勤沟通',
+  homework: '作业督促',
+  exam: '考前鼓励'
 };
 
 function todayStr(d){
@@ -9801,21 +9856,7 @@ function toggleAutoHours(){ state.autoHours = !state.autoHours; save(); renderSm
 function setHourWarn(v){ state.hourWarn = Math.max(1, num(v) || 4); save(); renderSmart(); }
 function setHoursPerClass(v){ state.hoursPerClass = Math.max(1, num(v) || 1); save(); renderSmart(); }
 
-/* ===== 智能中心增强：总课时批量设置 + AI 大模型接入（通用 OpenAI 兼容） ===== */
-const AI_PROVIDERS = {
-  deepseek: { name:'DeepSeek 深度求索', base:'https://api.deepseek.com/v1', model:'deepseek-chat',
-    note:'中文能力强、价格极低，推荐首选；注册 deepseek.com 获取 API Key。' },
-  qwen: { name:'通义千问 Qwen（阿里）', base:'https://dashscope.aliyuncs.com/compatible-mode/v1', model:'qwen-plus',
-    note:'阿里云，中文优秀，有免费额度；DashScope 控制台获取 Key。' },
-  glm: { name:'智谱 GLM（清华）', base:'https://open.bigmodel.cn/api/paas/v4', model:'glm-4-flash',
-    note:'智谱开放平台，OpenAI 兼容，有免费模型。' },
-  kimi: { name:'Kimi（月之暗面）', base:'https://api.moonshot.cn/v1', model:'moonshot-v1-8k',
-    note:'超长上下文，适合喂入较长学生档案；Moonshot 控制台获取 Key。' },
-  hunyuan: { name:'腾讯混元', base:'https://api.hunyuan.cloud.tencent.com/v1', model:'hunyuan-lite',
-    note:'腾讯云大模型，按量计费；腾讯云控制台开通。' },
-  custom: { name:'自定义 OpenAI 兼容', base:'', model:'',
-    note:'填写任意兼容 /v1/chat/completions 的地址与模型名。' }
-};
+/* ===== 智能中心增强：AI 大模型接入函数（AI_PROVIDERS/AI_SCENES 常量已提升至文件顶部） ===== */
 function aiCfg(){
   const p = AI_PROVIDERS[state.ai.provider] || AI_PROVIDERS.deepseek;
   const base = (state.ai.baseUrl || p.base || '').replace(/\/+$/,'');
@@ -9842,14 +9883,6 @@ function aiChat(systemText, userText){
       return t.trim();
     });
 }
-const AI_SCENES = {
-  weekly: '本周学情反馈',
-  praise: '进步表扬',
-  decline: '退步提醒',
-  absent: '缺勤沟通',
-  homework: '作业督促',
-  exam: '考前鼓励'
-};
 function aiCommentPrompt(sid, scene){
   const f = findStudentById(sid); if (!f) return null;
   const s = f.s, cls = f.c, ds = smartDates(cls), recent = ds.slice(-Math.min(14, ds.length)), prev = ds.slice(-28, -14);
