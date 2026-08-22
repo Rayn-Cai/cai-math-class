@@ -1544,6 +1544,23 @@ th.atc-d.we-sun small{color:var(--red)}
 .sm-chip{font-size:12px;padding:6px 14px;border-radius:999px;border:1px solid var(--border);color:var(--text-secondary);background:var(--surface);cursor:pointer}
 .sm-chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .sm-ta{width:100%;min-height:96px;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:13px;line-height:1.7;color:var(--text);resize:vertical}
+.sm-hl{font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap}
+.sm-num2.sm-total{border-color:var(--accent);background:var(--accent-light);font-weight:700;color:var(--accent-dark)}
+.sm-lbl{font-size:12px;font-weight:700;color:var(--text-muted);white-space:nowrap}
+.sm-sel2{min-width:150px}
+.sm-tip.ok{color:var(--green);background:var(--green-light);padding:2px 9px;border-radius:999px}
+.sm-tip.ok{margin-left:auto}
+.sm-ai-st{display:block;font-size:12px;font-weight:600;margin:6px 0 2px}
+.sm-ai-st.loading{color:var(--text-muted)}
+.sm-ai-st.done{color:var(--green)}
+.sm-ai-st.err{color:var(--red)}
+.btn.ai{background:linear-gradient(135deg,var(--accent),#7c5cff);color:#fff;border:none}
+.btn.ai:hover{filter:brightness(1.06)}
+.modal.sm-modal{max-width:440px}
+.ff{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.ff>span{font-size:12.5px;font-weight:700;color:var(--text-secondary)}
+.ff-note{font-size:11.5px;color:var(--text-muted);line-height:1.6;margin:-6px 0 13px}
+.ff-row{flex-direction:row;align-items:center;gap:10px}
 .sm-iv-row{gap:12px;align-items:flex-start}
 .sm-mini2{padding:6px 12px;font-size:12px;white-space:nowrap}
 @media(max-width:680px){
@@ -1959,6 +1976,14 @@ function normalizeState(){
   if (!state.warnRules || !Object.keys(state.warnRules).length) state.warnRules = { ...WARN_RULES_DEFAULT };
   if (!Array.isArray(state.phraseBank)) state.phraseBank = PHRASE_BANK_DEFAULT.map(x => x);
   if (!state.hwFullOfDate || typeof state.hwFullOfDate !== 'object') state.hwFullOfDate = {};
+  /* AI 大模型接入（通用 OpenAI 兼容协议，浏览器端调用，密钥仅存本地） */
+  if (!state.ai || typeof state.ai !== 'object') state.ai = {};
+  if (!state.ai.provider) state.ai.provider = 'deepseek';
+  if (typeof state.ai.enabled !== 'boolean') state.ai.enabled = false;
+  if (!state.ai.apiKey) state.ai.apiKey = '';
+  if (!state.ai.model) state.ai.model = '';
+  if (!state.ai.baseUrl) state.ai.baseUrl = '';
+  if (!state.ai.scene) state.ai.scene = 'weekly';
   /* 旧版积分规则为扁平结构（att/quizFull/...），迁移到模块化结构 */
   if (!state.points.version || state.points.version < 2) {
     const old = state.points || {};
@@ -9686,18 +9711,22 @@ function renderSmart(){
   const warnCount = ren.filter(x => x.low).length;
   if (!ui.smartSid || !findStudentById(ui.smartSid)) ui.smartSid = cls.students[0] ? cls.students[0].id : '';
   const sid = ui.smartSid, comment = genComment(sid, ui.smartStyle);
+  const shownComment = (ui.aiCache && ui.aiCache.sid === sid && ui.aiCache.scene === state.ai.scene) ? ui.aiCache.text : comment;
+  const aiTag = (aiReady() && state.ai.enabled) ? '<span class="sm-tip ok">🤖 AI 已接入</span>' : '<span class="sm-tip">⚙️ 未接入 AI · 模板评语</span>';
+  const aiStatusHtml = !ui.aiStatus ? '' : (ui.aiStatus === 'loading' ? '<span class="sm-ai-st loading">⏳ AI 生成中…</span>' : ui.aiStatus === 'done' ? '<span class="sm-ai-st done">✅ AI 已生成，可复制</span>' : '<span class="sm-ai-st err">⚠️ ' + (ui.aiStatus.slice(4) || '生成失败') + '</span>');
   const opts = cls.students.map(s => '<option value="' + s.id + '" ' + (String(s.id) === String(sid) ? 'selected' : '') + '>' + esc(s.name) + '</option>').join('');
+  const sceneOpts = Object.keys(AI_SCENES).map(k => '<option value="' + k + '" ' + (state.ai.scene === k ? 'selected' : '') + '>' + AI_SCENES[k] + '</option>').join('');
   const renHtml = ren.length ? '<div class="sm-rows">' + ren.map(x => {
     const pct = x.total ? Math.round(x.used / x.total * 100) : 0;
     return '<div class="sm-row"><span class="sm-nm">' + esc(x.s.name) + '</span>'
       + '<span class="sm-sub">总' + x.total + ' · 已用' + x.used + ' · 剩 <b class="' + (x.low ? 'low' : '') + '">' + x.left + '</b></span>'
       + '<span class="sm-bar ' + (x.low ? 'low' : '') + '"><i style="width:' + Math.min(100, pct) + '%"></i></span>'
-      + '<span class="sm-hact"><button class="sm-mini" onclick="adjustHours(' + x.s.id + ',-1)">－</button>'
-      + '<input class="sm-num2" type="number" value="' + x.used + '" onchange="setHoursUsed(' + x.s.id + ',this.value)">'
+      + '<span class="sm-hact"><span class="sm-hl">已用</span><button class="sm-mini" onclick="adjustHours(' + x.s.id + ',-1)">－</button>'
+      + '<input class="sm-num2" type="number" value="' + x.used + '" onchange="setHoursUsed(' + x.s.id + ',this.value)" title="已用课时">'
       + '<button class="sm-mini" onclick="adjustHours(' + x.s.id + ',1)">＋</button>'
-      + '<input class="sm-num2" type="number" value="' + x.total + '" onchange="setHoursTotal(' + x.s.id + ',this.value)" title="总课时"></span>'
+      + '<span class="sm-hl">总课时</span><input class="sm-num2 sm-total" type="number" value="' + x.total + '" onchange="setHoursTotal(' + x.s.id + ',this.value)" title="总课时"></span>'
       + (x.low ? '<span class="sm-badge low">需续费</span>' : '<span class="sm-badge ok">充足</span>') + '</div>';
-  }).join('') + '</div><div class="sm-foot"><button class="btn" onclick="copyRenewal()">📋 复制需续费名单</button></div>'
+  }).join('') + '</div><div class="sm-foot"><button class="btn ghost" onclick="openBatchHours()">⏱️ 批量设置课时</button><button class="btn" onclick="copyRenewal()">📋 复制需续费名单</button></div>'
     : '<div class="sm-empty">还没有学生登记课时。在「总课时」一栏输入即可，出勤会自动累加已用课时。</div>';
   const prHtml = (pr.up.length ? '<div class="sm-pr"><span class="sm-pr-t up">进步 ▲</span>' + pr.up.map(x => '<span class="sm-pr-i">' + esc(x.s.name) + ' +' + (Math.round(x.d * 10) / 10) + '</span>').join('') + '</div>' : '')
     + (pr.down.length ? '<div class="sm-pr"><span class="sm-pr-t down">退步 ▼</span>' + pr.down.map(x => '<span class="sm-pr-i">' + esc(x.s.name) + ' ' + (Math.round(x.d * 10) / 10) + '</span>').join('') + '</div>' : '')
@@ -9726,13 +9755,17 @@ function renderSmart(){
     + '<div class="sm-grid2"><div class="sm-panel"><h4>📈 进步 / 退步榜</h4>' + prHtml + '</div>'
     + '<div class="sm-panel"><h4>🎯 待干预学生 + 自动建议</h4>' + ivHtml + '</div></div></div>'
 
-    + '<div class="sm-card"><div class="sm-card-t"><span class="sm-dot"></span>③ 智能评语 + 家校沟通包</div>'
+    + '<div class="sm-card"><div class="sm-card-t"><span class="sm-dot"></span>③ 智能评语 + 家校沟通包' + aiTag + '</div>'
     + '<div class="sm-row2"><select class="sm-sel" onchange="setSmartSid(this.value)">' + opts + '</select>'
     + '<div class="sm-chips"><span class="sm-chip ' + (ui.smartStyle === 'calm' ? 'on' : '') + '" onclick="setSmartStyle(\'calm\')">平和</span>'
     + '<span class="sm-chip ' + (ui.smartStyle === 'enc' ? 'on' : '') + '" onclick="setSmartStyle(\'enc\')">鼓励</span>'
     + '<span class="sm-chip ' + (ui.smartStyle === 'pro' ? 'on' : '') + '" onclick="setSmartStyle(\'pro\')">专业</span></div></div>'
-    + '<textarea class="sm-ta" id="smComment" readonly>' + esc(comment) + '</textarea>'
-    + '<div class="sm-foot"><button class="btn ghost" onclick="copyWechat()">📱 复制微信格式</button><button class="btn" onclick="copyComment()">📋 复制评语</button></div></div>'
+    + '<div class="sm-row2"><span class="sm-lbl">沟通场景</span><select class="sm-sel sm-sel2" onchange="setSmartScene(this.value)">' + sceneOpts + '</select>'
+    + '<button class="btn ghost sm-mini2" onclick="openAISettings()">⚙️ AI 设置</button></div>'
+    + '<textarea class="sm-ta" id="smComment" readonly>' + esc(shownComment) + '</textarea>'
+    + aiStatusHtml
+    + '<div class="sm-foot"><button class="btn ai" onclick="genCommentByAI()">🤖 AI 生成</button>'
+    + '<button class="btn ghost" onclick="copyWechat()">📱 复制微信格式</button><button class="btn" onclick="copyComment()">📋 复制评语</button></div></div>'
 
     + '<div class="sm-card"><div class="sm-card-t"><span class="sm-dot"></span>④ 掉队自动干预<span class="sm-tip">' + (warns.length ? warns.length + ' 项待处理' : '已全部处理 🎉') + '</span></div>' + ivRows + '</div>'
     + '</div>';
@@ -9742,14 +9775,170 @@ function setHoursTotal(sid, v){ const f = findStudentById(sid); if (!f) return; 
 function setHoursUsed(sid, v){ const f = findStudentById(sid); if (!f) return; f.s.hoursUsed = Math.min(f.s.hoursTotal, Math.max(0, num(v) || 0)); save(); renderSmart(); }
 function adjustHours(sid, delta){ const f = findStudentById(sid); if (!f) return; f.s.hoursUsed = Math.max(0, Math.min(f.s.hoursTotal, (+f.s.hoursUsed || 0) + delta)); save(); renderSmart(); }
 function dismissIntervention(key){ state.dismissedInterventions[key] = true; save(); renderSmart(); }
-function setSmartSid(v){ ui.smartSid = +v; renderSmart(); }
-function setSmartStyle(v){ ui.smartStyle = v; renderSmart(); }
 function copyRenewal(){ const cls = activeClass(); if (!cls) return; const list = renewalList(cls).filter(x => x.low); if (!list.length) return toast('暂无需续费学生'); copyText('【需续费名单】\n' + list.map(x => x.s.name + '：剩 ' + x.left + ' 课时（总' + x.total + '/已用' + x.used + '）').join('\n')); }
-function copyComment(){ copyText(genComment(ui.smartSid, ui.smartStyle)); }
-function copyWechat(){ copyText(genWechatWeekly(ui.smartSid)); }
+function setSmartSid(v){ ui.smartSid = +v; ui.aiCache = null; ui.aiStatus = ''; renderSmart(); }
+function setSmartStyle(v){ ui.smartStyle = v; ui.aiCache = null; ui.aiStatus = ''; renderSmart(); }
+function setSmartScene(v){ state.ai.scene = v; ui.aiCache = null; ui.aiStatus = ''; renderSmart(); }
+function shownCommentText(){
+  const sid = ui.smartSid;
+  if (ui.aiCache && ui.aiCache.sid === sid && ui.aiCache.scene === state.ai.scene) return ui.aiCache.text;
+  return genComment(sid, ui.smartStyle);
+}
+function copyComment(){ copyText(shownCommentText()); }
+function copyWechat(){ const f = findStudentById(ui.smartSid); if (!f) return; copyText('【' + f.s.name + ' 本周学情反馈】\n' + shownCommentText() + '\n—— 老师寄语，供家长参考 🙏'); }
+function genCommentByAI(){
+  const sid = ui.smartSid; if (!sid) return toast('请先选择学生');
+  if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用'); }
+  ui.aiStatus = 'loading'; renderSmart();
+  genCommentAI(sid, state.ai.scene, (text, err) => {
+    if (err || !text) { ui.aiStatus = 'err:' + ((err && err.message) || '生成失败'); renderSmart(); return toast('AI 生成失败：' + ((err && err.message) || '未知错误') + '（已保留模板评语）'); }
+    ui.aiCache = { sid: sid, scene: state.ai.scene, text: text };
+    ui.aiStatus = 'done'; renderSmart();
+    toast('AI 评语已生成');
+  });
+}
 function toggleAutoHours(){ state.autoHours = !state.autoHours; save(); renderSmart(); }
 function setHourWarn(v){ state.hourWarn = Math.max(1, num(v) || 4); save(); renderSmart(); }
 function setHoursPerClass(v){ state.hoursPerClass = Math.max(1, num(v) || 1); save(); renderSmart(); }
+
+/* ===== 智能中心增强：总课时批量设置 + AI 大模型接入（通用 OpenAI 兼容） ===== */
+const AI_PROVIDERS = {
+  deepseek: { name:'DeepSeek 深度求索', base:'https://api.deepseek.com/v1', model:'deepseek-chat',
+    note:'中文能力强、价格极低，推荐首选；注册 deepseek.com 获取 API Key。' },
+  qwen: { name:'通义千问 Qwen（阿里）', base:'https://dashscope.aliyuncs.com/compatible-mode/v1', model:'qwen-plus',
+    note:'阿里云，中文优秀，有免费额度；DashScope 控制台获取 Key。' },
+  glm: { name:'智谱 GLM（清华）', base:'https://open.bigmodel.cn/api/paas/v4', model:'glm-4-flash',
+    note:'智谱开放平台，OpenAI 兼容，有免费模型。' },
+  kimi: { name:'Kimi（月之暗面）', base:'https://api.moonshot.cn/v1', model:'moonshot-v1-8k',
+    note:'超长上下文，适合喂入较长学生档案；Moonshot 控制台获取 Key。' },
+  hunyuan: { name:'腾讯混元', base:'https://api.hunyuan.cloud.tencent.com/v1', model:'hunyuan-lite',
+    note:'腾讯云大模型，按量计费；腾讯云控制台开通。' },
+  custom: { name:'自定义 OpenAI 兼容', base:'', model:'',
+    note:'填写任意兼容 /v1/chat/completions 的地址与模型名。' }
+};
+function aiCfg(){
+  const p = AI_PROVIDERS[state.ai.provider] || AI_PROVIDERS.deepseek;
+  const base = (state.ai.baseUrl || p.base || '').replace(/\/+$/,'');
+  const model = state.ai.model || p.model || '';
+  return { base, model, key: state.ai.apiKey || '' };
+}
+function aiReady(){ const c = aiCfg(); return !!(c.key && c.base && c.model); }
+function aiProviderCount(){ return Object.keys(AI_PROVIDERS).length; }
+function aiChat(systemText, userText){
+  const c = aiCfg();
+  if (!c.key || !c.base || !c.model) throw new Error('AI 未配置');
+  const body = { model: c.model, messages: [
+    { role:'system', content: systemText },
+    { role:'user', content: userText }
+  ], temperature: 0.7, max_tokens: 600 };
+  return fetch(c.base + '/chat/completions', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + c.key },
+    body: JSON.stringify(body)
+  }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(j => {
+      const t = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+      if (!t) throw new Error('空响应'); return t.trim();
+    });
+}
+const AI_SCENES = {
+  weekly: '本周学情反馈',
+  praise: '进步表扬',
+  decline: '退步提醒',
+  absent: '缺勤沟通',
+  homework: '作业督促',
+  exam: '考前鼓励'
+};
+function aiCommentPrompt(sid, scene){
+  const f = findStudentById(sid); if (!f) return null;
+  const s = f.s, cls = f.c, ds = smartDates(cls), recent = ds.slice(-Math.min(14, ds.length)), prev = ds.slice(-28, -14);
+  let att = 0, attN = 0; recent.forEach(d => { const r = s.records[d]; if (!r) return; attN++; const a = r.attendance; if (a === 'present' || a === 'late') att++; });
+  const attRate = attN ? Math.round(att / attN * 100) : null;
+  const qa = qAvg(s, recent), qb = qAvg(s, prev), qdelta = (qa != null && qb != null) ? Math.round((qa - qb) * 10) / 10 : null;
+  let hwDone = 0, hwN = 0; recent.forEach(d => { const r = s.records[d]; if (!r) return; hwN++; if (state.hwMode === 'done') { if (r.hwDone === true) hwDone++; } else { const st = r.hwDetail && r.hwDetail.status; if (st === 'full' || st === 'partial' || st === 'done' || (num(r.homework) != null && num(r.homework) > 0)) hwDone++; } });
+  const hwRate = hwN ? Math.round(hwDone / hwN * 100) : null;
+  const pts = availablePoints(s);
+  const sceneName = AI_SCENES[scene] || AI_SCENES.weekly;
+  const styleName = ({ calm:'平和真诚', enc:'鼓励温暖', pro:'专业严谨' })[ui.smartStyle || 'calm'] || '平和真诚';
+  const user = '学生姓名：' + s.name + '\n场景：' + sceneName + '\n语气：' + styleName
+    + '\n近14天出勤率：' + (attRate==null?'数据不足':attRate+'%')
+    + '\n近14天小测均分：' + (qa==null?'数据不足':qa + (qdelta==null?'':('（前14天 '+qb+'，变化 '+(qdelta>0?('+'+qdelta):qdelta)+'）')))
+    + '\n近14天作业完成率：' + (hwRate==null?'数据不足':hwRate+'%')
+    + '\n可用积分：' + pts + ' 分';
+  const system = '你是经验丰富的初中数学老师，擅长与家长做温暖、真实、具体的沟通。'
+    + '请根据提供的学生数据，写一段约 80-160 字的家长反馈，对应' + sceneName + '场景，语气' + styleName + '。'
+    + '要求：只输出正文，不使用占位括号，不编造数据之外的信息，给出具体可操作的建议。';
+  return { system, user };
+}
+function genCommentAI(sid, scene, cb){
+  if (!aiReady()) { cb(null, new Error('AI 未配置')); return; }
+  const pr = aiCommentPrompt(sid, scene); if (!pr) { cb(null, new Error('请选择学生')); return; }
+  aiChat(pr.system, pr.user).then(t => cb(t, null)).catch(e => cb(null, e));
+}
+function aiWechatAI(sid, scene, cb){
+  if (!aiReady()) { cb(null, new Error('AI 未配置')); return; }
+  const pr = aiCommentPrompt(sid, scene); if (!pr) { cb(null, new Error('请选择学生')); return; }
+  const sys = pr.system + ' 输出时请加上一行标题【学生姓名 本周学情反馈】，并以换行分隔，便于直接复制到微信发送。';
+  aiChat(sys, pr.user).then(t => cb(t, null)).catch(e => cb(null, e));
+}
+
+/* 总课时批量设置 */
+function openBatchHours(){
+  openModal('<div class="modal sm-modal"><div class="modal-t">⏱️ 批量设置课时</div>'
+    + '<div class="modal-b">'
+    + '<label class="ff"><span>操作方式</span><select id="bhMode" class="inp"><option value="setTotal">设为总课时</option><option value="addTotal">增加总课时</option><option value="addUsed">增加已用课时</option></select></label>'
+    + '<label class="ff"><span>课时数值</span><input id="bhVal" class="inp" type="number" min="0" value="10"></label>'
+    + '<label class="ff"><span>应用到</span><select id="bhScope" class="inp"><option value="all">全班学生</option><option value="empty">仅未登记（总课时为0）的学生</option></select></label>'
+    + '<div class="modal-actions"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="applyBatchHours()">应用</button></div>'
+    + '</div></div>');
+}
+function applyBatchHours(mode, val, scope){
+  if (mode == null) mode = (document.getElementById('bhMode')||{}).value || 'setTotal';
+  if (val == null) val = Math.max(0, num((document.getElementById('bhVal')||{}).value) || 0);
+  if (scope == null) scope = (document.getElementById('bhScope')||{}).value || 'all';
+  const cls = activeClass(); if (!cls) return closeModal();
+  let n = 0;
+  cls.students.forEach(s => {
+    if (scope === 'empty' && (+s.hoursTotal || 0) > 0) return;
+    if (mode === 'setTotal') s.hoursTotal = val;
+    else if (mode === 'addTotal') s.hoursTotal = (+s.hoursTotal || 0) + val;
+    else if (mode === 'addUsed') s.hoursUsed = Math.min((+s.hoursTotal||0), (+s.hoursUsed || 0) + val);
+    n++;
+  });
+  save(); closeModal(); renderSmart();
+  toast('已为 ' + n + ' 名学生批量' + ({ setTotal:'设置', addTotal:'增加', addUsed:'增加已用' })[mode] + '课时');
+}
+
+/* AI 设置弹窗 */
+function openAISettings(){
+  const p = state.ai.provider, a = aiCfg();
+  const opts = Object.keys(AI_PROVIDERS).map(k => '<option value="'+k+'" '+(k===p?'selected':'')+'>'+AI_PROVIDERS[k].name+'</option>').join('');
+  openModal('<div class="modal sm-modal"><div class="modal-t">🤖 AI 大模型设置</div>'
+    + '<div class="modal-b">'
+    + '<label class="ff"><span>模型厂商</span><select id="aiProv" class="inp" onchange="aiProvChange()">'+opts+'</select></label>'
+    + '<div class="ff-note" id="aiNote">'+(AI_PROVIDERS[p]||AI_PROVIDERS.deepseek).note+'</div>'
+    + '<label class="ff"><span>API Key</span><input id="aiKey" class="inp" type="password" placeholder="仅保存在你本机浏览器" value="'+esc(a.key)+'"></label>'
+    + '<label class="ff"><span>接口地址</span><input id="aiBase" class="inp" placeholder="留空则用厂商默认" value="'+esc(a.base)+'"></label>'
+    + '<label class="ff"><span>模型名</span><input id="aiModel" class="inp" placeholder="留空则用厂商默认" value="'+esc(a.model)+'"></label>'
+    + '<label class="ff ff-row"><span>启用 AI 生成</span><input id="aiOn" type="checkbox" '+(state.ai.enabled?'checked':'')+'></label>'
+    + '<div class="ff-note">密钥仅存储在本机浏览器 localStorage，直接从你的浏览器请求厂商接口；请妥善保管，勿在公共电脑勾选启用。</div>'
+    + '<div class="modal-actions"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveAISettings()">保存</button></div>'
+    + '</div></div>');
+}
+function aiProvChange(){
+  const k = (document.getElementById('aiProv')||{}).value || 'deepseek';
+  const el = document.getElementById('aiNote'); if (el) el.textContent = (AI_PROVIDERS[k]||AI_PROVIDERS.deepseek).note;
+}
+function saveAISettings(){
+  const k = (document.getElementById('aiProv')||{}).value || 'deepseek';
+  state.ai.provider = k;
+  state.ai.apiKey = (document.getElementById('aiKey')||{}).value || '';
+  state.ai.baseUrl = (document.getElementById('aiBase')||{}).value || '';
+  state.ai.model = (document.getElementById('aiModel')||{}).value || '';
+  state.ai.enabled = !!(document.getElementById('aiOn')||{}).checked;
+  save(); closeModal(); renderSmart();
+  toast(state.ai.enabled ? 'AI 已启用（'+AI_PROVIDERS[k].name+'）' : 'AI 设置已保存（未启用）');
+}
 
 /* ===== 积分激励增强：成就徽章 / 连续连击 / 挑战任务（均由数据自动判定，无需手动发放） ===== */
 const BADGE_DEFS = [
