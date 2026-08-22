@@ -1641,11 +1641,31 @@ th.atc-d.we-sun small{color:var(--red)}
 .co-rule .co-time{flex:1;min-width:110px}
 .co-rule .co-dur{width:64px;min-width:54px}
 .co-dur-u{font-size:11px}
+/* 上课时间快捷按钮 */
+.co-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.co-qb{border:1px solid var(--border);background:var(--surface);color:var(--text-secondary);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s ease}
+.co-qb:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
+.co-qb.batch{background:var(--accent-light);border-color:transparent;color:var(--accent-dark)}
+.co-q-sep{width:1px;height:18px;background:var(--border);margin:0 2px}
+/* 课表日历预览 */
+.co-cal-wrap{max-height:300px;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px}
+.co-cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}
+.co-cal-m{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.co-cal-mh{background:var(--accent-light);color:var(--accent-dark);text-align:center;font-size:12px;font-weight:700;padding:5px 0}
+.co-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:6px}
+.co-cal-wd{text-align:center;font-size:9.5px;color:var(--text-muted);padding:2px 0}
+.co-cal-c{position:relative;text-align:center;font-size:11px;color:var(--text-secondary);padding:4px 0;border-radius:4px;min-height:20px;line-height:1.3}
+.co-cal-c.empty{visibility:hidden}
+.co-cal-c.on{background:var(--accent);color:#fff;font-weight:700}
+.co-cal-t{display:block;font-size:8px;font-weight:400;opacity:.9;font-style:normal}
+.co-cal-info{margin-top:8px;font-size:11.5px;text-align:center}
+.co-cal-info b{color:var(--accent-dark)}
 .ff-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:680px){
   .ff-row2{grid-template-columns:1fr}
   .sc-cs-actions .btn{flex:1 1 auto}
   .co-rule .co-dur{width:54px}
+  .co-cal{grid-template-columns:1fr}
 }
 
 /* ===== 智能中心界面增强 ===== */
@@ -4588,28 +4608,33 @@ function courseSectionHtml(sid){
       </div>
     </div>`;
   }).join('');
-  return `<div class="sc-sec"><div class="sc-sec-t">📚 课时安排
+  return `<div class="sc-sec" id="scCourseSec"><div class="sc-sec-t">📚 课时安排
       <button class="btn sm" style="margin-left:8px" onclick="openCourseEditor('${sid}',null)">＋ 新增课时安排</button></div>
     ${items || '<div class="muted" style="padding:6px 0">还没有课时安排。点击「＋ 新增课时安排」，设置学习时间范围、上课次数与具体上课时间（如每周一三五 19:00）。</div>'}
   </div>`;
+}
+function refreshCourseSection(sid){
+  const el = document.getElementById('scCourseSec');
+  if (!el) return;
+  try { el.outerHTML = courseSectionHtml(sid); } catch(e) { console.error('refreshCourseSection', e); }
 }
 function courseAddAtt(sid, cid){
   const f = findStudentById(sid); if (!f) return;
   const co = (f.s.courses || []).find(x => x.id === cid); if (!co) return;
   co.attended = Math.min((+co.total || 0), (+co.attended || 0) + 1);
-  save(); renderMain(); toast('已记录一节课程 ✅');
+  save(); refreshCourseSection(sid); toast('已记录一节课程 ✅');
 }
 function courseSubAtt(sid, cid){
   const f = findStudentById(sid); if (!f) return;
   const co = (f.s.courses || []).find(x => x.id === cid); if (!co) return;
   co.attended = Math.max(0, (+co.attended || 0) - 1);
-  save(); renderMain();
+  save(); refreshCourseSection(sid);
 }
 function courseDel(sid, cid){
   const f = findStudentById(sid); if (!f) return;
   if (!confirm('确定删除该课时安排？此操作不可撤销。')) return;
   f.s.courses = (f.s.courses || []).filter(x => x.id !== cid);
-  save(); renderMain(); toast('已删除课时安排');
+  save(); refreshCourseSection(sid); toast('已删除课时安排');
 }
 /* 课时安排编辑器弹窗 */
 function openCourseEditor(sid, cid){
@@ -4619,42 +4644,105 @@ function openCourseEditor(sid, cid){
   const d = co || { name:'', start:'', end:'', total:0, rules:[] };
   ui._coRules = (d.rules || []).map(r => ({ dow:+r.dow, time:r.time || '19:00', dur:+r.dur || 90 }));
   const rulesHtml = ui._coRules.map((r, i) => ruleRowHtml(i, r)).join('');
+  const quickDows = [1,2,3,4,5,6,0].map(k => '<button class="co-qb" type="button" onclick="courseQuickAdd(' + k + ')">' + DOW_NAME[k].replace('周','周') + '</button>').join('');
   openModal('📚 ' + (isEdit ? '编辑' : '新增') + '课时安排', `
     <div class="cm">
       <label class="ff"><span>课程名称</span><input id="coName" class="inp" placeholder="如：初一数学秋季班" value="${esc(d.name)}"></label>
       <div class="ff-row2">
-        <label class="ff"><span>开始日期</span><input id="coStart" class="inp" type="date" value="${esc(d.start)}"></label>
-        <label class="ff"><span>结束日期</span><input id="coEnd" class="inp" type="date" value="${esc(d.end)}"></label>
+        <label class="ff"><span>开始日期</span><input id="coStart" class="inp" type="date" value="${esc(d.start)}" onchange="renderCourseCalendar()"></label>
+        <label class="ff"><span>结束日期</span><input id="coEnd" class="inp" type="date" value="${esc(d.end)}" onchange="renderCourseCalendar()"></label>
       </div>
       <label class="ff"><span>上课次数（共几节）</span><input id="coTotal" class="inp" type="number" min="0" value="${d.total || 0}"></label>
       <div class="ff-block">
-        <div class="ff-block-t">🕐 具体上课时间 <span class="muted">（可添加多条，如 每周一三五 19:00）</span></div>
-        <div id="coRules">${rulesHtml || '<div class="muted" id="coRulesEmpty">还没添加上课时间</div>'}</div>
-        <button class="btn sm ghost" onclick="courseRuleAdd()">＋ 添加上课时间</button>
+        <div class="ff-block-t">🕐 具体上课时间 <span class="muted">（点快捷按钮，或手动添加）</span></div>
+        <div class="co-quick">${quickDows}<span class="co-q-sep"></span><button class="co-qb batch" type="button" onclick="courseQuickAddBatch([1,2,3,4,5])">工作日</button><button class="co-qb batch" type="button" onclick="courseQuickAddBatch([0,6])">周末</button><button class="co-qb batch" type="button" onclick="courseQuickAddBatch([0,1,2,3,4,5,6])">每天</button></div>
+        <div id="coRules">${rulesHtml || '<div class="muted" id="coRulesEmpty">还没添加上课时间，点上方快捷按钮试试「每周六」</div>'}</div>
+        <button class="btn sm ghost" type="button" onclick="courseRuleAdd()">＋ 手动添加</button>
       </div>
-      <div class="ff-note">系统会根据「开始/结束日期 + 上课时间」自动生成完整课表，可在档案卡查看。</div>
-      <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveCourse('${sid}',${co ? co.id : 'null'})">保存</button></div>
-    </div>`, null, 460);
+      <div class="ff-block">
+        <div class="ff-block-t">📅 课表日历预览 <span class="muted">（自动按规则生成，高亮＝上课日）</span></div>
+        <div id="coCal" class="co-cal-wrap"></div>
+      </div>
+      <div class="ff-note">系统会根据「开始/结束日期 + 上课时间」自动生成完整课表，保存到档案卡即可查看。</div>
+      <div class="modal-actions"><button class="btn ghost" type="button" onclick="closeModal()">取消</button><button class="btn" type="button" onclick="saveCourse('${sid}',${co ? co.id : 'null'})">保存</button></div>
+    </div>`, null, 500);
+  renderCourseCalendar();
 }
 function ruleRowHtml(i, r){
   return `<div class="co-rule">
     <select class="inp co-dow" onchange="ui._coRules[${i}].dow=+this.value">${DOW_NAME.map((n, k) => '<option value="' + k + '" ' + (k === +r.dow ? 'selected' : '') + '>' + n + '</option>').join('')}</select>
-    <input class="inp co-time" type="time" value="${esc(r.time || '19:00')}" onchange="ui._coRules[${i}].time=this.value">
+    <input class="inp co-time" type="time" value="${esc(r.time || '19:00')}" onchange="ui._coRules[${i}].time=this.value;renderCourseCalendar()">
     <input class="inp co-dur" type="number" min="0" value="${r.dur || 90}" onchange="ui._coRules[${i}].dur=+this.value" placeholder="时长" title="时长(分钟)">
     <span class="muted co-dur-u">分钟</span>
-    <button class="icon-btn del" onclick="courseRuleDel(${i})" title="删除">✕</button>
+    <button class="icon-btn del" type="button" onclick="courseRuleDel(${i})" title="删除">✕</button>
   </div>`;
 }
 function courseRuleAdd(){
   ui._coRules = ui._coRules || [];
   ui._coRules.push({ dow:1, time:'19:00', dur:90 });
-  renderCourseRules();
+  renderCourseRules(); renderCourseCalendar();
 }
-function courseRuleDel(i){ if (ui._coRules) ui._coRules.splice(i, 1); renderCourseRules(); }
+function courseRuleDel(i){ if (ui._coRules) ui._coRules.splice(i, 1); renderCourseRules(); renderCourseCalendar(); }
 function renderCourseRules(){
   const box = document.getElementById('coRules'); if (!box) return;
-  if (!ui._coRules || !ui._coRules.length){ box.innerHTML = '<div class="muted" id="coRulesEmpty">还没添加上课时间</div>'; return; }
+  if (!ui._coRules || !ui._coRules.length){ box.innerHTML = '<div class="muted" id="coRulesEmpty">还没添加上课时间，点上方快捷按钮试试「每周六」</div>'; return; }
   box.innerHTML = ui._coRules.map((r, i) => ruleRowHtml(i, r)).join('');
+}
+/* 快捷添加上课日（单个星期几 / 批量） */
+function courseQuickAdd(dow){
+  ui._coRules = ui._coRules || [];
+  if (ui._coRules.some(r => +r.dow === +dow)) return toast('「' + DOW_NAME[+dow] + '」已在上课时间中');
+  const ref = ui._coRules[0] || { time:'19:00', dur:90 };
+  ui._coRules.push({ dow:+dow, time:ref.time, dur:ref.dur });
+  renderCourseRules(); renderCourseCalendar();
+  toast('已添加 ' + DOW_NAME[+dow] + ' 上课');
+}
+function courseQuickAddBatch(dows){
+  ui._coRules = ui._coRules || [];
+  const ref = ui._coRules[0] || { time:'19:00', dur:90 };
+  let added = 0;
+  dows.forEach(d => { if (!ui._coRules.some(r => +r.dow === +d)) { ui._coRules.push({ dow:+d, time:ref.time, dur:ref.dur }); added++; } });
+  if (!added) return toast('这些上课日已全部存在');
+  renderCourseRules(); renderCourseCalendar();
+  toast('已批量添加 ' + added + ' 个上课日');
+}
+/* 课表日历预览：按起止日期 + 规则推算，按月渲染并高亮上课日 */
+function renderCourseCalendar(){
+  const box = document.getElementById('coCal'); if (!box) return;
+  const g = id => document.getElementById(id);
+  const start = g('coStart') ? g('coStart').value : '';
+  const end = g('coEnd') ? g('coEnd').value : '';
+  if (!start || !end){ box.innerHTML = '<div class="muted" style="padding:8px 0">设置起止日期后，这里会自动显示课表日历</div>'; return; }
+  if (start > end){ box.innerHTML = '<div class="muted" style="padding:8px 0">开始日期不能晚于结束日期</div>'; return; }
+  const rules = (ui._coRules || []).map(r => ({ dow:+r.dow, time:r.time, dur:+r.dur || 0 }));
+  const co = { start, end, rules };
+  const sessions = courseSessions(co);
+  if (!sessions.length){ box.innerHTML = '<div class="muted" style="padding:8px 0">当前规则在日期范围内没有对应的上课日，请调整日期或上课时间</div>'; return; }
+  const set = {}; sessions.forEach(s => set[s.date] = s);
+  const d0 = new Date(start + 'T00:00:00');
+  const d1 = new Date(end + 'T00:00:00');
+  const months = [];
+  let m = new Date(d0.getFullYear(), d0.getMonth(), 1);
+  while (m <= d1 && months.length < 12) { months.push(new Date(m)); m.setMonth(m.getMonth() + 1); }
+  let html = '<div class="co-cal">';
+  months.forEach(mo => {
+    const y = mo.getFullYear(), mnum = mo.getMonth();
+    const first = new Date(y, mnum, 1);
+    const startDow = first.getDay();
+    const daysInMonth = new Date(y, mnum + 1, 0).getDate();
+    html += '<div class="co-cal-m"><div class="co-cal-mh">' + y + '年' + (mnum + 1) + '月</div><div class="co-cal-grid">';
+    html += DOW_NAME.map(n => '<span class="co-cal-wd">' + n.replace('周','') + '</span>').join('');
+    for (let i = 0; i < startDow; i++) html += '<span class="co-cal-c empty"></span>';
+    for (let dd = 1; dd <= daysInMonth; dd++){
+      const ds = y + '-' + String(mnum + 1).padStart(2,'0') + '-' + String(dd).padStart(2,'0');
+      const has = !!set[ds];
+      const t = has && set[ds].time ? '<i class="co-cal-t">' + esc(set[ds].time) + '</i>' : '';
+      html += '<span class="co-cal-c' + (has ? ' on' : '') + '">' + dd + t + '</span>';
+    }
+    html += '</div></div>';
+  });
+  html += '</div><div class="co-cal-info muted">共 <b>' + sessions.length + '</b> 节课 ｜ 首节 ' + sessions[0].date + (sessions[0].time ? ' ' + sessions[0].time : '') + ' ｜ 末节 ' + sessions[sessions.length - 1].date + (sessions[sessions.length - 1].time ? ' ' + sessions[sessions.length - 1].time : '') + '</div>';
+  box.innerHTML = html;
 }
 function saveCourse(sid, cid){
   const f = findStudentById(sid); if (!f) return;
@@ -4673,7 +4761,7 @@ function saveCourse(sid, cid){
     (f.s.courses = f.s.courses || []).push(co);
   }
   ui._coRules = null;
-  save(); closeModal(); renderMain(); toast('课时安排已保存 ✅');
+  save(); closeModal(); openStudentCard(sid); toast('课时安排已保存 ✅');
 }
 /* ==================================================================
    📄 成绩单（导出 / 打印 / 截图）：学生维度完整成绩单
