@@ -1600,6 +1600,22 @@ th.atc-d.we-sun small{color:var(--red)}
 .sm-foot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .sm-foot .btn{font-size:12.5px;padding:7px 14px}
 .blank-state{animation:fadeUp .25s ease-out}
+
+/* AI 设置弹窗增强 */
+.ai-set-modal{max-width:480px!important}
+.ai-set-sec{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.ai-set-sec:last-of-type{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.toggle-sw{position:relative;display:inline-block;width:42px;height:24px;cursor:pointer;flex:none}
+.toggle-sl{position:absolute;inset:0;background:var(--border);border-radius:999px;transition:.25s}
+.toggle-sl::before{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s ease;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle-sw input:checked + .toggle-sl{background:var(--accent)}
+.toggle-sw input:checked + .toggle-sl::before{transform:translateX(18px)}
+.toggle-sw input{display:none}
+.ai-test-btn{font-size:12.5px;padding:6px 14px;margin-top:6px;width:100%;box-sizing:border-box;text-align:center}
+.ai-test-res{margin-top:6px;font-size:12.5px;min-height:22px}
+.ai-test-run{color:var(--text-secondary);font-style:italic}
+.ai-test-ok{color:var(--green-dark);font-weight:600}
+.ai-test-err{color:var(--red-dark);word-break:break-all;line-height:1.5}
 </style>
 </head>
 <body>
@@ -9768,7 +9784,16 @@ function renderSmart(){
   const sid = ui.smartSid, comment = genComment(sid, ui.smartStyle);
   const shownComment = (ui.aiCache && ui.aiCache.sid === sid && ui.aiCache.scene === state.ai.scene) ? ui.aiCache.text : comment;
   const aiTag = (aiReady() && state.ai.enabled) ? '<span class="sm-tip ok">🤖 AI 已接入</span>' : '<span class="sm-tip">⚙️ 未接入 AI · 模板评语</span>';
-  const aiStatusHtml = !ui.aiStatus ? '' : (ui.aiStatus === 'loading' ? '<span class="sm-ai-st loading">⏳ AI 生成中…</span>' : ui.aiStatus === 'done' ? '<span class="sm-ai-st done">✅ AI 已生成，可复制</span>' : '<span class="sm-ai-st err">⚠️ ' + (ui.aiStatus.indexOf('err:') === 0 ? ui.aiStatus.slice(4) : '生成失败') + '</span>');
+  var statusTxt = '';
+  if (ui.aiStatus) {
+    if (ui.aiStatus === 'loading') statusTxt = '<span class="sm-ai-st loading">⏳ AI 生成中…</span>';
+    else if (ui.aiStatus === 'done') statusTxt = '<span class="sm-ai-st done">✅ AI 已生成，可复制</span>';
+    else {
+      var errPart = (String(ui.aiStatus || '').indexOf('err:') === 0) ? String(ui.aiStatus).slice(4) : '生成失败';
+      if (!errPart || errPart === 'undefined' || errPart === 'null') errPart = '生成失败，请检查设置';
+      statusTxt = '<span class="sm-ai-st err">⚠️ ' + esc(errPart) + '</span>';
+    }
+  }
   const opts = cls.students.map(s => '<option value="' + s.id + '" ' + (String(s.id) === String(sid) ? 'selected' : '') + '>' + esc(s.name) + '</option>').join('');
   const sceneOpts = Object.keys(AI_SCENES).map(k => '<option value="' + k + '" ' + (state.ai.scene === k ? 'selected' : '') + '>' + AI_SCENES[k] + '</option>').join('');
   const renHtml = ren.length ? '<div class="sm-rows">' + ren.map(x => {
@@ -9818,7 +9843,7 @@ function renderSmart(){
     + '<div class="sm-row2"><span class="sm-lbl">沟通场景</span><select class="sm-sel sm-sel2" onchange="setSmartScene(this.value)">' + sceneOpts + '</select>'
     + '<button class="btn ghost sm-mini2" onclick="openAISettings()">⚙️ AI 设置</button></div>'
     + '<textarea class="sm-ta" id="smComment" readonly>' + esc(shownComment) + '</textarea>'
-    + aiStatusHtml
+    + statusTxt
     + '<div class="sm-foot"><button class="btn ai" onclick="genCommentByAI()">🤖 AI 生成</button>'
     + '<button class="btn ghost" onclick="copyWechat()">📱 复制微信格式</button><button class="btn" onclick="copyComment()">📋 复制评语</button></div></div>'
 
@@ -9845,11 +9870,20 @@ function genCommentByAI(){
   const sid = ui.smartSid; if (!sid) return toast('请先选择学生');
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用'); }
   ui.aiStatus = 'loading'; renderSmart();
-  genCommentAI(sid, state.ai.scene, (text, err) => {
-    if (err || !text) { const msg = (err && err.message) ? err.message : (err ? String(err) : '网络超时或无响应'); ui.aiStatus = 'err:' + msg; renderSmart(); return toast('AI 生成失败：' + msg + '（已保留模板评语）'); }
+  genCommentAI(sid, state.ai.scene, function(text, err){
+    if (err || !text) {
+      var rawMsg = null;
+      try { if (err && err.message) rawMsg = err.message; else if (err) rawMsg = String(err); } catch(e) { rawMsg = null; }
+      var msg = rawMsg || '网络超时或无响应';
+      if (msg.length > 150) msg = msg.slice(0, 150) + '…';
+      ui.aiStatus = 'err:' + msg;
+      renderSmart();
+      return toast('AI 生成失败：' + msg + '（已保留模板评语）');
+    }
     ui.aiCache = { sid: sid, scene: state.ai.scene, text: text };
-    ui.aiStatus = 'done'; renderSmart();
-    toast('AI 评语已生成');
+    ui.aiStatus = 'done';
+    renderSmart();
+    toast('✅ AI 评语已生成');
   });
 }
 function toggleAutoHours(){ state.autoHours = !state.autoHours; save(); renderSmart(); }
@@ -9947,17 +9981,21 @@ function applyBatchHours(mode, val, scope){
 function openAISettings(){
   const p = state.ai.provider, a = aiCfg();
   const opts = Object.keys(AI_PROVIDERS).map(k => '<option value="'+k+'" '+(k===p?'selected':'')+'>'+AI_PROVIDERS[k].name+'</option>').join('');
-  openModal('<div class="modal sm-modal"><div class="modal-t">🤖 AI 大模型设置</div>'
+  openModal('<div class="modal sm-modal ai-set-modal"><div class="modal-t">🤖 AI 大模型设置</div>'
     + '<div class="modal-b">'
-    + '<label class="ff"><span>模型厂商</span><select id="aiProv" class="inp" onchange="aiProvChange()">'+opts+'</select></label>'
-    + '<div class="ff-note" id="aiNote">'+(AI_PROVIDERS[p]||AI_PROVIDERS.deepseek).note+'</div>'
-    + '<label class="ff"><span>API Key</span><input id="aiKey" class="inp" type="password" placeholder="仅保存在你本机浏览器" value="'+esc(a.key)+'"></label>'
-    + '<label class="ff"><span>接口地址</span><input id="aiBase" class="inp" placeholder="留空则用厂商默认" value="'+esc(a.base)+'"></label>'
-    + '<label class="ff"><span>模型名</span><input id="aiModel" class="inp" placeholder="留空则用厂商默认" value="'+esc(a.model)+'"></label>'
-    + '<label class="ff ff-row"><span>启用 AI 生成</span><input id="aiOn" type="checkbox" '+(state.ai.enabled?'checked':'')+'></label>'
+    + '<div class="ai-set-sec"><label class="ff"><span>模型厂商</span><select id="aiProv" class="inp" onchange="aiProvChange()">'+opts+'</select></label>'
+    + '<div class="ff-note" id="aiNote">'+(AI_PROVIDERS[p]||AI_PROVIDERS.deepseek).note+'</div></div>'
+    + '<div class="ai-set-sec"><label class="ff"><span>API Key</span><input id="aiKey" class="inp" type="password" placeholder="sk-..." value="'+esc(a.key)+'"></label>'
+    + '<label class="ff"><span>接口地址</span><input id="aiBase" class="inp" placeholder="选厂商后自动填充" value="'+esc(a.base)+'"></label>'
+    + '<label class="ff"><span>模型名</span><input id="aiModel" class="inp" placeholder="选厂商后自动填充" value="'+esc(a.model)+'"></label></div>'
+    + '<div class="ai-set-sec"><label class="ff ff-row"><span>启用 AI 生成</span><label class="toggle-sw"><input id="aiOn" type="checkbox" '+(state.ai.enabled?'checked':'')+'><span class="toggle-sl"></span></label></label>'
+    + '<button class="btn ghost ai-test-btn" onclick="testAIConn()" id="aiTestBtn">🔗 测试连接</button>'
+    + '<div id="aiTestRes" class="ai-test-res"></div></div>'
     + '<div class="ff-note">密钥仅存储在本机浏览器 localStorage，直接从你的浏览器请求厂商接口；请妥善保管，勿在公共电脑勾选启用。</div>'
-    + '<div class="modal-actions"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveAISettings()">保存</button></div>'
+    + '<div class="modal-actions"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveAISettings()">保存并关闭</button></div>'
     + '</div></div>');
+  /* 确保字段值与当前选中厂商同步（修复：切换厂商后地址未更新的 bug） */
+  requestAnimationFrame(function(){ aiProvChange(); });
 }
 function aiProvChange(){
   const k = (document.getElementById('aiProv')||{}).value || 'deepseek';
@@ -9968,13 +10006,48 @@ function aiProvChange(){
 }
 function saveAISettings(){
   const k = (document.getElementById('aiProv')||{}).value || 'deepseek';
+  const prov = AI_PROVIDERS[k] || AI_PROVIDERS.deepseek;
   state.ai.provider = k;
   state.ai.apiKey = (document.getElementById('aiKey')||{}).value || '';
   state.ai.baseUrl = (document.getElementById('aiBase')||{}).value || '';
   state.ai.model = (document.getElementById('aiModel')||{}).value || '';
   state.ai.enabled = !!(document.getElementById('aiOn')||{}).checked;
   save(); closeModal(); renderSmart();
-  toast(state.ai.enabled ? 'AI 已启用（'+AI_PROVIDERS[k].name+'）' : 'AI 设置已保存（未启用）');
+  toast(state.ai.enabled ? '✅ AI 已启用（' + (prov.name || 'AI') + '）' : 'AI 设置已保存（未启用）');
+}
+/* 测试 AI 连接 */
+function testAIConn(){
+  var btn = document.getElementById('aiTestBtn');
+  var res = document.getElementById('aiTestRes');
+  if (!btn || !res) return;
+  btn.disabled = true; btn.textContent = '⏳ 测试中…';
+  res.innerHTML = '<span class="ai-test-run">正在连接 ' + ((document.getElementById('aiProv')||{}).value || '') + ' …</span>';
+  /* 临时读取当前表单值（不保存到 state） */
+  var provKey = (document.getElementById('aiProv')||{}).value || 'deepseek';
+  var prov = AI_PROVIDERS[provKey] || AI_PROVIDERS.deepseek;
+  var tBase = ((document.getElementById('aiBase')||{}).value || prov.base || '').replace(/\/+$/,'');
+  var tModel = (document.getElementById('aiModel')||{}).value || prov.model || '';
+  var tKey = (document.getElementById('aiKey')||{}).value || '';
+  if (!tKey) { res.innerHTML = '<span class="ai-test-err">❌ 请先填写 API Key</span>'; btn.disabled = false; btn.textContent = '🔗 测试连接'; return; }
+  if (!tBase || !tModel) { res.innerHTML = '<span class="ai-test-err">❌ 接口地址和模型名不能为空</span>'; btn.disabled = false; btn.textContent = '🔗 测试连接'; return; }
+  fetch(tBase + '/chat/completions', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + tKey },
+    body: JSON.stringify({ model: tModel, messages:[{role:'user',content:'hi'}], max_tokens:5 })
+  }).then(function(r){
+    if (!r.ok) return r.text().then(function(t){ throw new Error('HTTP ' + r.status + ': ' + t.slice(0, 200)); });
+    return r.json();
+  }).then(function(j){
+    var name = (j.model || tModel);
+    res.innerHTML = '<span class="ai-test-ok">✅ 连接成功！模型 <b>' + esc(name) + '</b> 可用</span>';
+    btn.disabled = false; btn.textContent = '🔗 测试连接';
+  }).catch(function(err){
+    var msg = (err && err.message) ? err.message : String(err || '网络错误');
+    /* 截断过长的错误信息 */
+    if (msg.length > 120) msg = msg.slice(0, 120) + '…';
+    res.innerHTML = '<span class="ai-test-err">❌ 连接失败：' + esc(msg) + '</span>';
+    btn.disabled = false; btn.textContent = '🔗 测试连接';
+  });
 }
 
 /* ===== 积分激励增强：成就徽章 / 连续连击 / 挑战任务（均由数据自动判定，无需手动发放） ===== */
