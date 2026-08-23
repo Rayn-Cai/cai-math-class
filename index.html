@@ -113,7 +113,7 @@ input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;outlin
 .app{display:flex;height:100vh;overflow:hidden}
 
 /* ============ SIDEBAR ============ */
-.sidebar{width:220px;min-width:220px;background:linear-gradient(180deg,#123b30 0%,#0d2a22 100%);
+.sidebar{width:220px;min-width:220px;background:linear-gradient(180deg,var(--side-1,#123b30) 0%,var(--side-2,#0d2a22) 100%);
   color:#fff;display:flex;flex-direction:column;gap:14px;padding:18px 13px;overflow-y:auto}
 .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.35)}
 .brand{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0 8px;
@@ -129,6 +129,14 @@ input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;outlin
 .side-title{font-size:10.5px;opacity:.78;letter-spacing:2px;font-weight:700;margin:2px 3px;
   display:flex;align-items:center;justify-content:space-between}
 .class-list{display:flex;flex-direction:column;gap:7px}
+.side-theme{margin-top:2px}
+.theme-swatches{display:flex;flex-wrap:wrap;gap:9px;padding:4px 2px 6px}
+.theme-sw{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,.35);
+  transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;position:relative}
+.theme-sw:hover{transform:scale(1.18)}
+.theme-sw.on{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6)}
+.theme-sw.on::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:12px;font-weight:900;text-shadow:0 1px 3px rgba(0,0,0,.5)}
 .class-row{position:relative;display:flex;align-items:stretch;border-radius:var(--radius-sm);overflow:hidden;
   background:rgba(255,255,255,.16);transition:.16s}
 .class-row:hover{background:rgba(255,255,255,.28)}
@@ -1974,6 +1982,37 @@ const AI_SCENES = {
   homework: '作业督促',
   exam: '考前鼓励'
 };
+/* ===== 主题色：10 套精选配色，可在左侧工具栏切换 ===== */
+const THEMES = {
+  emerald: { name:'翡翠绿', accent:'#0f6e56', dark:'#0c5441', light:'#e1f5ee', soft:'#eef6f3', deep:'#07392d', sky:'#1d9e75', side1:'#123b30', side2:'#0d2a22' },
+  blue:    { name:'天空蓝', accent:'#2563eb', dark:'#1d4ed8', light:'#e3edff', soft:'#eef3ff', deep:'#1e3a8a', sky:'#3b82f6', side1:'#1b3a6b', side2:'#122844' },
+  teal:    { name:'薄荷青', accent:'#0d9488', dark:'#0b7d73', light:'#d6f5f0', soft:'#e6faf7', deep:'#0a5c54', sky:'#14b8a6', side1:'#0f3d3a', side2:'#0a2a28' },
+  pink:    { name:'樱花粉', accent:'#db2777', dark:'#be185d', light:'#fce0ee', soft:'#fdeaf3', deep:'#9d174d', sky:'#ec4899', side1:'#5b1f3d', side2:'#3d1429' },
+  violet:  { name:'紫罗兰', accent:'#7c3aed', dark:'#6d28d9', light:'#ede4ff', soft:'#f3edff', deep:'#4c1d95', sky:'#8b5cf6', side1:'#3a2363', side2:'#271646' },
+  orange:  { name:'暖阳橙', accent:'#ea580c', dark:'#c2410c', light:'#ffe6d6', soft:'#fff1e9', deep:'#9a3412', sky:'#f97316', side1:'#5e2a14', side2:'#3f1c0d' },
+  rose:    { name:'玫瑰红', accent:'#e11d48', dark:'#be123c', light:'#fce0e4', soft:'#fdeaed', deep:'#9f1239', sky:'#fb7185', side1:'#5c1f2b', side2:'#3e1420' },
+  indigo:  { name:'靛青蓝', accent:'#4f46e5', dark:'#4338ca', light:'#e2e2ff', soft:'#eeeeff', deep:'#312e81', sky:'#6366f1', side1:'#232a63', side2:'#171a44' },
+  forest:  { name:'森野绿', accent:'#4d7c0f', dark:'#3f6212', light:'#eaf7d4', soft:'#f2f9e6', deep:'#2c440a', sky:'#65a30d', side1:'#2c3d16', side2:'#1d290e' },
+  amber:   { name:'琥珀棕', accent:'#b45309', dark:'#92400e', light:'#fbedd6', soft:'#fdf3e6', deep:'#78350f', sky:'#d97706', side1:'#4f2e10', side2:'#34200a' },
+};
+function applyTheme(){
+  const key = (typeof state !== 'undefined' && state && state.theme && THEMES[state.theme]) ? state.theme : 'emerald';
+  const t = THEMES[key]; if (!t) return;
+  const r = document.documentElement.style;
+  if (!r || typeof r.setProperty !== 'function') return;
+  r.setProperty('--accent', t.accent);
+  r.setProperty('--accent-dark', t.dark);
+  r.setProperty('--accent-light', t.light);
+  r.setProperty('--accent-soft', t.soft);
+  r.setProperty('--accent-deep', t.deep);
+  r.setProperty('--sky', t.sky);
+  r.setProperty('--side-1', t.side1);
+  r.setProperty('--side-2', t.side2);
+}
+function setTheme(key){
+  if (!THEMES[key]) return;
+  state.theme = key; save(); applyTheme(); renderSidebar();
+}
 /* 星期几名称（课时安排里用） */
 const DOW_NAME = ['周日','周一','周二','周三','周四','周五','周六'];
 
@@ -2190,6 +2229,8 @@ function normalizeState(){
   if (!state.ai.model) state.ai.model = '';
   if (!state.ai.baseUrl) state.ai.baseUrl = '';
   if (!state.ai.scene) state.ai.scene = 'weekly';
+  /* 主题配色：默认翡翠绿，缺省或非法值时回退 */
+  if (!state.theme || !THEMES[state.theme]) state.theme = 'emerald';
   /* 旧版积分规则为扁平结构（att/quizFull/...），迁移到模块化结构 */
   if (!state.points.version || state.points.version < 2) {
     const old = state.points || {};
@@ -2722,6 +2763,13 @@ function renderSidebar(){
     <button class="side-action" onclick="openLuckyDraw()"><span>🎰</span>抽奖台</button>
     <button class="side-action" onclick="openPointsStats()"><span>📊</span>积分统计</button>
     <button class="side-action" onclick="openTrash()"><span>🗑️</span>回收站${trashCount() ? `<b class="tr-cnt">${trashCount()}</b>` : ''}</button>
+
+    <div class="side-theme">
+      <div class="side-title"><span>🎨 主题配色</span></div>
+      <div class="theme-swatches">
+        ${Object.keys(THEMES).map(k => `<button class="theme-sw ${state.theme===k?'on':''}" style="background:${THEMES[k].accent}" title="${THEMES[k].name}" onclick="setTheme('${k}')"></button>`).join('')}
+      </div>
+    </div>
 
     <div>
       <div class="side-title">今日待办</div>
@@ -8390,6 +8438,13 @@ function ldStudent(){
   }
   return findStudentByKey(ui.ldStudentKey);
 }
+/* 抽奖台：班级 → 学生 两级筛选 */
+function setLdClass(cid){
+  ui.ldClassFilter = cid || '';
+  const list = cid ? allStudents().filter(x => String(x.c.id) === String(cid)) : allStudents();
+  if (list.length) ui.ldStudentKey = list[0].c.id + ':' + list[0].s.id;
+  ldRender();
+}
 function openLuckyDraw(){
   ui.ldRotation = 0; ui.ldSpinning = false; ui.ldEmbed = false;
   renderLuckyDraw();
@@ -8418,11 +8473,18 @@ function buildLdPanel(resultHtml){
           <button class="seg-btn ${ui.ldMode==='box'?'on':''}" onclick="setLdMode('box')">🎁 盲盒</button>
         </div>
         <div class="ld-controls">
-          <select class="sel" style="flex:1;min-width:170px" onchange="ui.ldStudentKey=this.value;ldRender()">
-            ${allStudents().length ? allStudents().map(({ s, c }) => {
-              const k = c.id + ':' + s.id;
-              return `<option value="${k}" ${k === ui.ldStudentKey ? 'selected' : ''}>${esc(c.name)} · ${esc(s.name)}</option>`;
-            }).join('') : '<option value="">暂无学生，请先添加学生</option>'}
+          <select class="sel" style="min-width:118px" onchange="setLdClass(this.value)" title="先选班级">
+            <option value="">全部班级</option>
+            ${state.classes.map(c => `<option value="${c.id}" ${String(ui.ldClassFilter)===String(c.id)?'selected':''}>${esc(c.name)}</option>`).join('')}
+          </select>
+          <select class="sel" style="flex:1;min-width:150px" onchange="ui.ldStudentKey=this.value;ldRender()" title="再选学生">
+            ${(() => {
+              const list = ui.ldClassFilter ? allStudents().filter(x => String(x.c.id) === String(ui.ldClassFilter)) : allStudents();
+              return list.length ? list.map(({ s, c }) => {
+                const k = c.id + ':' + s.id;
+                return `<option value="${k}" ${k === ui.ldStudentKey ? 'selected' : ''}>${esc(c.name)} · ${esc(s.name)}</option>`;
+              }).join('') : '<option value="">该班级暂无学生</option>';
+            })()}
           </select>
           <button class="mood-btn ${ui.ldMood === 'good' ? 'on' : ''}" onclick="ui.ldMood='good';ldRender()">😄 心情好</button>
           <button class="mood-btn ${ui.ldMood === 'normal' ? 'on' : ''}" onclick="ui.ldMood='normal';ldRender()">😐 心情一般</button>
@@ -9074,6 +9136,13 @@ function setPsTab(v){ ui.psTab = v; renderPsContent(); }
 function setPsFilterSrc(v){ ui.psFilterSrc = v; renderPsContent(); }
 function setPsFilterRange(v){ ui.psFilterRange = v; renderPsContent(); }
 function setPsSearch(v){ ui.psSearch = v; renderPsContent(); }
+/* 积分统计：班级 → 学生 两级筛选（快捷加减积分用） */
+function setPsClass(cid){
+  ui.psClassFilter = cid || '';
+  const list = cid ? allStudents().filter(x => String(x.c.id) === String(cid)) : allStudents();
+  if (list.length) ui.psStudentKey = list[0].c.id + ':' + list[0].s.id;
+  renderPointsStats();
+}
 function openTierEditor(){
   const t = state.tierCfg || { bronze:60, silver:120, gold:200 };
   openModal('⚙ 段位阈值设置', `
@@ -9239,11 +9308,18 @@ function renderPointsStats(){
         <div class="ps-sec" style="margin-bottom:14px">
           <h4>✏️ 快捷加减积分</h4>
           <div class="adj-row">
-            <select class="sel" id="psStu" style="min-width:190px" onchange="ui.psStudentKey=this.value">
-              ${allStudents().length ? allStudents().map(({ s, c }) => {
-                const k = c.id + ':' + s.id;
-                return `<option value="${k}" ${k === ui.psStudentKey ? 'selected' : ''}>${esc(c.name)} · ${esc(s.name)}（${availablePoints(s)} 分）</option>`;
-              }).join('') : '<option value="">暂无学生</option>'}
+            <select class="sel" style="min-width:118px" onchange="setPsClass(this.value)" title="先选班级">
+              <option value="">全部班级</option>
+              ${state.classes.map(c => `<option value="${c.id}" ${String(ui.psClassFilter)===String(c.id)?'selected':''}>${esc(c.name)}</option>`).join('')}
+            </select>
+            <select class="sel" id="psStu" style="min-width:170px;flex:1" onchange="ui.psStudentKey=this.value" title="再选学生">
+              ${(() => {
+                const list = ui.psClassFilter ? allStudents().filter(x => String(x.c.id) === String(ui.psClassFilter)) : allStudents();
+                return list.length ? list.map(({ s, c }) => {
+                  const k = c.id + ':' + s.id;
+                  return `<option value="${k}" ${k === ui.psStudentKey ? 'selected' : ''}>${esc(c.name)} · ${esc(s.name)}（${availablePoints(s)} 分）</option>`;
+                }).join('') : '<option value="">该班级暂无学生</option>';
+              })()}
             </select>
             <button class="op-btn ${ui.psOp === 'add' ? 'on-add' : ''}" onclick="ui.psOp='add';renderPointsStats()">➕ 加分</button>
             <button class="op-btn ${ui.psOp === 'sub' ? 'on-sub' : ''}" onclick="ui.psOp='sub';renderPointsStats()">➖ 扣分</button>
@@ -10008,6 +10084,7 @@ window.addEventListener('message', (ev) => {
   // 家长只读视图（?s=&c=）：检测到参数则内联渲染该生档案并跳过普通工作台
   if (maybeParentView()) return;
   renderSidebar();
+  applyTheme();
   renderMain();
 
   // 2. 仅在本机从未存过数据时，才载入嵌入的默认数据
@@ -10022,6 +10099,7 @@ window.addEventListener('message', (ev) => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
     renderSidebar();
     renderMain();
+    applyTheme();
   } else {
     syncWeeklyExamStudents();
   }
@@ -10301,7 +10379,8 @@ function aiCommentPrompt(sid, scene){
     + '\n可用积分：' + pts + ' 分';
   const system = '你是经验丰富的初中数学老师，擅长与家长做温暖、真实、具体的沟通。'
     + '请根据提供的学生数据，写一段约 80-160 字的家长反馈，对应' + sceneName + '场景，语气' + styleName + '。'
-    + '要求：只输出正文，不使用占位括号，不编造数据之外的信息，给出具体可操作的建议。';
+    + '要求：只输出正文，不使用占位括号，不编造数据之外的信息，给出具体可操作的建议。'
+    + '可适当使用 emoji 表情符号（如 🌟✅📈📉💡🎯🌈📚）让反馈更生动温暖、重点更醒目，但不要堆砌，每段最多 1-2 个即可。';
   return { system, user };
 }
 function genCommentAI(sid, scene, cb){
