@@ -1975,16 +1975,16 @@ const AI_SCENES = {
 };
 /* ===== 主题色：10 套精选配色，可在左侧工具栏切换 ===== */
 const THEMES = {
-  emerald: { name:'翡翠绿', accent:'#10b981', dark:'#059669', light:'#d1fae5', soft:'#ecfdf5', deep:'#047857', sky:'#34d399', side1:'#0d3b2c', side2:'#08251c' },
-  blue:    { name:'天空蓝', accent:'#3b82f6', dark:'#2563eb', light:'#dbeafe', soft:'#eff6ff', deep:'#1d4ed8', sky:'#60a5fa', side1:'#143a5e', side2:'#0e2740' },
-  teal:    { name:'薄荷青', accent:'#14b8a6', dark:'#0d9488', light:'#ccfbf1', soft:'#f0fdfa', deep:'#0f766e', sky:'#2dd4bf', side1:'#0c3b37', side2:'#072623' },
-  pink:    { name:'樱花粉', accent:'#ec4899', dark:'#db2777', light:'#fce7f3', soft:'#fdf2f8', deep:'#be185d', sky:'#f472b6', side1:'#4f2238', side2:'#341522' },
-  violet:  { name:'紫罗兰', accent:'#8b5cf6', dark:'#7c3aed', light:'#ede9fe', soft:'#f5f3ff', deep:'#6d28d9', sky:'#a78bfa', side1:'#33225c', side2:'#22163f' },
-  orange:  { name:'暖阳橙', accent:'#f97316', dark:'#ea580c', light:'#ffedd5', soft:'#fff7ed', deep:'#c2410c', sky:'#fb923c', side1:'#4f2a13', side2:'#361c0c' },
-  rose:    { name:'玫瑰红', accent:'#f43f5e', dark:'#e11d48', light:'#ffe4e6', soft:'#fff1f2', deep:'#be123c', sky:'#fb7185', side1:'#4f1f29', side2:'#351419' },
-  indigo:  { name:'靛青蓝', accent:'#6366f1', dark:'#4f46e5', light:'#e0e7ff', soft:'#eef2ff', deep:'#4338ca', sky:'#818cf8', side1:'#1e275c', side2:'#141a40' },
-  forest:  { name:'森野绿', accent:'#16a34a', dark:'#15803d', light:'#dcfce7', soft:'#f0fdf4', deep:'#166534', sky:'#4ade80', side1:'#16331f', side2:'#0f2416' },
-  cyan:    { name:'天青蓝', accent:'#06b6d4', dark:'#0891b2', light:'#cffafe', soft:'#ecfeff', deep:'#0e7490', sky:'#22d3ee', side1:'#0c3744', side2:'#07242e' },
+  emerald: { name:'翡翠绿', accent:'#22c55e', dark:'#16a34a', light:'#dcfce7', soft:'#f0fdf4', deep:'#15803d', sky:'#4ade80', side1:'#157a4f', side2:'#0c4a30' },
+  blue:    { name:'天空蓝', accent:'#38bdf8', dark:'#0ea5e9', light:'#e0f2fe', soft:'#f0f9ff', deep:'#0284c7', sky:'#7dd3fc', side1:'#14608c', side2:'#0c3d59' },
+  teal:    { name:'薄荷青', accent:'#2dd4bf', dark:'#14b8a6', light:'#ccfbf1', soft:'#f0fdfa', deep:'#0d9488', sky:'#5eead4', side1:'#0f7a6e', side2:'#095048' },
+  pink:    { name:'樱花粉', accent:'#f472b6', dark:'#ec4899', light:'#fce7f3', soft:'#fdf2f8', deep:'#db2777', sky:'#f9a8d4', side1:'#9d3c6b', side2:'#6b2548' },
+  violet:  { name:'紫罗兰', accent:'#a78bfa', dark:'#8b5cf6', light:'#ede9fe', soft:'#f5f3ff', deep:'#7c3aed', sky:'#c4b5fd', side1:'#5b3aa6', side2:'#3d2680' },
+  orange:  { name:'暖阳橙', accent:'#fb923c', dark:'#f97316', light:'#ffedd5', soft:'#fff7ed', deep:'#ea580c', sky:'#fdba74', side1:'#b5611a', side2:'#7c3f10' },
+  rose:    { name:'玫瑰红', accent:'#fb7185', dark:'#f43f5e', light:'#ffe4e6', soft:'#fff1f2', deep:'#e11d48', sky:'#fda4af', side1:'#b23a4f', side2:'#7a2636' },
+  indigo:  { name:'靛青蓝', accent:'#818cf8', dark:'#6366f1', light:'#e0e7ff', soft:'#eef2ff', deep:'#4f46e5', sky:'#a5b4fc', side1:'#3a47a6', side2:'#262f80' },
+  forest:  { name:'森野绿', accent:'#4ade80', dark:'#22c55e', light:'#dcfce7', soft:'#f0fdf4', deep:'#16a34a', sky:'#86efac', side1:'#1f8a4c', side2:'#125c32' },
+  cyan:    { name:'天青蓝', accent:'#22d3ee', dark:'#06b6d4', light:'#cffafe', soft:'#ecfeff', deep:'#0891b2', sky:'#67e8f9', side1:'#0f7a92', side2:'#0a4f60' },
 };
 function applyTheme(){
   const key = (typeof state !== 'undefined' && state && state.theme && THEMES[state.theme]) ? state.theme : 'emerald';
