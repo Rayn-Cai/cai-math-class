@@ -10818,7 +10818,7 @@ function genRemarkByAI(sid, cb){
   let txt = '学生姓名：' + s.name + '\n近期概况：出勤率 ' + (attN ? Math.round(attP / attN * 100) : 0) + '%，近10天小测均分 ' + (qa != null ? fmt1(qa) : '—') + '，作业偏低/未完成 ' + hwMiss + ' 次';
   if (behTxt) txt += '；课堂表现：' + behTxt;
   if (absTxt) txt += '；课堂吸收：' + absTxt;
-  const sys = '你是初中数学老师。请基于以下学生今日课堂表现概况，生成【一条不超过18字】的课堂评语短语，简洁、具体、有鼓励性，可直接作为当日评语。只输出短语本身，不要引号、不要解释。';
+  const sys = '你是初中数学老师。请基于以下学生近期数据，生成【一条不超过18字】的课堂评语短语，简洁、具体、有鼓励性，可直接作为当日评语。评语必须与数据一致，不得与数据矛盾：若数据中小测均分低或作业完成差，不得使用「优秀」「进步大」「表现好」等与实际不符的褒义表述，应先肯定真实亮点（如出勤全勤、课堂表现好），再客观指出可改进点。只输出短语本身，不要引号、不要解释。';
   aiChat(sys, txt).then(t => cb((t || '').trim().slice(0, 24), null)).catch(e => cb(null, e));
 }
 function aiRemarkFill(sid, el){
