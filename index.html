@@ -1634,6 +1634,30 @@ th.atc-d.we-sun small{color:var(--red)}
 .co-cal-t{display:block;font-size:8px;font-weight:400;opacity:.9;font-style:normal}
 .co-cal-info{margin-top:8px;font-size:11.5px;text-align:center}
 .co-cal-info b{color:var(--accent-dark)}
+/* 中考大表开关 */
+.zk-toggle{margin-bottom:8px}
+.zk-toggle-l{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text);background:var(--surface-alt);border:1px solid var(--border);border-radius:999px;padding:6px 14px;cursor:pointer}
+.zk-toggle-l input{width:16px;height:16px;accent-color:var(--accent)}
+/* 班级课表 */
+.sch-week{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;align-items:start}
+.sch-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);min-height:120px;overflow:hidden}
+.sch-col-h{background:var(--accent-light);color:var(--accent-dark);text-align:center;font-weight:800;padding:8px 0;border-bottom:1px solid var(--border)}
+.sch-col-h.sch-now{background:var(--accent);color:#fff}
+.sch-col-d{font-size:11px;font-weight:600;opacity:.8}
+.sch-col-b{padding:8px}
+.sch-card{background:var(--surface-alt);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:7px 9px;margin-bottom:8px}
+.sch-t{font-weight:800;font-size:13px;color:var(--accent-dark)}
+.sch-nm{font-weight:700;font-size:13px;margin-top:2px}
+.sch-meta{font-size:11.5px;color:var(--text-secondary);margin-top:1px;line-height:1.35}
+.sch-none{text-align:center;color:#9aa3ad;padding:14px 0;font-size:13px}
+.sch-m{margin-top:2px}
+.sch-m-i{font-size:10.5px;line-height:1.5;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sch-m-more{font-size:10.5px;font-weight:700;color:var(--accent-dark)}
+/* 发给家长 · 学生选择 */
+.pp-list{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto}
+.pp-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px}
+.pp-nm{font-weight:700;font-size:14px}
+@media(max-width:680px){ .sch-week{grid-template-columns:repeat(2,1fr)} }
 .ff-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:680px){
   .ff-row2{grid-template-columns:1fr}
@@ -1849,9 +1873,8 @@ const TABS = [
   { key:'trend',     label:'测试分析',   icon:'📈' },
   { key:'checkin',   label:'打卡登记',   icon:'✅' },
   { key:'profile',   label:'学生档案',   icon:'👤' },
-  { key:'exam',      label:'考试成绩',   icon:'🎓' },
+  { key:'schedule',  label:'课表',       icon:'📅' },
   { key:'files',     label:'资料库',     icon:'🗂️' },
-  { key:'weekly',    label:'周测月考',   icon:'📆' },
   { key:'summary',   label:'成绩汇总',   icon:'🗂️' },
   { key:'export',    label:'导出报告',   icon:'📤' },
   { key:'smart',     label:'智能中心',   icon:'🤖' },
@@ -3058,8 +3081,8 @@ function renderMain(){
   }
   const map = {
     overview: renderOverview, roster: renderRoster, attend: renderAttend, trend: renderTrend, checkin: renderCheckin,
-    profile: renderProfile, exam: renderExam, files: renderFiles,
-    weekly: renderWeekly, summary: renderSummary, export: renderExportTab,
+    profile: renderProfile, files: renderFiles,
+    schedule: renderSchedule, summary: renderSummary, export: renderExportTab,
     smart: renderSmart,
   };
   const fn = map[state.activeTab] || renderRoster;
@@ -3341,6 +3364,7 @@ function renderOverview(){
       </div></div>
       <div class="row" style="gap:8px">
         <div class="muted">当前班级：<b>${esc(cls.name)}</b></div>
+        <button class="btn sm" onclick="openParentPick()">📤 发给家长</button>
         <button class="btn sm" onclick="openWeeklyReport()">📄 生成周报</button>
       </div>
     </div>`;
@@ -4549,6 +4573,7 @@ function openStudentCard(sid, readOnly){
     </div>` : (inClass && !readOnly ? `<div class="sc-actions">
       <button class="btn" onclick="openReportCard('${id}')">🖨️ 成绩单</button>
       <button class="btn" onclick="openTermReport('${id}')">📄 学期报告</button>
+      <button class="btn" onclick="sendToParent('${firstSid}')">📤 发给家长</button>
       <button class="btn ai" onclick="openAnalysisAI('${firstSid}')">🤖 AI 学情</button>
       <button class="btn ai" onclick="aiTermSummaryBtn('${firstSid}')">🤖 AI 总结</button>
       <button class="btn" onclick="scToLucky('${firstCid}','${firstSid}')">🎰 用该生抽奖</button>
@@ -7341,10 +7366,12 @@ function renderExam(){
   const stickyName = 'position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:2px 0 0 var(--border);text-align:center';
   const stickyHead = 'position:sticky;left:0;z-index:5;background:var(--surface-alt);box-shadow:2px 0 0 var(--border);text-align:center';
 
+  const zkSubs = (ui.showAllZk) ? ZHONGKAO_SUBJECTS : ['数学'];
+  const zkCols = zkSubs.length + 2;
   const head1 = `<tr>
     <th rowspan="2" style="${stickyHead}">姓名</th>
     ${EXAM_PERIODS.map(p => `<th colspan="4" class="c" style="border-left:2px solid var(--border)">${p}</th>`).join('')}
-    <th colspan="8" class="c" style="border-left:2px solid var(--accent);color:var(--accent-dark)">中考</th>
+    <th colspan="${zkCols}" class="c" style="border-left:2px solid var(--accent);color:var(--accent-dark)">中考</th>
   </tr>`;
   const head2 = `<tr>
     ${EXAM_PERIODS.map(() => `
@@ -7352,7 +7379,7 @@ function renderExam(){
       <th class="c" style="top:34px">等级</th>
       <th class="c" style="top:34px">总分</th>
       <th class="c" style="top:34px">等级</th>`).join('')}
-    ${ZHONGKAO_SUBJECTS.map((s, i) => `<th class="c" style="top:34px;${i === 0 ? 'border-left:2px solid var(--accent)' : ''}">${s}</th>`).join('')}
+    ${zkSubs.map((s, i) => `<th class="c" style="top:34px;${i === 0 ? 'border-left:2px solid var(--accent)' : ''}">${s}</th>`).join('')}
     <th class="c" style="top:34px">总分</th>
     <th class="c" style="top:34px">录取学校</th>
   </tr>`;
@@ -7372,14 +7399,15 @@ function renderExam(){
         <td><input class="cell-in c" value="${esc(d.totalScore || '')}" onchange="setExam(${s.id},'${p}','totalScore',this.value)"></td>
         <td><input class="cell-in c" value="${esc(d.totalGrade || '')}" onchange="setExam(${s.id},'${p}','totalGrade',this.value)"></td>`;
       }).join('')}
-      ${ZHONGKAO_SUBJECTS.map((sub, i) => `<td style="${i === 0 ? 'border-left:2px solid var(--accent)' : ''}">
+      ${zkSubs.map((sub, i) => `<td style="${i === 0 ? 'border-left:2px solid var(--accent)' : ''}">
         <input class="cell-in c" value="${esc(zk[sub] || '')}" onchange="setZhongkao(${s.id},'${sub}',this.value)"></td>`).join('')}
       <td><input class="cell-in c" value="${esc(zk['总分'] || '')}" onchange="setZhongkao(${s.id},'总分',this.value)"></td>
       <td class="zk-school"><input class="cell-in c" value="${esc(zk['录取学校'] || '')}" onchange="setZhongkao(${s.id},'录取学校',this.value)"></td>
     </tr>`;
   }).join('');
 
-  return `<div class="hint" style="margin-bottom:10px">💡 表格按内容自适应、可左右滚动，姓名列与表头固定。所有单元格可直接编辑，自动保存。</div>
+  const zkToggle = `<div class="zk-toggle"><label class="zk-toggle-l"><input type="checkbox" ${ui.showAllZk ? 'checked' : ''} onchange="ui.showAllZk=this.checked;renderMain()"> 展开全部中考科目（默认仅显示「数学」，适合只教数学的老师）</label></div>`;
+  return `${zkToggle}<div class="hint" style="margin-bottom:10px">💡 表格按内容自适应、可左右滚动，姓名列与表头固定。所有单元格可直接编辑，自动保存。</div>
     <div class="tbl-wrap" style="max-height:calc(100vh - 250px)"><table class="exam-tbl">
       <thead>${head1}${head2}</thead><tbody>${body}</tbody></table></div>
     ${examAnaHtml(cls)}`;
@@ -8251,11 +8279,28 @@ function weeklyDatesOf(cls){
 function renderSummary(){
   const cls = activeClass();
   if (!cls.students.length) return '<div class="empty"><span class="ico">🗂️</span>本班还没有学生</div>';
+  const sub = ui.summarySub || 'exam';
+  const subs = [['daily','📝 日常小测/作业'],['exam','🎓 期中期末&中考'],['weekly','📆 周测月考']];
+  const subBar = `<div class="seg-toggle" style="margin-bottom:12px">` +
+    subs.map(([k,l]) => `<button class="seg-btn ${sub===k?'on':''}" onclick="setSummarySub('${k}')">${l}</button>`).join('') + `</div>`;
+  let inner;
+  if (sub === 'daily') inner = summaryDailySection(cls);
+  else if (sub === 'weekly') inner = renderWeekly();
+  else inner = renderExam();
+  return `
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <span class="muted">自动汇总 ${esc(cls.name)} 全部成绩数据</span>
+      <button class="btn primary" onclick="exportSummaryExcel()">📊 导出 Excel（3 个工作表）</button>
+    </div>
+    ${subBar}
+    ${inner}`;
+}
+function setSummarySub(k){ ui.summarySub = k; renderMain(); }
+/* 成绩汇总 · 日常小测/作业子表（只读总览） */
+function summaryDailySection(cls){
   const dDates = dailyDatesOf(cls);
-  const wDates = weeklyDatesOf(cls);
-
-  const sec1 = dDates.length ? `
-    <div class="tbl-wrap" style="max-height:52vh"><table style="min-width:${180 + dDates.length * 130}px">
+  if (!dDates.length) return '<div class="empty">暂无日常小测 / 作业记录</div>';
+  return `<div class="tbl-wrap" style="max-height:70vh"><table style="min-width:${180 + dDates.length * 130}px">
       <thead>
         <tr><th rowspan="2" style="position:sticky;left:0;z-index:5;background:var(--surface-alt);width:100px">姓名</th>
           ${dDates.map(d => `<th colspan="2" class="c" style="border-left:2px solid var(--border)">${d.slice(5)}</th>`).join('')}</tr>
@@ -8272,58 +8317,85 @@ function renderSummary(){
                   <td class="c ${hCls}" style="font-weight:700">${hTxt}</td>`;
         }).join('')}
       </tr>`).join('')}</tbody>
-    </table></div>` : '<div class="empty">暂无日常小测 / 作业记录</div>';
-
-  const sec2 = `
-    <div class="tbl-wrap" style="max-height:52vh"><table style="min-width:2400px">
-      <thead>
-        <tr><th rowspan="2" style="position:sticky;left:0;z-index:5;background:var(--surface-alt);width:100px">姓名</th>
-          ${EXAM_PERIODS.map(p => `<th colspan="4" class="c" style="border-left:2px solid var(--border)">${p}</th>`).join('')}
-          <th colspan="8" class="c" style="border-left:2px solid var(--accent);color:var(--accent-dark)">中考</th></tr>
-        <tr>${EXAM_PERIODS.map(() => `<th class="c" style="top:34px;border-left:2px solid var(--border);width:64px">数学</th>
-            <th class="c" style="top:34px;width:54px">等级</th><th class="c" style="top:34px;width:64px">总分</th>
-            <th class="c" style="top:34px;width:54px">等级</th>`).join('')}
-          ${ZHONGKAO_SUBJECTS.map((s, i) => `<th class="c" style="top:34px;width:60px;${i === 0 ? 'border-left:2px solid var(--accent)' : ''}">${s}</th>`).join('')}
-          <th class="c" style="top:34px;width:64px">总分</th><th class="c" style="top:34px;width:120px">录取学校</th></tr>
-      </thead>
-      <tbody>${examStudentList(cls).map(s => {
-        const es = cls.examScores[s.id] || {}, zk = es.zhongkao || {};
-        return `<tr><td class="nm" style="position:sticky;left:0;background:var(--surface);z-index:2">${esc(s.name || '(未命名)')}${s.inClass ? '' : '（档）'}</td>
-          ${EXAM_PERIODS.map(p => { const d = es[p] || {};
-            return `<td class="c" style="border-left:2px solid var(--border)">${esc(d.mathScore || '—')}</td>
-              <td class="c">${esc(d.mathGrade || '—')}</td><td class="c">${esc(d.totalScore || '—')}</td>
-              <td class="c">${esc(d.totalGrade || '—')}</td>`; }).join('')}
-          ${ZHONGKAO_SUBJECTS.map((sub, i) => `<td class="c" style="${i === 0 ? 'border-left:2px solid var(--accent)' : ''}">${esc(zk[sub] || '—')}</td>`).join('')}
-          <td class="c">${esc(zk['总分'] || '—')}</td><td>${esc(zk['录取学校'] || '—')}</td></tr>`;
-      }).join('')}</tbody>
     </table></div>`;
+}
 
-  const sec3 = wDates.length ? `
-    <div class="tbl-wrap" style="max-height:52vh"><table style="min-width:${180 + wDates.length * 140}px">
-      <thead>
-        <tr><th rowspan="2" style="position:sticky;left:0;z-index:5;background:var(--surface-alt);width:100px">姓名</th>
-          ${wDates.map(d => `<th colspan="2" class="c" style="border-left:2px solid var(--border)">${d}</th>`).join('')}</tr>
-        <tr>${wDates.map(() => `<th class="c" style="top:34px;border-left:2px solid var(--border);width:64px">分数</th><th class="c" style="top:34px;width:64px">类型</th>`).join('')}</tr>
-      </thead>
-      <tbody>${cls.students.map(s => `<tr>
-        <td class="nm" style="position:sticky;left:0;background:var(--surface);z-index:2">${esc(s.name)}</td>
-        ${wDates.map(d => {
-          const r = state.weeklyExams.records.find(x => String(x.studentId) === String(s.id) && x.date === d);
-          const v = r ? num(r.score) : null;
-          return `<td class="c ${v !== null ? bigValClass(v) : ''}" style="border-left:2px solid var(--border);font-weight:700">${r && r.score !== '' ? esc(r.score) : '—'}</td>
-                  <td class="c muted">${r ? esc(r.type) : '—'}</td>`;
-        }).join('')}
-      </tr>`).join('')}</tbody>
-    </table></div>` : '<div class="empty">暂无周测 / 月考记录</div>';
-
-  return `
-    <div class="row" style="justify-content:space-between;margin-bottom:12px">
-      <span class="muted">自动汇总 ${esc(cls.name)} 全部成绩数据</span>
-      <button class="btn primary" onclick="exportSummaryExcel()">📊 导出 Excel（3 个工作表）</button>
+/* ==================================================================
+   课表 / 排课日历（schedule）：聚合所有学生档案的课时安排，全局视图
+   ================================================================== */
+function renderSchedule(){
+  const items = [];
+  state.classes.forEach(c => c.students.forEach(s => (s.courses || []).forEach(co => {
+    courseSessions(co).forEach(se => items.push({ date: se.date, time: se.time || '', dur: se.dur || 0, sname: s.name, clsName: c.name, name: co.name }));
+  })));
+  const view = ui.scheduleView || 'week';
+  const cursor = ui.scheduleCursor || state.activeDate;
+  const nav = `<div class="row" style="justify-content:space-between;margin-bottom:12px">
+    <div class="datenav">
+      <button class="nav-btn" onclick="moveSchedule('prev')">‹</button>
+      <span class="cur-date">${view === 'week' ? ('本周 ' + weekMonday(cursor) + ' ~ ' + shiftDate(weekMonday(cursor), 6)) : cursor.slice(0, 7)}</span>
+      <button class="nav-btn" onclick="moveSchedule('next')">›</button>
+      <button class="btn sm" onclick="ui.scheduleCursor=todayStr();renderMain()">今天</button>
     </div>
-    <div class="card-title">📝 一、日常小测 / 作业（${dDates.length} 个上课日）</div>${sec1}
-    <div class="card-title" style="margin-top:18px">🎓 二、期中 / 期末 & 中考成绩</div>${sec2}
-    <div class="card-title" style="margin-top:18px">📆 三、周测 / 月考成绩（${wDates.length} 场）</div>${sec3}`;
+    <div class="seg-toggle"><button class="seg-btn ${view==='week'?'on':''}" onclick="setScheduleView('week')">📅 周视图</button><button class="seg-btn ${view==='month'?'on':''}" onclick="setScheduleView('month')">🗓️ 月历</button></div>
+  </div>`;
+  const inner = (view === 'month') ? scheduleMonth(items, cursor) : scheduleWeek(items, cursor);
+  return `${nav}
+    <div class="muted" style="margin-bottom:10px">共 <b>${items.length}</b> 节已排课程 · 数据自动汇总自各学生档案的「课时安排」</div>
+    ${inner}`;
+}
+function setScheduleView(v){ ui.scheduleView = v; renderMain(); }
+function moveSchedule(dir){
+  const cur = new Date((ui.scheduleCursor || state.activeDate) + 'T00:00:00');
+  if ((ui.scheduleView || 'week') === 'month') cur.setMonth(cur.getMonth() + (dir === 'next' ? 1 : -1));
+  else cur.setDate(cur.getDate() + (dir === 'next' ? 7 : -7));
+  ui.scheduleCursor = ymdLocal(cur);
+  renderMain();
+}
+function weekMonday(dStr){
+  const d = new Date(dStr + 'T00:00:00');
+  const dow = d.getDay();
+  const diff = (dow === 0 ? -6 : 1 - dow);
+  d.setDate(d.getDate() + diff);
+  return ymdLocal(d);
+}
+function scheduleWeek(items, cursor){
+  const mon = weekMonday(cursor);
+  const days = [];
+  for (let i = 0; i < 7; i++) days.push(shiftDate(mon, i));
+  if (!items.length) return '<div class="empty">还没有排课。请到「学生档案」里为每个学生的课时安排设置上课时间（如每周一三五 19:00），这里会自动汇总成课表。</div>';
+  const cols = days.map((date, i) => {
+    const list = items.filter(x => x.date === date).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const cards = list.length ? list.map(x => `<div class="sch-card">
+        <div class="sch-t">${esc(x.time || '时间待定')}</div>
+        <div class="sch-nm">${esc(x.sname)}</div>
+        <div class="sch-meta">${esc(x.clsName)} · ${esc(x.name)}</div>
+      </div>`).join('') : '<div class="sch-none">—</div>';
+    return `<div class="sch-col">
+      <div class="sch-col-h">${DOW_NAME[i]}<div class="sch-col-d">${date.slice(5)}</div></div>
+      <div class="sch-col-b">${cards}</div>
+    </div>`;
+  }).join('');
+  return `<div class="sch-week">${cols}</div>`;
+}
+function scheduleMonth(items, cursor){
+  const y = +cursor.slice(0, 4), m = +cursor.slice(5, 7) - 1;
+  const first = new Date(y, m, 1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const set = {};
+  items.forEach(x => { (set[x.date] = set[x.date] || []).push(x); });
+  let cells = '';
+  for (let i = 0; i < startDow; i++) cells += '<span class="co-cal-c empty"></span>';
+  for (let dd = 1; dd <= daysInMonth; dd++){
+    const ds = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+    const list = (set[ds] || []).slice().sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const inside = list.slice(0, 3).map(x => `<div class="sch-m-i">${esc(x.time || '·')} ${esc(x.sname)}</div>`).join('');
+    const more = list.length > 3 ? `<div class="sch-m-more">+${list.length - 3}</div>` : '';
+    cells += `<span class="co-cal-c${list.length ? ' on' : ''}">${dd}${list.length ? `<div class="sch-m">${inside}${more}</div>` : ''}</span>`;
+  }
+  if (!items.length) return '<div class="empty">还没有排课。请到「学生档案」里为每个学生的课时安排设置上课时间（如每周一三五 19:00），这里会自动汇总成课表。</div>';
+  return `<div class="co-cal"><div class="co-cal-m" style="width:100%"><div class="co-cal-grid" style="grid-template-columns:repeat(7,1fr)">${DOW_NAME.map(n => '<span class="co-cal-wd">' + n.replace('周', '') + '</span>').join('')}${cells}</div></div></div>`;
 }
 
 /* ==================================================================
@@ -10309,6 +10381,33 @@ function shownCommentText(){
 }
 function copyComment(){ copyText(shownCommentText()); }
 function copyWechat(){ const f = findStudentById(ui.smartSid); if (!f) return; copyText('【' + f.s.name + ' 本周学情反馈】\n' + shownCommentText() + '\n—— 老师寄语，供家长参考 🙏'); }
+/* 一键发给家长：从档案卡 / 概览生成可复制的家长沟通文案 */
+function openParentPick(){
+  const cls = activeClass(); if (!cls || !cls.students.length) return toast('请先添加学生');
+  const rows = cls.students.map(s => `<div class="pp-row"><span class="pp-nm">${esc(s.name)}</span><button class="btn sm" onclick="closeModal();sendToParent(${s.id})">📤 发给家长</button></div>`).join('');
+  openModal('📤 选择学生 · 生成家长沟通文案', `<div class="pp-list">${rows}</div>`, null, 440);
+}
+function sendToParent(sid){
+  const f = findStudentById(sid); if (!f) return;
+  const text = genWechatWeekly(sid);
+  const body = `<div class="cm">
+    <div class="hint">已为 <b>${esc(f.s.name)}</b> 自动生成家长沟通文案，可直接复制后发微信；点「🤖 AI 生成」可获得更自然的表达（需已接入 AI）。</div>
+    <textarea id="pmText" class="sm-ta" style="min-height:240px;width:100%;box-sizing:border-box">${esc(text)}</textarea>
+    <div class="sc-actions"><button class="btn" onclick="copyText(document.getElementById('pmText').value);toast('✅ 已复制文案')">📋 复制文案</button>
+      <button class="btn ai" onclick="aiParentMsg(${sid},this)">🤖 AI 生成</button></div>
+  </div>`;
+  openModal('📤 发给家长 · ' + f.s.name, body, `<button class="btn" onclick="closeModal()">关闭</button>`, 560);
+}
+function aiParentMsg(sid, el){
+  if (!aiReady() || !state.ai.enabled){ openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
+  if (el){ el.disabled = true; el.textContent = '🤖 生成中…'; }
+  aiWechatAI(sid, state.ai.scene, function(t, err){
+    if (el){ el.disabled = false; el.textContent = '🤖 AI 生成'; }
+    if (err || !t){ toast('AI 生成失败：' + (err && err.message ? err.message : '请检查配置')); return; }
+    const ta = document.getElementById('pmText'); if (ta) ta.value = t;
+    copyText(t); toast('✅ AI 文案已生成并复制');
+  });
+}
 function genCommentByAI(){
   const sid = ui.smartSid; if (!sid) return toast('请先选择学生');
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用'); }
