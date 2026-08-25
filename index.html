@@ -10794,7 +10794,7 @@ function openTrendDiag(){
   const f = findStudentById(sid); if (!f) return;
   openModal('🤖 AI 学情诊断 · ' + esc(f.s.name || '?'),
     '<div id="aiDiagOut"><div class="muted">正在分析 ' + esc(f.s.name || '?') + ' 的测试数据并定位薄弱点…</div></div>'
-    + '<div class="modal-actions"><button class="btn ghost" onclick="copyText(document.getElementById(\'aiDiagTxt\')?document.getElementById(\'aiDiagTxt\').innerText:\'\')">📋 复制诊断</button><button class="btn" onclick="closeModal()">关闭</button></div>',
+    +     '<div class="modal-actions"><button class="btn ai" onclick="genHwFromDiag(' + sid + ')">📝 生成个性化作业</button><button class="btn ghost" onclick="copyText(document.getElementById(\'aiDiagTxt\')?document.getElementById(\'aiDiagTxt\').innerText:\'\')">📋 复制诊断</button><button class="btn" onclick="closeModal()">关闭</button></div>',
     null, 560);
   genDiagByAI(sid, function(text, err){
     const out = document.getElementById('aiDiagOut'); if (!out) return;
@@ -10870,7 +10870,7 @@ function aiWarnParent(sid){
   const sys = '你是经验丰富的初中数学老师。请基于以下学生的预警原因与近期数据，写一段约 100-160 字的家长沟通文案（可直接微信发送）。语气温暖真诚、具体不空洞，先肯定优点，再点明问题，并给出 1-2 条可操作的家校配合建议。只输出正文，可适度使用 emoji 让表达更亲切。';
   openModal('📤 AI 家长信 · ' + esc(f.s.name),
     '<div id="awpOut"><div class="muted">正在为 ' + esc(f.s.name) + ' 生成针对性家长信…</div></div>'
-    + '<div class="modal-actions"><button class="btn ghost" onclick="copyText(document.getElementById(\'awpTxt\')?document.getElementById(\'awpTxt\').innerText:\'\')">📋 复制</button><button class="btn" onclick="closeModal()">关闭</button></div>',
+    + '<div class="modal-actions"><button class="btn ghost" onclick="copyText(document.getElementById(\'awpTxt\')?document.getElementById(\'awpTxt\').innerText:\'\')">📋 复制微信文案</button><button class="btn ghost" onclick="printParentLetter()">📄 导出 PDF</button><button class="btn" onclick="closeModal()">关闭</button></div>',
     null, 560);
   aiChat(sys, user).then(t => { const out = document.getElementById('awpOut'); if (out) out.innerHTML = '<pre class="ai-summary-pre" id="awpTxt">' + esc(t) + '</pre>'; }).catch(e => { const out = document.getElementById('awpOut'); if (out) out.innerHTML = '<div class="err">' + esc((e && e.message) || '生成失败') + '</div>'; });
 }
@@ -10906,6 +10906,73 @@ function genQuizByAI(){
     if (out) out.innerHTML = '<div class="ai-quiz-box"><pre class="ai-summary-pre">' + esc(t) + '</pre>'
       + '<div class="sc-actions"><button class="btn sm" onclick="copyText(this.parentElement.previousElementSibling.innerText)">📋 复制题目</button></div></div>';
   }).catch(e => { if (out) out.innerHTML = '<div class="err">AI 出题失败：' + esc((e && e.message) || '请检查配置') + '</div>'; });
+}
+
+/* ===== AI 深化①：诊断结果一键转「个性化作业」 ===== */
+function genHwByAI(sid, diagText, cb){
+  if (!aiReady()) { cb(null, new Error('AI 未配置')); return; }
+  const f = findStudentById(sid); if (!f) return cb(null, new Error('未找到学生'));
+  const s = f.s, cls = f.c, ds = smartDates(cls), recent = ds.slice(-Math.min(14, ds.length));
+  let attN = 0, attP = 0;
+  recent.forEach(d => { const r = s.records[d]; if (!r) return; attN++; const a = r.attendance; if (a === 'present' || a === 'late') attP++; });
+  const qa = qAvg(s, recent);
+  let hwMiss = 0;
+  recent.forEach(d => { const r = s.records[d]; if (!r) return; if (state.hwMode === 'done') { if (r.hwDone === false) hwMiss++; } else { const h = hwEffective(r); if (h === null || ((state.hwScale || 10) > 0 && h / (state.hwScale || 10) < 0.6)) hwMiss++; } });
+  const attRate = attN ? Math.round(attP / attN * 100) : 0;
+  let txt = '学生姓名：' + s.name + '\n近14天出勤率：' + attRate + '%，小测均分 ' + (qa != null ? fmt1(qa) : '—') + '，作业偏低/未完成 ' + hwMiss + ' 次\n';
+  txt += '已有学情诊断：\n' + (diagText || '（无，请直接基于上述数据诊断并生成）') + '\n';
+  const sys = '你是资深初中数学老师与中考教研专家。请基于学生的学情诊断与近期数据，制定一份【个性化作业/练习计划】，帮助学生针对性补弱。请严格使用以下格式输出：\n【练习目标】\n（一句话目标）\n【分知识点练习】\n（按薄弱点列出 2-4 项，每项格式：知识点 — 建议练习方向 — 题量/时长）\n【打卡与完成方式】\n（建议如何在日常打卡/作业中落实，具体可操作）\n【巩固建议】\n（家长/学生可做的配合）\n总计约 220-320 字，具体、可操作，不空洞。';
+  aiChat(sys, txt, { temperature: 0.7, maxTokens: 1000 }).then(t => cb(t, null)).catch(e => cb(null, e));
+}
+function genHwFromDiag(sid){
+  if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
+  const diagEl = document.getElementById('aiDiagTxt');
+  const diag = diagEl ? diagEl.innerText : '';
+  if (diag) {
+    genHwByAI(sid, diag, function(t, err){ if (err || !t) { toast('作业生成失败：' + (err && err.message ? err.message : '请检查配置')); return; } openHwPlan(sid, t); });
+  } else {
+    genDiagByAI(sid, function(d, err){
+      if (err || !d) { toast('诊断失败：' + (err && err.message ? err.message : '')); return; }
+      const out = document.getElementById('aiDiagOut'); if (out) out.innerHTML = '<pre class="ai-summary-pre" id="aiDiagTxt">' + esc(d) + '</pre>';
+      genHwByAI(sid, d, function(t, e2){ if (e2 || !t) { toast('作业生成失败：' + (e2 && e2.message ? e2.message : '')); return; } openHwPlan(sid, t); });
+    });
+  }
+}
+function openHwPlan(sid, planText){
+  const f = findStudentById(sid);
+  openModal('📝 个性化作业 · ' + (f ? esc(f.s.name) : ''),
+    '<div id="hwPlanOut"><pre class="ai-summary-pre">' + esc(planText) + '</pre></div>'
+    + '<div class="modal-actions">'
+    + '<button class="btn ghost" onclick="copyText(document.getElementById(\'hwPlanOut\').innerText)">📋 复制</button>'
+    + '<button class="btn" onclick="saveHwPlan(' + sid + ')">💾 保存为个性化作业</button>'
+    + '<button class="btn ghost" onclick="printHwPlan()">🖨️ 打印</button>'
+    + '<button class="btn" onclick="closeModal()">关闭</button></div>',
+    null, 600);
+}
+function saveHwPlan(sid){
+  const f = findStudentById(sid); if (!f) return;
+  const out = document.getElementById('hwPlanOut'); if (!out) return;
+  const t = out.innerText; if (!t) return toast('暂无可保存内容');
+  rec(f.s, state.activeDate).aiHw = t; save();
+  toast('✅ 已保存为 ' + f.s.name + ' 的个性化作业');
+  renderMain();
+}
+function printHwPlan(){
+  const out = document.getElementById('hwPlanOut'); if (!out) return toast('未找到内容');
+  const w = window.open('', '_blank', 'width=820,height=1000'); if (!w) return toast('浏览器拦截了打印窗口，请允许弹窗');
+  const css = '*{box-sizing:border-box}body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#1c2434;margin:0;background:#fff}.rc-wrap{max-width:720px;margin:0 auto;padding:34px 40px}h1{font-size:24px;text-align:center;border-bottom:3px double #0f6e56;padding-bottom:12px;margin-bottom:18px}.ai-summary-pre{white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.9}@page{margin:16mm}@media print{body{margin:0}}';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>个性化作业</title><style>' + css + '</style></head><body><div class="rc-wrap"><h1>个性化作业方案</h1>' + out.innerHTML + '</div></body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ try { w.print(); } catch (e) { toast('打印失败，请手动 Ctrl+P'); } }, 300);
+}
+/* ===== AI 深化②：家长信导出 PDF（打印窗口模式，浏览器可存为 PDF） ===== */
+function printParentLetter(){
+  const out = document.getElementById('awpOut'); if (!out) return toast('未找到家长信内容');
+  const w = window.open('', '_blank', 'width=820,height=1000'); if (!w) return toast('浏览器拦截了打印窗口，请允许弹窗');
+  const css = '*{box-sizing:border-box}body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#1c2434;margin:0;background:#fff}.rc-wrap{max-width:720px;margin:0 auto;padding:34px 40px}h1{font-size:24px;text-align:center;border-bottom:3px double #0f6e56;padding-bottom:12px;margin-bottom:18px}.ai-summary-pre{white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.9}@page{margin:16mm}@media print{body{margin:0}}';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>家长沟通信</title><style>' + css + '</style></head><body><div class="rc-wrap"><h1>家长沟通信</h1>' + out.innerHTML + '</div></body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ try { w.print(); } catch (e) { toast('打印失败，请手动 Ctrl+P'); } }, 300);
 }
 
 /* ===== 积分激励增强：连续出勤连击奖励（由数据自动判定，无需手动发放） ===== */
