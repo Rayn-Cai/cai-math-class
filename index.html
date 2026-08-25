@@ -53,17 +53,15 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 </script>
 <style>
 :root{
-  --bg:#EFE4D4; --surface:#FFFFFF; --surface-alt:#E8DDD5;
-  --text:#2C2C2C; --text-secondary:#5C5C5C; --text-muted:#8A8A8A;
-  --border:#D8C9BA; --border-strong:#C4B5A6;
-  --primary:#6B8CAE; --primary-light:#C7D5E8;
-  --accent:#5A7A7A; --accent-light:#E0EBEB; --accent-dark:#3A5A5A;
-  --accent-soft:#F0F5F5; --accent-deep:#2A4A4A; --sky:#5A7A7A;
-  --green:#7A9A85; --green-light:#E3EDE7; --green-dark:#5A7A65;
-  --red:#C07A72; --red-light:#F5E0DD; --red-dark:#A05A52;
-  --yellow:#C9A26C; --yellow-light:#F5EBD8; --yellow-dark:#A9824C;
-  --orange:#C9945C; --orange-light:#F5E8D8; --orange-dark:#A9743C;
-  --side-1:#7A6A5A; --side-2:#5A4A3A;
+  --bg:#eef1f4; --surface:#ffffff; --surface-alt:#f3f6f8;
+  --text:#0f1b24; --text-secondary:#3a4a57; --text-muted:#7c8a96;
+  --border:#dde3e8; --border-strong:#c2cdd5;
+  --accent:#0f6e56; --accent-light:#e1f5ee; --accent-dark:#0c5441;
+  --accent-soft:#eef6f3; --accent-deep:#07392d; --sky:#1d9e75;
+  --green:#16a34a; --green-light:#dcfce7;
+  --red:#dc2626; --red-light:#fee2e2;
+  --yellow:#ca8a04; --yellow-light:#fef9c3;
+  --orange:#ea7c1c; --orange-light:#fef3e2;
   --radius:10px; --radius-sm:8px; --radius-lg:12px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1922,7 +1920,12 @@ const TABS = [
 /* 班级配色池：新建班级时按顺序自动分配，也可在班级设置里手动改 */
 const CLASS_COLORS = ['#3b6fe0','#e0693b','#16a34a','#d946a0','#0f6e56','#0891b2','#ca8a04','#dc2626'];
 
-function uid(){ return Date.now() * 1000 + Math.floor(Math.random() * 1000); }
+let _uidSeq = 0;
+function uid(){
+  /* 时间戳×1000 + 同毫秒递增序列×10 + 随机个位：保证同一毫秒内批量创建也不会撞 id */
+  _uidSeq = (_uidSeq + 1) % 100000;
+  return Date.now() * 1000 + _uidSeq * 10 + Math.floor(Math.random() * 10);
+}
 function makeStudents(names){
   return names.map(n => ({ id: uid(), name: n, records: {}, mistakes: [], spentPoints:0, manualPts:0, ptsLog:[],
     hoursTotal:0, hoursUsed:0 }));
@@ -2014,7 +2017,12 @@ const THEMES = {
   indigo:  { name:'靛青蓝', accent:'#818cf8', dark:'#6366f1', light:'#e0e7ff', soft:'#eef2ff', deep:'#4f46e5', sky:'#a5b4fc', side1:'#3a47a6', side2:'#262f80' },
   forest:  { name:'森野绿', accent:'#4ade80', dark:'#22c55e', light:'#dcfce7', soft:'#f0fdf4', deep:'#16a34a', sky:'#86efac', side1:'#1f8a4c', side2:'#125c32' },
   cyan:    { name:'天青蓝', accent:'#22d3ee', dark:'#06b6d4', light:'#cffafe', soft:'#ecfeff', deep:'#0891b2', sky:'#67e8f9', side1:'#0f7a92', side2:'#0a4f60' },
+  morandi: { name:'国风莫兰迪', accent:'#6B8CAE', dark:'#5A7A7A', light:'#C7D5E8', soft:'#F0F5F5', deep:'#3A5A5A', sky:'#7A9A9A', side1:'#7A6A5A', side2:'#5A4A3A',
+    g:{ '--bg':'#EFE4D4','--surface':'#FFFFFF','--surface-alt':'#E8DDD5','--text':'#2C2C2C','--text-secondary':'#5C5C5C','--text-muted':'#8A8A8A','--border':'#D8C9BA','--border-strong':'#C4B5A6','--primary':'#6B8CAE','--primary-light':'#C7D5E8','--green':'#7A9A85','--green-light':'#E3EDE7','--green-dark':'#5A7A65','--red':'#C07A72','--red-light':'#F5E0DD','--red-dark':'#A05A52','--yellow':'#C9A26C','--yellow-light':'#F5EBD8','--yellow-dark':'#A9824C','--orange':'#C9945C','--orange-light':'#F5E8D8','--orange-dark':'#A9743C' } },
 };
+/* 全局背景/状态色：切换主题时先复位为默认（青绿仪表盘风），再叠加主题自带值 */
+const THEME_GLOBAL = { '--bg':'#eef1f4','--surface':'#ffffff','--surface-alt':'#f3f6f8','--text':'#0f1b24','--text-secondary':'#3a4a57','--text-muted':'#7c8a96','--border':'#dde3e8','--border-strong':'#c2cdd5','--green':'#16a34a','--green-light':'#dcfce7','--red':'#dc2626','--red-light':'#fee2e2','--yellow':'#ca8a04','--yellow-light':'#fef9c3','--orange':'#ea7c1c','--orange-light':'#fef3e2' };
+const THEME_GLOBAL_EXTRA = ['--green-dark','--red-dark','--yellow-dark','--orange-dark','--primary','--primary-light'];
 function applyTheme(){
   const key = (typeof state !== 'undefined' && state && state.theme && THEMES[state.theme]) ? state.theme : 'emerald';
   const t = THEMES[key]; if (!t) return;
@@ -2028,6 +2036,10 @@ function applyTheme(){
   r.setProperty('--sky', t.sky);
   r.setProperty('--side-1', t.side1);
   r.setProperty('--side-2', t.side2);
+  /* 全局变量：清掉上一主题注入的可选变量 → 复位默认 → 再应用本主题特有值 */
+  THEME_GLOBAL_EXTRA.forEach(k => { try{ r.removeProperty(k); }catch(e){} });
+  Object.keys(THEME_GLOBAL).forEach(k => { try{ r.setProperty(k, THEME_GLOBAL[k]); }catch(e){} });
+  if (t.g) Object.keys(t.g).forEach(k => { try{ r.setProperty(k, t.g[k]); }catch(e){} });
 }
 function setTheme(key){
   if (!THEMES[key]) return;
