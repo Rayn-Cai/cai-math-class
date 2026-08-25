@@ -3383,8 +3383,9 @@ function renderOverview(){
       ${warns.length ? `<div class="ov-warn">${warns.map(w => `<div class="ov-warn-row">
           <span class="wico">⚠️</span><span class="wnm">${esc(w.s.name)}</span>
           <span class="wrs">${w.reasons.map(r => `<span class="wtag">${esc(r)}</span>`).join('')}</span>
+          <button class="btn sm ai" onclick="aiWarnParent(${w.s.id})">📤 AI 家长信</button>
         </div>`).join('')}</div>
-        <div class="ov-actions"><button class="btn sm" onclick="switchTab('roster')">📋 去日常反馈表处理</button></div>`
+        <div class="ov-actions"><button class="btn sm" onclick="switchTab('roster')">📋 去日常反馈表处理</button><button class="btn sm" onclick="openParentPick()">📤 批量发给家长</button></div>`
       : `<div class="ov-empty">🎉 暂无预警，孩子们状态都不错～</div>`}
     </div>`;
   const progRow = (t, list, clsName, ico) => {
@@ -5611,6 +5612,7 @@ function openMulti(ev, sid, field){
       <div class="mp-remark-t">💬 当日评语
         <span class="muted" style="font-size:11px">点下方短语直接添加</span>
         <button class="btn sm" style="margin-left:auto" onclick="openPhraseBank()" title="管理常用评语库">✏️ 管理</button>
+        <button class="btn sm ai" onclick="aiRemarkFill(${sid},this)" title="AI 生成当日评语短语">🤖 AI 评语</button>
       </div>
       <div id="remark-${sid}" class="mp-remark-c">${remarkChips(f.s)}</div>
       <div class="mp-phrases">${PHRASES().map(ph => `<button class="ph-chip" onclick="addRemark(${sid},this)">${esc(ph)}</button>`).join('')}</div>
@@ -5689,6 +5691,7 @@ function openPhraseBank(){
     <div class="pb-add">
       <input id="pbNew" class="inp" maxlength="20" placeholder="输入新评语，如：应用题单位换算要注意">
       <button class="btn primary" onclick="pbAdd()">＋ 添加</button>
+      <button class="btn ghost" onclick="aiPhraseBank()">🤖 AI 推荐</button>
     </div>`;
   openModal('💬 管理常用评语库', body, `<button class="btn" onclick="closeModal()">完成</button>`, 460);
 }
@@ -6569,7 +6572,7 @@ function renderTrend(){
   if (!dates.length) {
     return viewSwitch + `<div class="card"><div class="row" style="flex-wrap:wrap;gap:10px;align-items:center">
         <span><b>选择学生：</b>${sel}</span>
-        <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">分析范围 ${scopeBtns}　${scaleInputs}</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">分析范围 ${scopeBtns}　${scaleInputs}<button class="btn ai sm" onclick="openTrendDiag()">🤖 AI 诊断</button></span>
       </div></div>
       <div class="empty"><span class="ico">📉</span>${esc(stu.name)} 在所选范围内还没有成绩记录</div>`;
   }
@@ -6638,6 +6641,7 @@ function renderTrend(){
       <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="ta-label">分析范围</span>${scopeBtns}
         ${scaleInputs}
+        <button class="btn ai sm" onclick="openTrendDiag()">🤖 AI 诊断</button>
       </span>
     </div></div>
     <div class="chart-box">
@@ -10363,6 +10367,20 @@ function renderSmart(){
     + '</div></div>'
 
     + '<div class="sm-card"><div class="sm-card-t"><span class="sm-dot"></span>④ 掉队自动干预<span class="sm-tip">' + (warns.length ? warns.length + ' 项待处理' : '已全部处理 🎉') + '</span></div>' + ivRows + '</div>'
+
+    + '<div class="sm-card"><div class="sm-card-t"><span class="sm-dot"></span>⑤ 🤖 AI 智能出题 / 组卷' + aiTag + '</div>'
+    + '<div class="sc-body">'
+    + '<div class="sc-row"><div class="sc-grp"><label class="sc-lbl">🎯 出题依据</label><select id="qgBasis" class="sm-sel" onchange="qgBasisChange()">'
+    + '<option value="class">本班薄弱点（自动）</option><option value="student">指定学生</option><option value="custom">自定义知识点</option></select></div></div>'
+    + '<div class="sc-row" id="qgStudentWrap" style="display:none"><div class="sc-grp"><label class="sc-lbl">👤 学生</label><select id="qgSid" class="sm-sel">' + opts + '</select></div></div>'
+    + '<div class="sc-row" id="qgCustomWrap" style="display:none"><div class="sc-grp"><label class="sc-lbl">📚 知识点</label><input id="qgCustom" class="inp" placeholder="如：二次函数、相似三角形、圆"></div></div>'
+    + '<div class="sc-row"><div class="sc-grp"><label class="sc-lbl">🔢 题量</label><select id="qgNum" class="sm-sel"><option value="3">3 题</option><option value="5" selected>5 题</option><option value="10">10 题</option></select></div>'
+    + '<div class="sc-grp"><label class="sc-lbl">📶 难度</label><select id="qgDiff" class="sm-sel"><option value="基础">基础</option><option value="中等" selected>中等</option><option value="拔高">拔高</option></select></div></div>'
+    + '<div class="sc-row"><div class="sc-grp"><label class="sc-lbl">📝 含解析</label><label class="toggle-sw"><input type="checkbox" id="qgAna" checked><span class="toggle-sl"></span></label></label>'
+    + '<button class="btn ai" style="margin-left:auto" onclick="genQuizByAI()">🤖 生成题目</button></div>'
+    + '<div id="qgOut"></div>'
+    + '</div>'
+
     + '</div>';
 }
 /* ---- 智能中心交互处理 ---- */
@@ -10441,13 +10459,14 @@ function aiCfg(){
 }
 function aiReady(){ const c = aiCfg(); return !!(c.key && c.base && c.model); }
 function aiProviderCount(){ return Object.keys(AI_PROVIDERS).length; }
-function aiChat(systemText, userText){
+function aiChat(systemText, userText, opt){
   const c = aiCfg();
   if (!c.key || !c.base || !c.model) throw new Error('AI 未配置');
+  const o = opt || {};
   const body = { model: c.model, messages: [
     { role:'system', content: systemText },
     { role:'user', content: userText }
-  ], temperature: 0.7, max_tokens: 600 };
+  ], temperature: (o.temperature != null ? o.temperature : 0.7), max_tokens: (o.maxTokens != null ? o.maxTokens : 600) };
   return fetch(c.base + '/chat/completions', {
     method:'POST',
     headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + c.key },
@@ -10738,6 +10757,155 @@ function testAIConn(){
     res.innerHTML = '<span class="ai-test-err">❌ 连接失败：' + esc(msg) + '</span>';
     btn.disabled = false; btn.textContent = '🔗 测试连接';
   });
+}
+
+/* ===== 新增 AI 能力：测试分析诊断 / AI 评语 / 预警家长信 / 智能出题 ===== */
+/* 测试分析·AI 诊断：基于小测/考试/作业数据定位薄弱点 + 补弱建议 */
+function genDiagByAI(sid, cb){
+  if (!aiReady()) { cb(null, new Error('AI 未配置')); return; }
+  const p = profileOf(sid); if (!p) { cb(null, new Error('未找到档案')); return; }
+  const id = String(sid);
+  const cls = activeClass();
+  const s = cls && cls.students.find(x => String(x.id) === id);
+  if (!s) { cb(null, new Error('未找到学生')); return; }
+  const ds = smartDates(cls), recent = ds.slice(-Math.min(14, ds.length));
+  const qVals = [];
+  recent.forEach(d => { const q = num(s.records[d] && s.records[d].quiz); if (q != null) qVals.push(q); });
+  const qAvgV = qVals.length ? (qVals.reduce((a, b) => a + b, 0) / qVals.length) : null;
+  const pass = (state.quizThresholds && state.quizThresholds.pass) || (state.quizScale || 100) * 0.6;
+  const lowQ = recent.filter(d => { const q = num(s.records[d] && s.records[d].quiz); return q != null && q < pass; }).length;
+  const exam = cls.examScores[s.id] || {};
+  const examTxt = Object.keys(exam).filter(k => k !== 'zhongkao').map(k => k + ':' + (exam[k].mathScore || exam[k].math || '?')).join('、') || '无';
+  const zk = exam.zhongkao ? ('中考数学 ' + (exam.zhongkao['数学'] || '?')) : '';
+  let hwMiss = 0;
+  recent.forEach(d => { const r = s.records[d]; if (!r) return; if (state.hwMode === 'done') { if (r.hwDone === false) hwMiss++; } else { const h = hwEffective(r); if (h === null || ((state.hwScale || 10) > 0 && h / (state.hwScale || 10) < 0.6)) hwMiss++; } });
+  let txt = '学生姓名：' + (p.name || s.name) + '\n';
+  txt += '近14天小测均分：' + (qAvgV != null ? fmt1(qAvgV) + '（满分' + (state.quizScale || 100) + '，低于达标线' + fmt1(pass) + ' 的有 ' + lowQ + ' 次）' : '数据不足') + '\n';
+  txt += '考试成绩：' + examTxt + (zk ? '；' + zk : '') + '\n';
+  txt += '近14天作业偏低/未完成次数：' + hwMiss + '\n';
+  const sys = '你是资深初中数学老师与中考教研专家。请基于以下学生数学学习数据，做一份精炼的学情诊断：1) 指出 2-3 个最薄弱的知识点方向（结合分数偏低、考试与作业表现推断，不要编造具体未提及的考试分数）；2) 针对每项给出具体可操作的补弱练习方向；3) 用一句话总结该生当前状态与下一步重点。请严格使用「【薄弱点】/【补弱建议】/【总结】」三段格式输出，总计约 180-260 字。';
+  aiChat(sys, txt).then(t => cb(t, null)).catch(e => cb(null, e));
+}
+function openTrendDiag(){
+  const cls = activeClass(); if (!cls) return;
+  const sid = state.trendStudentId || (cls.students[0] && cls.students[0].id);
+  if (!sid) return toast('请先选择学生');
+  if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
+  const f = findStudentById(sid); if (!f) return;
+  openModal('🤖 AI 学情诊断 · ' + esc(f.s.name || '?'),
+    '<div id="aiDiagOut"><div class="muted">正在分析 ' + esc(f.s.name || '?') + ' 的测试数据并定位薄弱点…</div></div>'
+    + '<div class="modal-actions"><button class="btn ghost" onclick="copyText(document.getElementById(\'aiDiagTxt\')?document.getElementById(\'aiDiagTxt\').innerText:\'\')">📋 复制诊断</button><button class="btn" onclick="closeModal()">关闭</button></div>',
+    null, 560);
+  genDiagByAI(sid, function(text, err){
+    const out = document.getElementById('aiDiagOut'); if (!out) return;
+    if (err || !text) { out.innerHTML = '<div class="err">AI 生成失败：' + (err && err.message ? esc(err.message) : '') + '</div>'; return; }
+    out.innerHTML = '<pre class="ai-summary-pre" id="aiDiagTxt">' + esc(text) + '</pre>';
+  });
+}
+/* AI 自动生成当日课堂评语（短短语）填入 r.remark */
+function genRemarkByAI(sid, cb){
+  if (!aiReady()) { cb(null, new Error('AI 未配置')); return; }
+  const f = findStudentById(sid); if (!f) return cb(null, new Error('未找到学生'));
+  const s = f.s, cls = f.c, ds = smartDates(cls), recent = ds.slice(-Math.min(10, ds.length));
+  let attN = 0, attP = 0;
+  recent.forEach(d => { const r = s.records[d]; if (!r) return; attN++; const a = r.attendance; if (a === 'present' || a === 'late') attP++; });
+  const qa = qAvg(s, recent);
+  const hwMiss = recent.filter(d => { const r = s.records[d]; if (!r) return false; if (state.hwMode === 'done') return r.hwDone === false; const h = hwEffective(r); return h === null || ((state.hwScale || 10) > 0 && h / (state.hwScale || 10) < 0.6); }).length;
+  const last = recent.length ? (s.records[ds[ds.length - 1]] || {}) : {};
+  const beh = last.behavior || [], abs = last.absorption || [];
+  const behTxt = beh.map(k => (BOPTS().find(o => o.key === k) || {}).label).filter(Boolean).join('、');
+  const absTxt = abs.map(k => (AOPTS().find(o => o.key === k) || {}).label).filter(Boolean).join('、');
+  let txt = '学生姓名：' + s.name + '\n近期概况：出勤率 ' + (attN ? Math.round(attP / attN * 100) : 0) + '%，近10天小测均分 ' + (qa != null ? fmt1(qa) : '—') + '，作业偏低/未完成 ' + hwMiss + ' 次';
+  if (behTxt) txt += '；课堂表现：' + behTxt;
+  if (absTxt) txt += '；课堂吸收：' + absTxt;
+  const sys = '你是初中数学老师。请基于以下学生今日课堂表现概况，生成【一条不超过18字】的课堂评语短语，简洁、具体、有鼓励性，可直接作为当日评语。只输出短语本身，不要引号、不要解释。';
+  aiChat(sys, txt).then(t => cb((t || '').trim().slice(0, 24), null)).catch(e => cb(null, e));
+}
+function aiRemarkFill(sid, el){
+  if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
+  if (el) { el.disabled = true; el.textContent = '🤖 生成中…'; }
+  genRemarkByAI(sid, function(t, err){
+    if (el) { el.disabled = false; el.textContent = '🤖 AI 评语'; }
+    if (err || !t) { toast('AI 评语生成失败：' + (err && err.message ? err.message : '请检查配置')); return; }
+    const f = findStudentById(sid); if (!f) return;
+    rec(f.s, state.activeDate).remark = t;
+    save();
+    const box = document.getElementById('remark-' + sid); if (box) box.innerHTML = remarkChips(f.s);
+    refreshMultiBtn(f.s, 'behavior'); refreshMultiBtn(f.s, 'absorption');
+    toast('✅ AI 评语已填入：' + t);
+  });
+}
+/* 评语库 AI 推荐短语（追加到库） */
+function aiPhraseBank(){
+  if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
+  const sys = '你是初中数学老师。请针对课堂评价，生成 6 条简洁、积极、具体的课堂评语（每条不超过18字），用于老师快速点选。只输出短语，每行一条，不要编号和解释。';
+  const user = '当前已有评语库：' + PHRASES().join('、') + '\n请补充 6 条不同的、实用的课堂评语短语。';
+  openModal('🤖 AI 推荐评语', '<div id="aipbOut"><div class="muted">正在生成推荐评语…</div></div><div class="modal-actions"><button class="btn ghost" onclick="closeModal()">关闭</button></div>', null, 460);
+  aiChat(sys, user).then(t => {
+    const out = document.getElementById('aipbOut'); if (!out) return;
+    const lines = (t || '').split('\n').map(x => x.replace(/^[\d\u3000\s\.\、\-]+/, '').trim()).filter(x => x && x.length <= 20).slice(0, 6);
+    const added = lines.filter(x => !PHRASES().includes(x));
+    state.phraseBank = PHRASES().concat(added);
+    save();
+    out.innerHTML = '<div class="pb-list">' + lines.map(l => '<div class="pb-row"><span class="pb-txt">' + esc(l) + '</span></div>').join('') + '</div><div class="hint">已自动追加 ' + added.length + ' 条到评语库</div><button class="btn" onclick="openPhraseBank()">查看评语库</button>';
+  }).catch(e => { const out = document.getElementById('aipbOut'); if (out) out.innerHTML = '<div class="err">' + esc((e && e.message) || '生成失败') + '</div>'; });
+}
+/* 家长沟通主动化：针对预警原因生成家长信 */
+function aiWarnParent(sid){
+  if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
+  const f = findStudentById(sid); if (!f) return;
+  const cls = f.c, ds = smartDates(cls), recent = ds.slice(-14);
+  const warns = buildWarnings(cls);
+  const w = warns.find(x => String(x.s.id) === String(sid));
+  const reasons = w ? w.reasons.join('；') : '近期学习状态需重点关注';
+  let attN = 0, attP = 0;
+  recent.forEach(d => { const r = f.s.records[d]; if (!r) return; attN++; const a = r.attendance; if (a === 'present' || a === 'late') attP++; });
+  const qa = qAvg(f.s, recent);
+  let hwMiss = 0;
+  recent.forEach(d => { const r = f.s.records[d]; if (!r) return; if (state.hwMode === 'done') { if (r.hwDone === false) hwMiss++; } else { const h = hwEffective(r); if (h === null || ((state.hwScale || 10) > 0 && h / (state.hwScale || 10) < 0.6)) hwMiss++; } });
+  const attRate = attN ? Math.round(attP / attN * 100) : 0;
+  const user = '学生姓名：' + f.s.name + '\n预警原因：' + reasons
+    + '\n近14天概况：出勤率 ' + attRate + '%，小测均分 ' + (qa != null ? fmt1(qa) : '—') + '，作业偏低/未完成 ' + hwMiss + ' 次'
+    + '\n请写一段家长沟通文案。';
+  const sys = '你是经验丰富的初中数学老师。请基于以下学生的预警原因与近期数据，写一段约 100-160 字的家长沟通文案（可直接微信发送）。语气温暖真诚、具体不空洞，先肯定优点，再点明问题，并给出 1-2 条可操作的家校配合建议。只输出正文，可适度使用 emoji 让表达更亲切。';
+  openModal('📤 AI 家长信 · ' + esc(f.s.name),
+    '<div id="awpOut"><div class="muted">正在为 ' + esc(f.s.name) + ' 生成针对性家长信…</div></div>'
+    + '<div class="modal-actions"><button class="btn ghost" onclick="copyText(document.getElementById(\'awpTxt\')?document.getElementById(\'awpTxt\').innerText:\'\')">📋 复制</button><button class="btn" onclick="closeModal()">关闭</button></div>',
+    null, 560);
+  aiChat(sys, user).then(t => { const out = document.getElementById('awpOut'); if (out) out.innerHTML = '<pre class="ai-summary-pre" id="awpTxt">' + esc(t) + '</pre>'; }).catch(e => { const out = document.getElementById('awpOut'); if (out) out.innerHTML = '<div class="err">' + esc((e && e.message) || '生成失败') + '</div>'; });
+}
+/* AI 智能出题 / 组卷 */
+function qgBasisChange(){
+  const b = (document.getElementById('qgBasis') || {}).value;
+  const sw = document.getElementById('qgStudentWrap'); if (sw) sw.style.display = (b === 'student') ? 'flex' : 'none';
+  const cw = document.getElementById('qgCustomWrap'); if (cw) cw.style.display = (b === 'custom') ? 'flex' : 'none';
+}
+function genQuizByAI(){
+  if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
+  const basis = (document.getElementById('qgBasis') || {}).value || 'class';
+  const n = Math.max(1, Math.min(10, +(document.getElementById('qgNum') || {}).value || 3));
+  const diff = (document.getElementById('qgDiff') || {}).value || '中等';
+  const anaEl = document.getElementById('qgAna'); const ana = !(anaEl && anaEl.checked === false);
+  let scope = '中考数学核心知识点';
+  const cls = activeClass();
+  if (cls && basis === 'class') {
+    const ds = smartDates(cls), recent = ds.slice(-14);
+    let sum = 0, cnt = 0, low = 0; const pass = (state.quizThresholds && state.quizThresholds.pass) || (state.quizScale || 100) * 0.6;
+    cls.students.forEach(s => recent.forEach(d => { const q = num(s.records[d] && s.records[d].quiz); if (q != null) { sum += q; cnt++; if (q < pass) low++; } }));
+    scope = '本班近期小测：均分 ' + (cnt ? fmt1(sum / cnt) : '—') + '（满分' + (state.quizScale || 100) + '），' + low + ' 人次低于达标线，请针对班级整体薄弱方向出题';
+  } else if (basis === 'student') {
+    const sid = (document.getElementById('qgSid') || {}).value; const f = sid ? findStudentById(sid) : null;
+    if (f) scope = '学生「' + f.s.name + '」的薄弱点（可结合其近期小测/作业表现推断）';
+  } else {
+    const c = (document.getElementById('qgCustom') || {}).value; if (c && c.trim()) scope = '知识点：' + c.trim();
+  }
+  const sys = '你是资深中考数学命题与教研专家，题目严谨、表述规范、符合课标与中考命题趋势，难度梯度合理。';
+  const user = '请针对以下范围出 ' + n + ' 道「' + diff + '」难度的初中数学习题' + (ana ? '，每题附答案与详细解析' : '，每题附答案') + '。\n范围：' + scope + '\n输出严格使用以下格式（不要额外说明）：\n【题目1】\n（题干）\n【答案】\n（答案）\n【解析】\n（解析）\n【题目2】\n……（依此类推，共 ' + n + ' 题）';
+  const out = document.getElementById('qgOut'); if (out) out.innerHTML = '<div class="muted">🤖 正在生成 ' + n + ' 道' + diff + '题目…</div>';
+  aiChat(sys, user, { temperature: 0.8, maxTokens: 1600 }).then(t => {
+    if (out) out.innerHTML = '<div class="ai-quiz-box"><pre class="ai-summary-pre">' + esc(t) + '</pre>'
+      + '<div class="sc-actions"><button class="btn sm" onclick="copyText(this.parentElement.previousElementSibling.innerText)">📋 复制题目</button></div></div>';
+  }).catch(e => { if (out) out.innerHTML = '<div class="err">AI 出题失败：' + esc((e && e.message) || '请检查配置') + '</div>'; });
 }
 
 /* ===== 积分激励增强：连续出勤连击奖励（由数据自动判定，无需手动发放） ===== */
