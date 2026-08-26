@@ -143,6 +143,12 @@ input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;outlin
 .class-row:hover .class-edit{opacity:.85}
 .class-row.active .class-edit{color:var(--accent-dark);opacity:.5}
 .class-edit:hover{opacity:1 !important;transform:scale(1.15)}
+.class-del{width:26px;flex:0 0 auto;font-size:12px;opacity:0;color:#fff;transition:.14s}
+.class-row:hover .class-del{opacity:.85}
+.class-row.active .class-del{color:#ffd9d4;opacity:.5}
+.class-del:hover{opacity:1 !important;transform:scale(1.15);color:#ff9a8f}
+.cf-msg{font-size:14px;line-height:1.75;color:var(--text);padding:6px 2px}
+.cf-msg b{color:var(--red)}
 .class-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:9px;
   border-radius:var(--radius-sm);border:1.5px dashed rgba(255,255,255,.5);color:#fff;
   font-size:12.5px;font-weight:700;transition:.16s}
@@ -798,6 +804,10 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .batch-tbl .bnm{text-align:left;font-weight:700;min-width:90px}
 .batch-tbl input{max-width:90px;text-align:center}
 .batch-tip{font-size:12px;color:var(--text-muted)}
+.roster-sel-cb,.roster-sel-all{width:17px;height:17px;cursor:pointer;accent-color:var(--accent-dark)}
+.sel-bar{display:flex;align-items:center;gap:10px;margin:8px 0;padding:9px 12px;border:1px solid var(--red);background:var(--red-light);border-radius:10px;flex-wrap:wrap}
+.sel-bar .sel-info{font-size:13px;font-weight:600;color:var(--text-secondary)}
+.sel-bar .sel-info b{color:var(--red);font-size:15px}
 
 /* 家长只读视图 */
 .pv-banner{background:linear-gradient(135deg,var(--accent-light),var(--green-light));border:1px solid var(--green);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--accent-dark)}
@@ -1978,6 +1988,8 @@ const ui = {
   rosterBatch: false, // 日常反馈表：批量录入模式
   quickBar: false,    // 今日快捷操作面板
   rosterPage: 0,      // 日常反馈表分页（0-indexed）
+  rosterSelect: false, // 日常反馈表：批量删除选择模式
+  rosterSel: [],       // 批量删除：已选学生 id 列表
   smartSid: '',       // 智能中心：评语生成所选学生
   smartStyle: 'calm', // 评语风格：calm 平和 / enc 鼓励 / pro 专业
 };
@@ -2539,6 +2551,17 @@ function openModal(title, bodyHtml, footHtml, maxWidth, noAnim){
 /* 点击遮罩关闭：加 250ms 保护期，避免「打开弹窗的同一点击」误触立即关闭（闪退） */
 function maybeCloseModal(){ if (ui._modalTs && Date.now() - ui._modalTs < 250) return; closeModal(); }
 function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
+/* 应用内确认弹窗：替代原生 confirm()，解决沙箱 iframe（预览面板）中 confirm 被拦截导致删除静默失败的问题 */
+let _confirmCb = null;
+function _runConfirm(){ const cb = _confirmCb; _confirmCb = null; closeModal(); if (typeof cb === 'function') { try { cb(); } catch (e) { console.error(e); } } }
+function askConfirm(msg, onYes, opts){
+  opts = opts || {};
+  _confirmCb = onYes;
+  const danger = opts.danger !== false;
+  const foot = `<button class="btn ghost" onclick="closeModal()">${opts.noText || '取消'}</button>
+    <button class="btn ${danger ? 'danger' : 'primary'}" onclick="_runConfirm()">${opts.yesText || '确定'}</button>`;
+  openModal(opts.title || '⚠️ 确认操作', `<div class="cf-msg">${msg}</div>`, foot, opts.width || 440);
+}
 function showImage(url){
   document.getElementById('lightRoot').innerHTML =
     `<div class="lightbox" onclick="document.getElementById('lightRoot').innerHTML=''"><img src="${url}"></div>`;
@@ -2828,6 +2851,7 @@ function renderSidebar(){
               <span class="cb-count">${c.students.length}人</span>
             </button>
             <button class="class-edit" onclick="openClassModal(${c.id})" title="编辑班级">✏️</button>
+            <button class="class-del" onclick="delClass(${c.id})" title="删除班级">🗑️</button>
           </div>`).join('')}
         ${state.classes.length ? '' : '<div class="class-empty">还没有班级<br>点下方按钮新建一个</div>'}
         <button class="class-add" onclick="openClassModal(null)"><span>＋</span>新建班级</button>
@@ -2975,25 +2999,27 @@ function openTrash(){
 function emptyTrash(){
   const n = trashCount();
   if (!n) return;
-  if (!confirm(`确定清空回收站吗？其中 ${n} 项（班级/学生/档案及其全部数据）将被永久删除，无法恢复。`)) return;
-  state.trash = { classes: [], students: [], profiles: [] };
-  save(); closeModal(); renderSidebar(); renderMain();
-  toast('回收站已清空');
+  askConfirm(`确定清空回收站吗？<br>其中 <b>${n}</b> 项（班级/学生/档案及其全部数据）将被<b>永久删除，无法恢复</b>。`, () => {
+    state.trash = { classes: [], students: [], profiles: [] };
+    save(); closeModal(); renderSidebar(); renderMain();
+    toast('回收站已清空');
+  }, { title: '🗑️ 清空回收站', danger: true, yesText: '永久清空' });
 }
 function delClass(id){
   const c = state.classes.find(x => String(x.id) === String(id));
-  if (!c) return;
+  if (!c) return toast('未找到该班级');
   const n = c.students.length;
-  if (!confirm(`确定删除「${c.name}」吗？\n该班 ${n} 名学生及其全部成绩、打卡、加练、档案记录将移入回收站，可随时恢复。`)) return;
-  state.trash = state.trash || { classes: [], students: [], profiles: [] };
-  state.trash.classes.push({ id: c.id, name: c.name, data: c, deletedAt: trashStamp() });
-  state.classes = state.classes.filter(x => String(x.id) !== String(id));
-  if (String(state.activeClassId) === String(id)) {
-    state.activeClassId = state.classes[0] ? state.classes[0].id : 0;
-  }
-  state.mistakeStudentId = null; state.trendStudentId = null;
-  closeModal(); save(); renderSidebar(); renderMain();
-  toastAction('已删除「' + c.name + '」，可恢复', '撤销', () => restoreTrash('classes', c.id));
+  askConfirm(`确定删除班级「<b>${esc(c.name)}</b>」吗？<br>该班 ${n} 名学生及其全部成绩、打卡、加练、档案记录将移入回收站，可随时恢复。`, () => {
+    state.trash = state.trash || { classes: [], students: [], profiles: [] };
+    state.trash.classes.push({ id: c.id, name: c.name, data: c, deletedAt: trashStamp() });
+    state.classes = state.classes.filter(x => String(x.id) !== String(id));
+    if (String(state.activeClassId) === String(id)) {
+      state.activeClassId = state.classes[0] ? state.classes[0].id : 0;
+    }
+    state.mistakeStudentId = null; state.trendStudentId = null;
+    save(); renderSidebar(); renderMain();
+    toastAction('已删除「' + c.name + '」，可恢复', '撤销', () => restoreTrash('classes', c.id));
+  }, { title: '🗑️ 删除班级' });
 }
 function addTodo(){
   const el = document.getElementById('todoInput');
@@ -3139,6 +3165,7 @@ function renderMain(){
   const fn = map[state.activeTab] || renderRoster;
   try { c.innerHTML = fn(); } catch(e) { c.innerHTML = '<div class="blank-state"><div class="bs-icon">⚠️</div><div class="bs-title">页面渲染出错</div><div class="bs-desc">' + esc(e.message || String(e)) + '</div></div>'; console.error('renderMain[' + state.activeTab + ']', e); }
   if (state.activeTab === 'files') hydrateThumbs();
+  if (state.activeTab === 'roster') setTimeout(syncSelAll, 0);
   if (state.activeTab === 'checkin') hydrateCheckinDocs();
   if (state.activeTab === 'attend') hydrateAttDocs();
   if (state.activeTab === 'trend') { /* svg inline */ }
@@ -4012,6 +4039,7 @@ function renderRoster(){
       rankCell = `<span class="rank-badge ${rankNo <= 3 ? 'r' + rankNo : ''}">${rankNo}</span>`;
     }
     return `<tr class="${dayRest ? 'rest-row' : ''}">
+      <td class="c">${ui.rosterSelect ? `<input type="checkbox" class="roster-sel-cb" ${ui.rosterSel.includes(s.id) ? 'checked' : ''} onchange="toggleRosterSel(${s.id}, this.checked)">` : ''}</td>
       <td class="c" id="rank-${s.id}">${rankCell}</td>
       <td class="nm"><button class="stu-link" onclick="openStudentCard(${s.id})" title="查看学生档案">${esc(s.name)}</button></td>
       <td class="c">
@@ -4078,14 +4106,17 @@ function renderRoster(){
   <div class="batch-bar">
     <button class="btn ${ui.rosterBatch ? 'primary' : ''}" onclick="toggleRosterBatch()">⚡ ${ui.rosterBatch ? '退出批量录入' : '批量录入'}</button>
     <button class="btn ${ui.quickBar ? 'primary' : ''}" onclick="toggleQuickBar()" title="一键全勤 / 作业全完成 / 全班同分等">🚀 今日快捷</button>
-    <span class="batch-tip">${ui.rosterBatch ? '紧凑模式：姓名·出勤·小测·作业，回车跳到下一格，改完自动保存' : '日常表支持回车跳格、↑↓跨行跳转；学生多时自动分页。点「批量录入」进入紧凑表格'}</span>
+    <button class="btn ${ui.rosterSelect ? 'primary' : ''}" onclick="toggleRosterSelect()" title="勾选学生后可批量删除">☑️ ${ui.rosterSelect ? '退出选择' : '选择学生'}</button>
+    <span class="batch-tip">${ui.rosterBatch ? '紧凑模式：姓名·出勤·小测·作业，回车跳到下一格，改完自动保存' : '日常表支持回车跳格、↑↓跨行跳转；学生多时自动分页。点「选择学生」勾选后批量删除'}</span>
   </div>
   ${ui.quickBar ? quickBarHtml(cls, d) : ''}
   ${ui.rosterBatch ? renderBatchTable(cls, d) : ''}
+  ${renderRosterSelectBar(cls)}
 
   <div class="tbl-wrap" style="display:${ui.rosterBatch ? 'none' : 'block'}">
     <table>
       <thead><tr>
+        <th class="c" style="width:38px">${ui.rosterSelect ? `<input type="checkbox" class="roster-sel-all" onchange="toggleRosterSelAll(this.checked)" title="全选本页">` : ''}</th>
         <th class="c" style="width:56px">排名</th>
         <th style="width:96px">学生姓名</th>
         <th class="c" style="width:150px">出勤</th>
@@ -4100,7 +4131,7 @@ function renderRoster(){
         <th class="c" style="width:140px" title="小测/作业录入时点 ✏️ 标注错题知识点，累积后 AI 诊断越来越准">✏️ 错题知识点</th>
         <th class="c" style="width:52px">删除</th>
       </tr></thead>
-      <tbody>${body || '<tr><td colspan="9" class="empty">还没有学生，先在下方添加吧</td></tr>'}</tbody>
+      <tbody>${body || `<tr><td colspan="${ui.rosterSelect ? 10 : 9}" class="empty">还没有学生，先在下方添加吧</td></tr>`}</tbody>
       ${rows.length ? `<tfoot>${foot('平均分', v => v.avg)}${foot('最高分', v => v.max)}${foot('最低分', v => v.min)}</tfoot>` : ''}
     </table>
   </div>
@@ -4119,6 +4150,58 @@ function renderRoster(){
   </div>`;
 }
 function toggleRosterBatch(){ ui.rosterBatch = !ui.rosterBatch; renderMain(); }
+/* ===== 批量删除学生：勾选模式 + 选择集合 ===== */
+function toggleRosterSelect(){
+  ui.rosterSelect = !ui.rosterSelect;
+  if (!ui.rosterSelect) ui.rosterSel = [];
+  renderMain();
+}
+function toggleRosterSel(id, checked){
+  ui.rosterSel = ui.rosterSel || [];
+  const i = ui.rosterSel.indexOf(id);
+  if (checked && i < 0) ui.rosterSel.push(id);
+  if (!checked && i >= 0) ui.rosterSel.splice(i, 1);
+  renderMain(); syncSelAll();
+}
+function toggleRosterSelAll(checked){
+  const cls = activeClass(); if (!cls) return;
+  const pageIds = cls.students.map(s => s.id);
+  ui.rosterSel = ui.rosterSel || [];
+  pageIds.forEach(id => {
+    const i = ui.rosterSel.indexOf(id);
+    if (checked && i < 0) ui.rosterSel.push(id);
+    if (!checked && i >= 0) ui.rosterSel.splice(i, 1);
+  });
+  renderMain(); syncSelAll();
+}
+function selectAllStudents(){
+  const cls = activeClass(); if (!cls) return;
+  ui.rosterSel = cls.students.map(s => s.id);
+  renderMain(); syncSelAll();
+}
+function clearRosterSel(){ ui.rosterSel = []; renderMain(); syncSelAll(); }
+function syncSelAll(){
+  const all = document.querySelector('.roster-sel-all');
+  if (all) {
+    const cls = activeClass();
+    const pageIds = cls ? cls.students.map(s => s.id) : [];
+    const sel = ui.rosterSel || [];
+    all.checked = pageIds.length > 0 && pageIds.every(id => sel.includes(id));
+    all.indeterminate = !all.checked && pageIds.some(id => sel.includes(id));
+  }
+}
+function renderRosterSelectBar(cls){
+  if (!ui.rosterSelect || !cls) return '';
+  const n = (ui.rosterSel || []).length;
+  const total = cls.students.length;
+  return `<div class="sel-bar" id="rosterSelBar">
+    <span class="sel-info">已选 <b>${n}</b> / ${total} 人</span>
+    <button class="btn sm" onclick="selectAllStudents()">全选全班</button>
+    <button class="btn sm" onclick="clearRosterSel()">清空选择</button>
+    <button class="btn sm ${n ? 'danger' : ''}" onclick="batchDelStudents()" ${n ? '' : 'disabled'}>🗑️ 删除所选</button>
+    <button class="btn sm ghost" onclick="toggleRosterSelect()">退出选择</button>
+  </div>`;
+}
 const BATCH_NAV = "if(event.key==='Enter'){event.preventDefault();var a=document.querySelectorAll('.batch-inp');var i=[].indexOf.call(a,this);if(i>=0&&i<a.length-1)a[i+1].focus();else this.blur();}";
 /* #141 日常表键盘导航：回车跳到下一个分数输入框，↑↓跨行同列跳转 */
 function rosterKeyNav(e){
@@ -5618,14 +5701,36 @@ function batchAddStudents(){
   save(); renderSidebar(); renderMain();
   toast(`已批量添加 ${names.length} 名学生`);
 }
-function delStudent(id){
-  const f = findStudentById(id); if (!f) return;
-  if (!confirm(`确定删除学生「${f.s.name}」吗？其所有成绩、打卡、加练记录将移入回收站，可随时恢复。`)) return;
+function moveStudentToTrash(f){
   state.trash = state.trash || { classes: [], students: [], profiles: [] };
   state.trash.students.push({ id: f.s.id, name: f.s.name, data: f.s, classId: f.c.id, deletedAt: trashStamp() });
-  f.c.students = f.c.students.filter(x => String(x.id) !== String(id));
-  save(); renderSidebar(); renderMain();
-  toastAction('已删除「' + f.s.name + '」，可恢复', '撤销', () => restoreTrash('students', f.s.id));
+  f.c.students = f.c.students.filter(x => String(x.id) !== String(f.s.id));
+}
+function delStudent(id){
+  const f = findStudentById(id); if (!f) return toast('未找到该学生');
+  askConfirm(`确定删除学生「<b>${esc(f.s.name)}</b>」吗？<br>其所有成绩、打卡、加练、档案记录将移入回收站，可随时恢复。`, () => {
+    moveStudentToTrash(f);
+    save(); renderSidebar(); renderMain();
+    toastAction('已删除「' + f.s.name + '」，可恢复', '撤销', () => restoreTrash('students', f.s.id));
+  }, { title: '🗑️ 删除学生' });
+}
+/* 批量删除学生：ids 为待删学生 id 数组，统一进回收站并支持一次性撤销 */
+function batchDelStudents(ids){
+  const cls = activeClass(); if (!cls) return;
+  const list = (ids && ids.length ? ids : ui.rosterSel || []).slice();
+  if (!list.length) return toast('请先勾选要删除的学生');
+  const names = [];
+  askConfirm(`确定删除选中的 <b>${list.length}</b> 名学生吗？<br>他们各自的全部成绩、打卡、加练、档案记录将移入回收站，可随时恢复。`, () => {
+    list.forEach(sid => {
+      const f = findStudentById(sid);
+      if (f && f.c.id === cls.id) { moveStudentToTrash(f); names.push(f.s.name); }
+    });
+    ui.rosterSel = []; ui.rosterSelect = false;
+    save(); renderSidebar(); renderMain();
+    toastAction('已删除 ' + list.length + ' 名学生，可恢复', '撤销', () => {
+      list.forEach(sid => restoreTrash('students', sid));
+    });
+  }, { title: '🗑️ 批量删除学生' });
 }
 
 /* -------- 多选浮动面板 -------- */
@@ -7498,12 +7603,13 @@ function saveProfileEditor(id){
 function delProfile(sid){
   const p = state.studentProfiles[String(sid)];
   if (!p) return;
-  if (!confirm('确定删除该学生档案吗？\n档案将移入回收站，可随时恢复。')) return;
-  state.trash = state.trash || { classes: [], students: [], profiles: [] };
-  state.trash.profiles.push({ id: String(sid), name: p.name || '未命名', data: p, deletedAt: trashStamp() });
-  delete state.studentProfiles[String(sid)];
-  save(); renderMain();
-  toastAction('已删除学生档案，可恢复', '撤销', () => restoreTrash('profiles', String(sid)));
+  askConfirm(`确定删除学生档案「<b>${esc(p.name || '未命名')}</b>」吗？<br>档案将移入回收站，可随时恢复。`, () => {
+    state.trash = state.trash || { classes: [], students: [], profiles: [] };
+    state.trash.profiles.push({ id: String(sid), name: p.name || '未命名', data: p, deletedAt: trashStamp() });
+    delete state.studentProfiles[String(sid)];
+    save(); renderMain();
+    toastAction('已删除学生档案，可恢复', '撤销', () => restoreTrash('profiles', String(sid)));
+  }, { title: '🗑️ 删除学生档案' });
 }
 /* 管理员手动新增一条独立的学生档案（无需先建班级） */
 function addProfile(){
