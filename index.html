@@ -437,6 +437,8 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .att-cal-cell.empty{background:transparent;border:none;cursor:default;box-shadow:none}
 .att-cal-cell.ovr{outline:2px dashed var(--accent)}
 .att-cal-cell .d-ovr{position:absolute;top:2px;right:4px;font-size:9px;color:var(--accent);line-height:1}
+.att-cal-cell.glo{outline:2px dashed #2b7de9}
+.att-cal-cell .d-glo{position:absolute;top:2px;right:4px;font-size:9px;line-height:1}
 .att-cal-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap}
 .att-cal-legend{display:flex;gap:12px;font-size:11.5px;color:var(--text-muted);align-items:center}
 /* 统一考勤规则设置 */
@@ -450,6 +452,10 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .attgw-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
 .attgw-actions .btns{font-size:12px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;transition:.14s}
 .attgw-actions .btns:hover{border-color:var(--accent);background:var(--surface-alt)}
+.attgw-tabs{display:flex;gap:8px;margin:0 0 12px}
+.attgw-tab{flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text-muted);font-size:13.5px;font-weight:800;cursor:pointer;transition:.14s}
+.attgw-tab:hover{border-color:var(--accent)}
+.attgw-tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
 
 .att-cal-legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:4px;vertical-align:-1px}
 .att-cal-sum{font-size:12.5px;font-weight:700;color:var(--text)}
@@ -1988,6 +1994,7 @@ let state = {
   warnRules: null, phraseBank: null,   // 预警规则自定义 / 常用评语库（normalizeState 补默认）
   hwFullOfDate: null,                  // 各日期「本次作业满分」（班级统一，如 { '2026-08-18': 10 }）
   attWeekRest: [0,1,2,3,4,5],          // 全局默认考勤周规则：休息的星期几（0=周日…6=周六）。默认=工作日休息·周六上课·周日休息
+  attGlobalOff: {},                    // 统一考勤「按日历微调」：全局级日期覆盖（{date:true=休息/false=上课}）。优先级介于班级覆盖与周规则之间
 };
 
 /* 临时 UI 状态（不持久化） */
@@ -2007,6 +2014,8 @@ const ui = {
   rosterSel: [],       // 批量删除：已选学生 id 列表
   smartSid: '',       // 智能中心：评语生成所选学生
   smartStyle: 'calm', // 评语风格：calm 平和 / enc 鼓励 / pro 专业
+  attGwMonth: '',     // 统一考勤「按日历微调」当前查看的月份（YYYY-MM），空则跟随当前日期
+  attGwTab: 'week',   // 统一考勤弹窗当前标签：week=按星期 / cal=按日历微调
 };
 
 /* ===== AI 大模型配置常量（必须在 aiCfg/aiReady/renderSmart 之前声明，避免 TDZ） ===== */
@@ -2181,10 +2190,12 @@ function classOfStudent(student){
 }
 /* 指定日期对指定班级是否为「日常反馈休息日」。
    解析优先级：① 班级显式覆盖（c.attendanceOff[date] 有值：true=休息 / false=上课）优先；
-               ② 否则按全局周规则 state.attWeekRest（星期几在列表中即休息）。
-   这样「统一考勤规则」作为默认，班级仍可在日历里单独覆盖个别日期。 */
+               ② 否则统一考勤「按日历微调」全局覆盖（state.attGlobalOff[date] 有值）；
+               ③ 否则按全局周规则 state.attWeekRest（星期几在列表中即休息）。
+   这样「统一考勤规则」作为默认， teacher 可一次性微调部分月份/具体日期，班级仍可在日历里单独覆盖个别日期。 */
 function attIsRest(c, d){
   if (c && c.attendanceOff && c.attendanceOff[d] !== undefined) return !!c.attendanceOff[d];
+  if (state.attGlobalOff && state.attGlobalOff[d] !== undefined) return !!state.attGlobalOff[d];
   const dow = new Date(d + 'T00:00:00').getDay();
   return !!(state.attWeekRest && state.attWeekRest.indexOf(dow) >= 0);
 }
@@ -2316,6 +2327,8 @@ function normalizeState(){
   state.ldHistory = state.ldHistory || [];
   /* 全局考勤周规则（统一考勤默认）：休息的星期几。默认=工作日休息·周六上课·周日休息 */
   if (!Array.isArray(state.attWeekRest)) state.attWeekRest = [0,1,2,3,4,5];
+  /* 统一考勤「按日历微调」：全局级日期覆盖（{date:true=休息/false=上课}） */
+  if (typeof state.attGlobalOff !== 'object' || !state.attGlobalOff) state.attGlobalOff = {};
   state._attOffMigrated = true;
   /* 小卖部商品（积分兑换闭环）：教师管理，学生用积分兑换 */
   if (!Array.isArray(state.shopItems) || !state.shopItems.length)
@@ -7087,15 +7100,19 @@ function attCalBodyHtml(){
     const isWe = (wd === 0 || wd === 6);
     const isRest = attIsRest(c, dt);
     const isOverride = (c.attendanceOff && c.attendanceOff[dt] !== undefined); // 本班单独设置（覆盖统一规则）
+    const isGlobal = !isOverride && (state.attGlobalOff && state.attGlobalOff[dt] !== undefined); // 仅统一日历设置（无本班覆盖）
     const isToday = dt === todayStr();
     const clsName = ['att-cal-cell'];
     if (isWe) clsName.push('we');
     clsName.push(isRest ? 'rest' : 'cls');
     if (isOverride) clsName.push('ovr');
+    if (isGlobal) clsName.push('glo');
     if (isToday) clsName.push('today');
     const num = +dt.slice(8, 10);
-    return `<div class="${clsName.join(' ')}" onclick="attCalToggle('${dt}')" title="${esc(fmtDateCN(dt))}${isOverride ? '（本班单独设置）' : '（跟随统一规则）'}">
-        <span class="d-num">${num}</span><span class="d-tag">${isRest ? '休' : '课'}</span>${isOverride ? '<span class="d-ovr">★</span>' : ''}</div>`;
+    const mark = isOverride ? '<span class="d-ovr">★</span>' : (isGlobal ? '<span class="d-glo">🌐</span>' : '');
+    const tip = isOverride ? '（本班单独设置）' : (isGlobal ? '（统一日历设置）' : '（跟随周规则）');
+    return `<div class="${clsName.join(' ')}" onclick="attCalToggle('${dt}')" title="${esc(fmtDateCN(dt))}${tip}">
+        <span class="d-num">${num}</span><span class="d-tag">${isRest ? '休' : '课'}</span>${mark}</div>`;
   }).join('');
   return `
     <div class="att-cal-head">
@@ -7190,6 +7207,123 @@ function attGwQuick(kind){
   else state.attWeekRest = []; // allClass：每天上课
   attGwRender();
 }
+/* 统一考勤「按日历微调」：全局级日期覆盖 state.attGlobalOff（对所有班级生效，班级仍可单独覆盖） */
+function attGwMonthVal(){
+  if (!ui.attGwMonth) ui.attGwMonth = (state.activeDate || todayStr()).slice(0, 7);
+  return ui.attGwMonth;
+}
+function attGwCalBodyHtml(){
+  const off = state.attGlobalOff || {};
+  const month = attGwMonthVal();
+  const [y, m] = month.split('-').map(Number);
+  const first = new Date(y, m - 1, 1);
+  const startDow = (first.getDay() + 6) % 7;            // 周一=0 … 周日=6
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(`${month}-${String(d).padStart(2, '0')}`);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const dows = ['一', '二', '三', '四', '五', '六', '日'];
+  let rest = 0, cls = 0;
+  cells.forEach(dt => { if (dt) (attIsRest(null, dt)) ? rest++ : cls++; });
+  const grid = cells.map(dt => {
+    if (!dt) return `<div class="att-cal-cell empty"></div>`;
+    const wd = new Date(dt + 'T00:00:00').getDay();
+    const isWe = (wd === 0 || wd === 6);
+    const isRest = attIsRest(null, dt);
+    const isOverride = (off[dt] !== undefined); // 统一日历单独设置（覆盖周规则）
+    const isToday = dt === todayStr();
+    const clsName = ['att-cal-cell'];
+    if (isWe) clsName.push('we');
+    clsName.push(isRest ? 'rest' : 'cls');
+    if (isOverride) clsName.push('ovr');
+    if (isToday) clsName.push('today');
+    const num = +dt.slice(8, 10);
+    return `<div class="${clsName.join(' ')}" onclick="attGwCalToggle('${dt}')" title="${esc(fmtDateCN(dt))}${isOverride ? '（统一单独设置）' : '（跟随周规则）'}">
+        <span class="d-num">${num}</span><span class="d-tag">${isRest ? '休' : '课'}</span>${isOverride ? '<span class="d-ovr">★</span>' : ''}</div>`;
+  }).join('');
+  return `
+    <div class="att-cal-head">
+      <div class="att-cal-title">${y} 年 ${m} 月</div>
+      <div class="att-cal-nav">
+        <button onclick="attGwCalStep(-1)" title="上一月">‹</button>
+        <button onclick="attGwCalStep(1)" title="下一月">›</button>
+      </div>
+    </div>
+    <div class="att-cal-presets">
+      <div class="att-opt" onclick="attGwCalPreset('weekday')">
+        <div class="att-opt-t">📅 工作日上课·周末休息</div>
+        <div class="att-opt-d">本月设为周一到周五上课，周六周日休息</div>
+      </div>
+      <div class="att-opt" onclick="attGwCalPreset('satOnly')">
+        <div class="att-opt-t">🗓️ 工作日休息·周六上课·周日休息</div>
+        <div class="att-opt-d">本月设为工作日休息、仅周六上课（同统一默认）</div>
+      </div>
+      <div class="att-opt" onclick="attGwCalPreset('allClass')">
+        <div class="att-opt-t">🟢 全部上课日</div>
+        <div class="att-opt-d">本月每天上课（清除本月的统一微调）</div>
+      </div>
+      <div class="att-opt" onclick="attGwCalPreset('allRest')">
+        <div class="att-opt-t">☕ 全部休息日</div>
+        <div class="att-opt-d">本月全部不考勤</div>
+      </div>
+    </div>
+    <div class="att-cal-grid">
+      ${dows.map((d, i) => `<div class="att-cal-dow ${i >= 5 ? 'we' : ''}">${d}</div>`).join('')}
+      ${grid}
+    </div>
+    <div class="att-cal-foot">
+      <div class="att-cal-legend">
+        <span><i style="background:#eafaf0;border:1px solid #a7e0b8"></i>上课日</span>
+        <span><i style="background:#fff4e8;border:1px solid #f2cfa2"></i>休息日</span>
+        <span><i style="background:#fff;border:1px solid #f2cfa2"></i>★ 统一单独设置</span>
+      </div>
+      <div class="att-cal-sum">本月：<b class="cls">上课 ${cls} 天</b> · <b class="rest">休息 ${rest} 天</b>（含统一微调）</div>
+    </div>`;
+}
+function renderAttGwCal(){
+  const box = document.getElementById('attGwCalBody');
+  if (box) box.innerHTML = attGwCalBodyHtml();
+}
+function attGwCalStep(delta){
+  const [y, m] = attGwMonthVal().split('-').map(Number);
+  let ny = y, nm = m + delta;
+  if (nm < 1) { nm = 12; ny--; } else if (nm > 12) { nm = 1; ny++; }
+  ui.attGwMonth = `${ny}-${String(nm).padStart(2, '0')}`;
+  renderAttGwCal();
+}
+function attGwCalToggle(date){
+  state.attGlobalOff = state.attGlobalOff || {};
+  let rest;
+  if (state.attGlobalOff[date] !== undefined) { delete state.attGlobalOff[date]; rest = attIsRest(null, date); }
+  else { rest = !attIsRest(null, date); state.attGlobalOff[date] = rest; }
+  save(); renderAttGwCal();
+  toast(`${fmtDateCN(date)} 已设为${rest ? '休息日' : '上课日'}${state.attGlobalOff[date] !== undefined ? '（统一单独设置）' : '（恢复跟随周规则）'}`);
+}
+function attGwCalPreset(pattern){
+  state.attGlobalOff = state.attGlobalOff || {};
+  const month = attGwMonthVal();
+  ckDays(month).forEach(dt => {
+    const wd = new Date(dt + 'T00:00:00').getDay();
+    const isWeekend = (wd === 0 || wd === 6);
+    if (pattern === 'allClass') delete state.attGlobalOff[dt];
+    else if (pattern === 'allRest') state.attGlobalOff[dt] = true;
+    else if (pattern === 'satOnly') { if (wd === 6) delete state.attGlobalOff[dt]; else state.attGlobalOff[dt] = true; }
+    else { if (isWeekend) state.attGlobalOff[dt] = true; else delete state.attGlobalOff[dt]; } // weekday
+  });
+  save(); renderAttGwCal();
+  const msg = { weekday: '已按「工作日上课·周末休息」铺满整月（统一）',
+                satOnly: '已按「工作日休息·周六上课·周日休息」铺满整月（统一）',
+                allClass: '本月已清除统一微调，恢复跟随周规则', allRest: '本月已设为全部休息日（统一）' }[pattern];
+  toast(msg || '已应用');
+}
+function attGwTab(t){
+  ui.attGwTab = t;
+  const wk = document.getElementById('attGwWeek'), cal = document.getElementById('attGwCal');
+  if (wk) wk.style.display = (t === 'week') ? 'block' : 'none';
+  if (cal) cal.style.display = (t === 'cal') ? 'block' : 'none';
+  document.querySelectorAll('.attgw-tab').forEach(b => b.classList.toggle('on', b.getAttribute('data-t') === t));
+}
 function openAttGlobal(){
   const names = ['周一','周二','周三','周四','周五','周六','周日'];
   const set = state.attWeekRest || [];
@@ -7198,23 +7332,35 @@ function openAttGlobal(){
     const checked = set.indexOf(dow) >= 0;
     return `<label class="attgw-item ${checked ? 'on' : ''}"><input type="checkbox" ${checked ? 'checked' : ''} onchange="attGwToggle(this,${dow})"> ${n}<span class="attgw-sub">${checked ? '休息' : '上课'}</span></label>`;
   }).join('');
+  const tabWeek = ui.attGwTab === 'week';
   openModal('🌐 统一考勤规则',
-    `<p class="muted" style="margin:0 0 10px">设置<b>全局默认</b>的「上课 / 休息」星期规律。<b>勾选＝该星期休息</b>。新班级、以及未单独设置的班级会自动遵循此规则；各班级仍可在「考勤日历」里单独覆盖个别日期（带 ★ 标记）。</p>
-     <div id="attGlobalBox" class="attgw-box">${boxes}</div>
-     <div class="attgw-actions">
-       <button class="btns" onclick="attGwQuick('satOnly')">↺ 工作日休息·周六上课</button>
-       <button class="btns" onclick="attGwQuick('weekday')">↺ 工作日上课·周末休息</button>
-       <button class="btns" onclick="attGwQuick('allRest')">↺ 每天休息</button>
-       <button class="btns" onclick="attGwQuick('allClass')">↺ 每天上课</button>
+    `<div class="attgw-tabs">
+       <button class="attgw-tab ${tabWeek ? 'on' : ''}" data-t="week" onclick="attGwTab('week')">📅 按星期设置</button>
+       <button class="attgw-tab ${!tabWeek ? 'on' : ''}" data-t="cal" onclick="attGwTab('cal')">🗓️ 按日历微调</button>
      </div>
-     <p class="muted" style="margin:10px 0 0;font-size:12px">提示：默认＝工作日休息、仅周六上课、周日休息。要改回「工作日上课」点上方第二个按钮即可。班级单独设置的日期不受影响（除非点下方「应用到全部班级」）。</p>`,
-    `<button class="btn" onclick="applyAttGlobal('default')">💾 保存为默认规则</button>
+     <div id="attGwWeek" style="display:${tabWeek ? 'block' : 'none'}">
+       <p class="muted" style="margin:0 0 10px">设置<b>全局默认</b>的「上课 / 休息」星期规律。<b>勾选＝该星期休息</b>。新班级、以及未单独设置的班级会自动遵循此规则；各班级仍可在「考勤日历」里单独覆盖个别日期（带 ★ 标记）。</p>
+       <div id="attGlobalBox" class="attgw-box">${boxes}</div>
+       <div class="attgw-actions">
+         <button class="btns" onclick="attGwQuick('satOnly')">↺ 工作日休息·周六上课</button>
+         <button class="btns" onclick="attGwQuick('weekday')">↺ 工作日上课·周末休息</button>
+         <button class="btns" onclick="attGwQuick('allRest')">↺ 每天休息</button>
+         <button class="btns" onclick="attGwQuick('allClass')">↺ 每天上课</button>
+       </div>
+       <p class="muted" style="margin:10px 0 0;font-size:12px">提示：默认＝工作日休息、仅周六上课、周日休息。要改回「工作日上课」点上方第二个按钮即可。班级单独设置的日期不受影响（除非点下方「应用到全部班级」）。</p>
+     </div>
+     <div id="attGwCal" style="display:${tabWeek ? 'none' : 'block'}">
+       <p class="muted" style="margin:0 0 10px">对<b>所有班级</b>统一微调具体日期 / 月份（如寒暑假、节假日、某月补课）。点某天在「上课 / 休息」间切换；带 ★ ＝统一单独设置。各班级仍可在各自考勤日历<b>单独覆盖</b>这些日期（覆盖后显示本班 ★）。</p>
+       <div id="attGwCalBody">${attGwCalBodyHtml()}</div>
+     </div>`,
+    `<button class="btn" onclick="applyAttGlobal('default')">💾 保存</button>
      <button class="btn primary" onclick="applyAttGlobal('all')">🌐 应用到全部班级</button>
-     <button class="btn" onclick="closeModal()">取消</button>`, 580);
+     <button class="btn" onclick="closeModal()">取消</button>`, 640);
 }
 function applyAttGlobal(scope){
   state.attWeekRest = (state.attWeekRest || []).slice();
-  if (scope === 'all') state.classes.forEach(c => { c.attendanceOff = {}; }); // 清除各自单独设置，统一跟随全局规则
+  state.attGlobalOff = state.attGlobalOff || {}; // 统一日历微调（按日期覆盖）一并保留
+  if (scope === 'all') state.classes.forEach(c => { c.attendanceOff = {}; }); // 清除各自单独设置，统一跟随全局规则（含统一日历微调）
   save(); closeModal(); renderMain();
   toast(scope === 'all' ? '已应用统一考勤规则到全部班级（清除了各自的单独设置）' : '已保存为默认考勤规则（新班级及未单独设置的班级将自动遵循）');
 }
