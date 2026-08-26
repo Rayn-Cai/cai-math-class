@@ -435,8 +435,22 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .att-cal-cell.today{border-color:var(--accent);box-shadow:0 0 0 2px rgba(59,130,246,.18)}
 .att-cal-cell.today .d-num::after{content:"";display:block;width:4px;height:4px;border-radius:50%;background:var(--accent);margin:2px auto 0}
 .att-cal-cell.empty{background:transparent;border:none;cursor:default;box-shadow:none}
+.att-cal-cell.ovr{outline:2px dashed var(--accent)}
+.att-cal-cell .d-ovr{position:absolute;top:2px;right:4px;font-size:9px;color:var(--accent);line-height:1}
 .att-cal-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap}
 .att-cal-legend{display:flex;gap:12px;font-size:11.5px;color:var(--text-muted);align-items:center}
+/* 统一考勤规则设置 */
+.attgw-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:6px 0 4px}
+.attgw-item{display:flex;align-items:center;gap:8px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);user-select:none;transition:.14s}
+.attgw-item:hover{border-color:var(--accent)}
+.attgw-item.on{background:var(--red-light);border-color:var(--red);color:#a05a52}
+.attgw-item input{width:16px;height:16px;accent-color:var(--red);cursor:pointer}
+.attgw-item .attgw-sub{margin-left:auto;font-size:11px;font-weight:800;padding:1px 8px;border-radius:10px;background:var(--surface-alt);color:var(--text-muted)}
+.attgw-item.on .attgw-sub{background:var(--red);color:#fff}
+.attgw-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.attgw-actions .btns{font-size:12px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;transition:.14s}
+.attgw-actions .btns:hover{border-color:var(--accent);background:var(--surface-alt)}
+
 .att-cal-legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:4px;vertical-align:-1px}
 .att-cal-sum{font-size:12.5px;font-weight:700;color:var(--text)}
 .att-cal-sum b.cls{color:#1f8a4c}
@@ -1973,6 +1987,7 @@ let state = {
   teacherName: null, profileOptions: null,
   warnRules: null, phraseBank: null,   // 预警规则自定义 / 常用评语库（normalizeState 补默认）
   hwFullOfDate: null,                  // 各日期「本次作业满分」（班级统一，如 { '2026-08-18': 10 }）
+  attWeekRest: [0,1,2,3,4,5],          // 全局默认考勤周规则：休息的星期几（0=周日…6=周六）。默认=工作日休息·周六上课·周日休息
 };
 
 /* 临时 UI 状态（不持久化） */
@@ -2158,6 +2173,21 @@ function bytes(n){
 function activeClass(){
   return state.classes.find(c => c.id === state.activeClassId) || state.classes[0];
 }
+/* 返回学生所属班级（无则 null） */
+function classOfStudent(student){
+  if (!student) return null;
+  const id = String(student.id);
+  return (state.classes || []).find(c => (c.students || []).some(s => String(s.id) === id)) || null;
+}
+/* 指定日期对指定班级是否为「日常反馈休息日」。
+   解析优先级：① 班级显式覆盖（c.attendanceOff[date] 有值：true=休息 / false=上课）优先；
+               ② 否则按全局周规则 state.attWeekRest（星期几在列表中即休息）。
+   这样「统一考勤规则」作为默认，班级仍可在日历里单独覆盖个别日期。 */
+function attIsRest(c, d){
+  if (c && c.attendanceOff && c.attendanceOff[d] !== undefined) return !!c.attendanceOff[d];
+  const dow = new Date(d + 'T00:00:00').getDay();
+  return !!(state.attWeekRest && state.attWeekRest.indexOf(dow) >= 0);
+}
 function allStudents(){
   const out = [];
   state.classes.forEach(c => c.students.forEach(s => out.push({ s, c })));
@@ -2284,6 +2314,9 @@ function normalizeState(){
   state.weeklyExams.students = state.weeklyExams.students || [];
   state.weeklyExams.records = state.weeklyExams.records || [];
   state.ldHistory = state.ldHistory || [];
+  /* 全局考勤周规则（统一考勤默认）：休息的星期几。默认=工作日休息·周六上课·周日休息 */
+  if (!Array.isArray(state.attWeekRest)) state.attWeekRest = [0,1,2,3,4,5];
+  state._attOffMigrated = true;
   /* 小卖部商品（积分兑换闭环）：教师管理，学生用积分兑换 */
   if (!Array.isArray(state.shopItems) || !state.shopItems.length)
     state.shopItems = [
@@ -2634,19 +2667,22 @@ function dayPoints(r){
   (r.absorption || []).forEach(() => { p += P.absorptionPerTag; });
   return Math.max(0, Math.min(p, P.cap));
 }
-/* 该学生所属班级的「日常反馈休息日」集合（attendanceOff）。休日不做考勤要求、不计入积分等统计。 */
+/* 该学生所属班级的「日常反馈休息日」集合（含全局周规则 + 班级显式覆盖）。休日不做考勤要求、不计入积分等统计。 */
 function studentRestDays(student){
-  if (!student) return new Set();
-  const id = String(student.id);
   const set = new Set();
-  (state.classes || []).forEach(c => {
-    if ((c.students || []).some(s => String(s.id) === id))
-      Object.keys(c.attendanceOff || {}).forEach(d => set.add(d));
-  });
+  const c = classOfStudent(student);
+  if (!c) return set;
+  const records = student.records || {};
+  Object.keys(records).forEach(d => { if (attIsRest(c, d)) set.add(d); });
+  /* 显式设为休息日（即便该日无记录也计入，便于统计口径一致） */
+  Object.keys(c.attendanceOff || {}).forEach(d => { if (c.attendanceOff[d]) set.add(d); });
   return set;
 }
 /* 指定日期是否对该学生而言是「日常反馈休息日」 */
-function isFeedbackRest(student, date){ return studentRestDays(student).has(date); }
+function isFeedbackRest(student, date){
+  const c = classOfStudent(student);
+  return c ? attIsRest(c, date) : false;
+}
 /* 模块一：日常反馈表（按日记录累加，休息日不计分） */
 function rosterPoints(student){
   let sum = 0;
@@ -2861,6 +2897,7 @@ function renderSidebar(){
     <button class="side-action" onclick="openLuckyDraw()"><span>🎰</span>抽奖台</button>
     <button class="side-action" onclick="openPointsStats()"><span>📊</span>积分统计</button>
     <button class="side-action" onclick="openTrash()"><span>🗑️</span>回收站${trashCount() ? `<b class="tr-cnt">${trashCount()}</b>` : ''}</button>
+    <button class="side-action" onclick="openAttGlobal()" title="统一设置所有班级的考勤上课/休息日"><span>🌐</span>统一考勤规则</button>
 
     <div class="side-theme">
       <button class="side-action th-open" onclick="openThemePicker()" title="更换主题配色">
@@ -3187,7 +3224,7 @@ function studentWindowAvg(s, cls, fromD, toD){
   let sum = 0, n = 0;
   Object.keys(s.records || {}).forEach(d => {
     if (d < fromD || d > toD) return;
-    if (cls.attendanceOff && cls.attendanceOff[d]) return;
+    if (attIsRest(cls, d)) return;
     const r = s.records[d];
     const q = pctOf(num(r.quiz), 'quiz');
     const h = pctOf(hwEffective(r), 'homework', r, d);
@@ -3228,7 +3265,7 @@ function buildWarnings(cls){
   cls.students.forEach(s => {
     const reasons = [];
     // 1) 连续 N 次小测低于达标线
-    const qDates = Object.keys(s.records || {}).filter(d => !cls.attendanceOff || !cls.attendanceOff[d])
+    const qDates = Object.keys(s.records || {}).filter(d => !attIsRest(cls, d))
       .sort((a, b) => b.localeCompare(a));
     let lowStreak = 0;
     for (const d of qDates) {
@@ -3240,7 +3277,7 @@ function buildWarnings(cls){
     // 2) 近一周缺勤/迟到 ≥ N 次
     let absentCnt = 0;
     last7.forEach(d => {
-      if (cls.attendanceOff && cls.attendanceOff[d]) return;
+      if (attIsRest(cls, d)) return;
       const a = (s.records && s.records[d] && s.records[d].attendance) || 'present';
       if (a === 'absent' || a === 'late') absentCnt++;
     });
@@ -3258,7 +3295,7 @@ function buildWarnings(cls){
     // 4) 作业未完成且未订正（作业闭环：近 7 天有未完成/部分完成且订正状态为「待订正」即提醒）
     let hwCorrectMiss = 0;
     last7.forEach(d => {
-      if (cls.attendanceOff && cls.attendanceOff[d]) return;
+      if (attIsRest(cls, d)) return;
       const r = s.records && s.records[d];
       if (!r || !r.hwDetail) return;
       const st = r.hwDetail.status, co = r.hwDetail.correct;
@@ -3271,7 +3308,7 @@ function buildWarnings(cls){
 }
 /* ===== C2 今日待办收口：汇总当日待办分组，点击直达处理 ===== */
 function buildTodoList(cls, d){
-  const isRest = !!(cls.attendanceOff && cls.attendanceOff[d]);
+  const isRest = !!(attIsRest(cls, d));
   const G = {
     quiz: { ico: '📝', title: '小测待录入', names: [] },
     hwIn: { ico: '🗒️', title: '作业待录入', names: [] },
@@ -3298,7 +3335,7 @@ function buildTodoList(cls, d){
     const corrSet = new Set();
     const last7 = []; for (let i = 0; i < 7; i++) last7.push(shiftDate(d, -i));
     last7.forEach(dd => {
-      if (cls.attendanceOff && cls.attendanceOff[dd]) return;
+      if (attIsRest(cls, dd)) return;
       cls.students.forEach(s => {
         const r = s.records && s.records[dd];
         if (!r || !r.hwDetail) return;
@@ -3338,7 +3375,7 @@ function classTrendData(cls, days){
   const d = state.activeDate, out = [];
   for (let i = days - 1; i >= 0; i--) {
     const dd = shiftDate(d, -i);
-    if (cls.attendanceOff && cls.attendanceOff[dd]) continue;
+    if (attIsRest(cls, dd)) continue;
     let qSum = 0, qN = 0, hSum = 0, hN = 0, hDone = 0, hTotal = 0;
     cls.students.forEach(s => {
       const r = recRaw(s, dd); if (!r) return;
@@ -3419,7 +3456,7 @@ function renderOverview(){
   const cls = activeClass();
   if (!cls) return '<div class="empty"><span class="ico">🏠</span>还没有班级，先去「日常反馈表」新建班级与学生吧</div>';
   const d = state.activeDate;
-  const dayRest = !!(cls.attendanceOff && cls.attendanceOff[d]);
+  const dayRest = !!(attIsRest(cls, d));
   let present = 0, late = 0, leave = 0, absent = 0;
   cls.students.forEach(s => {
     const a = rec(s, d).attendance;
@@ -3521,7 +3558,7 @@ function buildReportText(cls, days){
   /* 出勤汇总：窗口中每个上课日统计 */
   const daySet = new Set();
   cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => {
-    if (dd >= fromD && dd <= d && !(cls.attendanceOff && cls.attendanceOff[dd])) daySet.add(dd);
+    if (dd >= fromD && dd <= d && !(attIsRest(cls, dd))) daySet.add(dd);
   }));
   const attDays = Array.from(daySet).sort();
   let present = 0, late = 0, leave = 0, absent = 0;
@@ -3535,7 +3572,7 @@ function buildReportText(cls, days){
   const qVals = [];
   cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => {
     if (dd < fromD || dd > d) return;
-    if (cls.attendanceOff && cls.attendanceOff[dd]) return;
+    if (attIsRest(cls, dd)) return;
     const q = num(s.records[dd].quiz);
     if (q !== null) qVals.push(q);
   }));
@@ -3546,7 +3583,7 @@ function buildReportText(cls, days){
   let hwDoneN = 0, hwTotal = 0;
   cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => {
     if (dd < fromD || dd > d) return;
-    if (cls.attendanceOff && cls.attendanceOff[dd]) return;
+    if (attIsRest(cls, dd)) return;
     const r = s.records[dd];
     if (state.hwMode === 'done') {
       if (r.hwDone === true || r.hwDone === false) hwTotal++;
@@ -4015,7 +4052,7 @@ function renderRoster(){
   const cls = activeClass();
   if (!cls) return '<div class="empty">暂无班级</div>';
   const d = state.activeDate;
-  const dayRest = !!(cls.attendanceOff && cls.attendanceOff[d]);
+  const dayRest = !!(attIsRest(cls, d));
   const lesson = cls.lessons[d] || { content:'', topic:'' };
   const rows = rankedRows(cls, d);
   const ready = rankReady(cls, d);
@@ -4358,7 +4395,7 @@ function saveTagEditor(){
 function buildGrowthFeed(s, cls){
   const feed = [];
   Object.keys(s.records || {}).forEach(dd => {
-    if (cls.attendanceOff && cls.attendanceOff[dd]) return;
+    if (attIsRest(cls, dd)) return;
     const r = s.records[dd];
     const chips = [];
     const att = r.attendance;
@@ -4409,7 +4446,7 @@ function classRankOf(cls, sid, field){
     const s = cls.students.find(x => String(x.id) === String(sid2)); if (!s) return null;
     let sum = 0, n = 0;
     Object.keys(s.records || {}).forEach(d => {
-      if (cls.attendanceOff && cls.attendanceOff[d]) return;
+      if (attIsRest(cls, d)) return;
       const r = s.records[d];
       const v = field === 'quiz' ? num(r.quiz) : hwEffective(r);
       if (v !== null) { sum += v; n++; }
@@ -4499,12 +4536,12 @@ function openStudentCard(sid, readOnly){
     if (firstName === null) { firstName = s.name; firstCid = c.id; firstSid = s.id; }
     if (!fs) fs = s;
     Object.keys(s.records || {}).forEach(d => {
-      if (c.attendanceOff && c.attendanceOff[d]) return;   // 休息日不计入考勤统计
+      if (attIsRest(c, d)) return;   // 休息日不计入考勤统计
       days++; const st = attStatus(s, d);
       if (st === 'present') present++; else if (st === 'late') late++; else if (st === 'leave') leave++; else if (st === 'makeup') makeup++;
     });
     Object.entries(s.records || {}).forEach(([d, r]) => {
-      if (!(c.attendanceOff && c.attendanceOff[d])) {
+      if (!(attIsRest(c, d))) {
         const q = num(r.quiz); if (q !== null) { qSum += q; qN++; }
         const h = hwEffective(r); if (h !== null) { hSum += h; hN++; }
       }
@@ -5013,12 +5050,12 @@ function openReportCard(sid){
     const s = c.students.find(x => String(x.id) === id); if (!s) return;
     if (firstName === null) { firstName = s.name; firstCid = c.id; firstSid = s.id; }
     Object.keys(s.records || {}).forEach(d => {
-      if (c.attendanceOff && c.attendanceOff[d]) return;
+      if (attIsRest(c, d)) return;
       days++; const st = attStatus(s, d);
       if (st === 'present') present++; else if (st === 'late') late++; else if (st === 'leave') leave++; else if (st === 'makeup') makeup++;
     });
     Object.entries(s.records || {}).forEach(([d, r]) => {
-      if (!(c.attendanceOff && c.attendanceOff[d])) {
+      if (!(attIsRest(c, d))) {
         const q = num(r.quiz); if (q !== null) { qSum += q; qN++; }
         const h = hwEffective(r); if (h !== null) { hSum += h; hN++; }
       }
@@ -5224,13 +5261,13 @@ function buildTermReportHtml(sid, scopeDays){
     if (firstName === null) { firstName = s.name; firstCid = c.id; firstSid = s.id; }
     Object.keys(s.records || {}).forEach(d => {
       if (fromD && (d < fromD || d > state.activeDate)) return;
-      if (c.attendanceOff && c.attendanceOff[d]) return;
+      if (attIsRest(c, d)) return;
       days++; const st = attStatus(s, d);
       if (st === 'present') present++; else if (st === 'late') late++; else if (st === 'leave') leave++; else if (st === 'makeup') makeup++;
     });
     Object.entries(s.records || {}).forEach(([d, r]) => {
       if (fromD && (d < fromD || d > state.activeDate)) return;
-      if (!(c.attendanceOff && c.attendanceOff[d])) {
+      if (!(attIsRest(c, d))) {
         const q = num(r.quiz); if (q !== null) { qSum += q; qN++; }
         const h = hwEffective(r); if (h !== null) { hSum += h; hN++; }
       }
@@ -5370,7 +5407,7 @@ async function parentLoad(sid, cid){
     state.activeClassId = cls.id;
     // 取该生最近一条有记录（非休息日）的日期作为展示基准
     let last = null;
-    Object.keys(stu.records || {}).forEach(d => { if (!(cls.attendanceOff && cls.attendanceOff[d])) { if (!last || d > last) last = d; } });
+    Object.keys(stu.records || {}).forEach(d => { if (!(attIsRest(cls, d))) { if (!last || d > last) last = d; } });
     state.activeDate = last || (data.activeDate || todayStr());
     const body = openStudentCard(sid, true);
     state = saved;
@@ -5457,7 +5494,7 @@ function copyUnfinishedHw(){
 function bulkSet(fn){
   const cls = activeClass(); if (!cls) return toast('暂无班级');
   const d = state.activeDate;
-  if (cls.attendanceOff && cls.attendanceOff[d]) return toast('今日为休息日，无需批量操作');
+  if (attIsRest(cls, d)) return toast('今日为休息日，无需批量操作');
   cls.students.forEach(s => fn(rec(s, d), s));
   save(); renderMain();
 }
@@ -5528,7 +5565,7 @@ function clearDayRecords(){
 /* 今日快捷面板开关 */
 function toggleQuickBar(){ ui.quickBar = !ui.quickBar; renderMain(); }
 function quickBarHtml(cls, d){
-  const dayRest = !!(cls.attendanceOff && cls.attendanceOff[d]);
+  const dayRest = !!(attIsRest(cls, d));
   return `<div class="quickbar">
     <button class="btn sm" onclick="bulkAttendance('present')" title="全班今日出勤统一设为「出勤」">👥 一键全勤</button>
     <button class="btn sm" onclick="bulkHwDone(true)" title="全班今日作业标记完成（需完成模式）">✅ 作业全完成</button>
@@ -6088,7 +6125,7 @@ function attDates(){
   classes.forEach(c => lessonDates(c).forEach(d => set.add(d)));
   return [...set]
     .filter(d => (!from || d >= from) && (!to || d <= to))
-    .filter(d => classes.some(c => !(c.attendanceOff && c.attendanceOff[d])))   // 任一班级上课则该日保留；仅当全部班级休息才剔除
+    .filter(d => classes.some(c => !(attIsRest(c, d))))   // 任一班级上课则该日保留；仅当全部班级休息才剔除
     .sort();
 }
 /* 范围内被休息日排除的日期（用于汇总提示） */
@@ -6099,7 +6136,7 @@ function attRestDaysInRange(){
   classes.forEach(c => lessonDates(c).forEach(d => set.add(d)));
   return [...set]
     .filter(d => (!from || d >= from) && (!to || d <= to))
-    .filter(d => classes.every(c => (c.attendanceOff && c.attendanceOff[d])));
+    .filter(d => classes.every(c => (attIsRest(c, d))));
 }
 /* 参与统计的学生行 */
 function attRows(){
@@ -6111,7 +6148,7 @@ function attCount(s, dates){
   let p = 0, t = 0, l = 0, mk = 0;
   const c = (state.classes || []).find(x => (x.students || []).some(st => String(st.id) === String(s.id)));
   dates.forEach(d => {
-    if (c && c.attendanceOff && c.attendanceOff[d]) return;   // 休息日不计入考勤
+    if (c && attIsRest(c, d)) return;   // 休息日不计入考勤
     const st = attStatus(s, d);
     if (st === 'present') p++; else if (st === 'late') t++;
     else if (st === 'leave') l++; else if (st === 'makeup') mk++;
@@ -6243,7 +6280,7 @@ function renderAttend(){
       ${dates.map(d => {
         let a = 0;
         allRows.forEach(({ c, s }) => {
-          if (c.attendanceOff && c.attendanceOff[d]) return;   // 休息日不计入
+          if (attIsRest(c, d)) return;   // 休息日不计入
           const st = attStatus(s, d); if (st === 'present' || st === 'late' || st === 'makeup') a++;
         });
         return `<td class="atc-d ${weClass(d)}" style="font-size:11.5px;color:var(--text-secondary)">${a}</td>`;
@@ -6290,7 +6327,7 @@ function attCellHtml(c, s, d){
   const wc = weClass(d), tcl = (d === todayStr()) ? 'today' : '';
   const tdcls = 'atc-d ' + wc + (wc ? ' ' : '') + tcl;
   // 该生所在班级当天为休息日：不登记考勤（不可点击）
-  if (c.attendanceOff && c.attendanceOff[d])
+  if (attIsRest(c, d))
     return `<td class="${tdcls} att-rest-cell" title="${fmtDateCN(d)} · 休息日（不计入考勤）"><span class="att-rest-pill">🌴 休</span></td>`;
   const st = attStatus(s, d);
   const args = `'${c.id}','${s.id}','${d}'`;
@@ -6390,7 +6427,7 @@ function setAttCell(cid, sid, date, key){
 function attPendingHtml(){
   const pend = [];
   attRows().forEach(({ c, s }) => Object.keys(s.records || {}).forEach(d => {
-    if (c.attendanceOff && c.attendanceOff[d]) return;   // 休息日不计入考勤，无需补课
+    if (attIsRest(c, d)) return;   // 休息日不计入考勤，无需补课
     if (attStatus(s, d) === 'leave') pend.push({ c, s, d });
   }));
   if (!pend.length) return '';
@@ -6688,7 +6725,7 @@ function renderDist(){
   cls.students.forEach(s => {
     Object.keys(s.records || {}).forEach(dd => {
       if (fromD && (dd < fromD || dd > toD)) return;
-      if (cls.attendanceOff && cls.attendanceOff[dd]) return;
+      if (attIsRest(cls, dd)) return;
       const r = s.records[dd];
       let pct = null;
       if (subj === 'quiz') {
@@ -7006,19 +7043,21 @@ function weekDates(ref){
 function attToggleDay(date){
   const c = activeClass(); if (!c) return;
   c.attendanceOff = c.attendanceOff || {};
-  if (c.attendanceOff[date]) delete c.attendanceOff[date]; else c.attendanceOff[date] = true;
-  const rest = !!c.attendanceOff[date];
+  let rest;
+  if (c.attendanceOff[date] !== undefined) { delete c.attendanceOff[date]; rest = attIsRest(c, date); }
+  else { rest = !attIsRest(c, date); c.attendanceOff[date] = rest; }
   save(); renderMain();
-  toast(`${fmtDateCN(date)} 已设为${rest ? '休息日（日常反馈不统计）' : '上课日（正常考勤）'}`);
+  toast(`${fmtDateCN(date)} 已设为${rest ? '休息日（日常反馈不统计）' : '上课日（正常考勤）'}${c.attendanceOff[date] !== undefined ? '（本班单独设置）' : '（跟随统一规则）'}`);
 }
 /* 考勤日历：以月历形式自定义上课日 / 休息日（仅影响日常反馈） */
 function openAttendCal(){
   const c = activeClass(); if (!c) return;
   ui.attCalMonth = (state.activeDate || todayStr()).slice(0, 7);
   openModal('🗓️ 考勤日历 · 上课日 / 休息日',
-    `<p class="muted" style="margin:0 0 12px">为 <b>${esc(c.name)}</b> 自定义上课 / 休息日。<b>此设置仅影响日常反馈表</b>（不考勤、不计积分等），不影响每日打卡。点某天即可在「上课 / 休息」之间切换；也可用上方快捷方案一次性铺满整月。</p>
+    `<p class="muted" style="margin:0 0 12px">为 <b>${esc(c.name)}</b> 自定义上课 / 休息日。<b>此设置仅影响日常反馈表</b>（不考勤、不计积分等），不影响每日打卡。点某天即可在「上课 / 休息」之间切换；也可用上方快捷方案一次性铺满整月。<br>带 ★ 的日期＝本班<b>单独设置</b>（已覆盖统一规则）；无 ★ 则<b>跟随统一考勤规则</b>。<button class="btn" style="margin-top:6px;padding:4px 10px;font-size:12px" onclick="closeModal();openAttGlobal()">🌐 改统一考勤规则</button></p>
      <div id="attCalBody">${attCalBodyHtml()}</div>`,
-    `<button class="btn" onclick="closeModal()">完成</button>`, 600);
+    `<button class="btn primary" onclick="openAttGlobal()">🌐 统一考勤规则</button>
+     <button class="btn" onclick="closeModal()">完成</button>`, 600);
 }
 function attCalStep(delta){
   if (!ui.attCalMonth) return;
@@ -7041,20 +7080,22 @@ function attCalBodyHtml(){
   while (cells.length % 7 !== 0) cells.push(null);
   const dows = ['一', '二', '三', '四', '五', '六', '日'];
   let rest = 0, cls = 0;
-  cells.forEach(dt => { if (dt) (c.attendanceOff[dt]) ? rest++ : cls++; });
+  cells.forEach(dt => { if (dt) (attIsRest(c, dt)) ? rest++ : cls++; });
   const grid = cells.map(dt => {
     if (!dt) return `<div class="att-cal-cell empty"></div>`;
     const wd = new Date(dt + 'T00:00:00').getDay();
     const isWe = (wd === 0 || wd === 6);
-    const isRest = !!c.attendanceOff[dt];
+    const isRest = attIsRest(c, dt);
+    const isOverride = (c.attendanceOff && c.attendanceOff[dt] !== undefined); // 本班单独设置（覆盖统一规则）
     const isToday = dt === todayStr();
     const clsName = ['att-cal-cell'];
     if (isWe) clsName.push('we');
     clsName.push(isRest ? 'rest' : 'cls');
+    if (isOverride) clsName.push('ovr');
     if (isToday) clsName.push('today');
     const num = +dt.slice(8, 10);
-    return `<div class="${clsName.join(' ')}" onclick="attCalToggle('${dt}')" title="${esc(fmtDateCN(dt))}">
-        <span class="d-num">${num}</span><span class="d-tag">${isRest ? '休' : '课'}</span></div>`;
+    return `<div class="${clsName.join(' ')}" onclick="attCalToggle('${dt}')" title="${esc(fmtDateCN(dt))}${isOverride ? '（本班单独设置）' : '（跟随统一规则）'}">
+        <span class="d-num">${num}</span><span class="d-tag">${isRest ? '休' : '课'}</span>${isOverride ? '<span class="d-ovr">★</span>' : ''}</div>`;
   }).join('');
   return `
     <div class="att-cal-head">
@@ -7068,6 +7109,10 @@ function attCalBodyHtml(){
       <div class="att-opt" onclick="attCalPreset('weekday')">
         <div class="att-opt-t">📅 工作日上课·周末休息</div>
         <div class="att-opt-d">周一到周五上课，周六周日休息</div>
+      </div>
+      <div class="att-opt" onclick="attCalPreset('satOnly')">
+        <div class="att-opt-t">🗓️ 工作日休息·周六上课·周日休息</div>
+        <div class="att-opt-d">周一至周五休息，仅周六上课（即统一考勤默认规则）</div>
       </div>
       <div class="att-opt" onclick="attCalPreset('allClass')">
         <div class="att-opt-t">🟢 全部上课日</div>
@@ -7097,7 +7142,9 @@ function renderAttCal(){
 function attCalToggle(date){
   const c = activeClass(); if (!c) return;
   c.attendanceOff = c.attendanceOff || {};
-  if (c.attendanceOff[date]) delete c.attendanceOff[date]; else c.attendanceOff[date] = true;
+  let rest;
+  if (c.attendanceOff[date] !== undefined) { delete c.attendanceOff[date]; rest = attIsRest(c, date); }
+  else { rest = !attIsRest(c, date); c.attendanceOff[date] = rest; }
   save(); renderAttCal();
 }
 function attCalPreset(pattern){
@@ -7108,12 +7155,68 @@ function attCalPreset(pattern){
     const isWeekend = (wd === 0 || wd === 6);
     if (pattern === 'allClass') delete c.attendanceOff[dt];
     else if (pattern === 'allRest') c.attendanceOff[dt] = true;
-    else { if (isWeekend) c.attendanceOff[dt] = true; else delete c.attendanceOff[dt]; }
+    else if (pattern === 'satOnly') { if (wd === 6) delete c.attendanceOff[dt]; else c.attendanceOff[dt] = true; }
+    else { if (isWeekend) c.attendanceOff[dt] = true; else delete c.attendanceOff[dt]; } // weekday
   });
   save(); renderAttCal();
   const msg = { weekday: '已按「工作日上课·周末休息」铺满整月',
+                satOnly: '已按「工作日休息·周六上课·周日休息」铺满整月',
                 allClass: '本月已设为全部上课日', allRest: '本月已设为全部休息日' }[pattern];
   toast(msg || '已应用');
+}
+/* 统一考勤规则：全局默认上课/休息星期（state.attWeekRest）。班级可在日历单独覆盖个别日期。 */
+function attGwOrder(){ return [1,2,3,4,5,6,0]; } // 周一..周日 对应的 getDay 值
+function attGwRender(){
+  const box = document.getElementById('attGlobalBox'); if (!box) return;
+  const names = ['周一','周二','周三','周四','周五','周六','周日'];
+  const set = state.attWeekRest || [];
+  box.innerHTML = names.map((n, i) => {
+    const dow = attGwOrder()[i];
+    const checked = set.indexOf(dow) >= 0;
+    return `<label class="attgw-item ${checked ? 'on' : ''}"><input type="checkbox" ${checked ? 'checked' : ''} onchange="attGwToggle(this,${dow})"> ${n}<span class="attgw-sub">${checked ? '休息' : '上课'}</span></label>`;
+  }).join('');
+}
+function attGwToggle(el, dow){
+  if (!Array.isArray(state.attWeekRest)) state.attWeekRest = [];
+  if (el.checked) { if (state.attWeekRest.indexOf(dow) < 0) state.attWeekRest.push(dow); }
+  else state.attWeekRest = state.attWeekRest.filter(x => x !== dow);
+  const item = el.closest('.attgw-item');
+  if (item) { item.classList.toggle('on', el.checked); const sub = item.querySelector('.attgw-sub'); if (sub) sub.textContent = el.checked ? '休息' : '上课'; }
+}
+function attGwQuick(kind){
+  if (kind === 'satOnly') state.attWeekRest = [0,1,2,3,4,5];
+  else if (kind === 'weekday') state.attWeekRest = [0,6];
+  else if (kind === 'allRest') state.attWeekRest = [0,1,2,3,4,5,6];
+  else state.attWeekRest = []; // allClass：每天上课
+  attGwRender();
+}
+function openAttGlobal(){
+  const names = ['周一','周二','周三','周四','周五','周六','周日'];
+  const set = state.attWeekRest || [];
+  const boxes = names.map((n, i) => {
+    const dow = attGwOrder()[i];
+    const checked = set.indexOf(dow) >= 0;
+    return `<label class="attgw-item ${checked ? 'on' : ''}"><input type="checkbox" ${checked ? 'checked' : ''} onchange="attGwToggle(this,${dow})"> ${n}<span class="attgw-sub">${checked ? '休息' : '上课'}</span></label>`;
+  }).join('');
+  openModal('🌐 统一考勤规则',
+    `<p class="muted" style="margin:0 0 10px">设置<b>全局默认</b>的「上课 / 休息」星期规律。<b>勾选＝该星期休息</b>。新班级、以及未单独设置的班级会自动遵循此规则；各班级仍可在「考勤日历」里单独覆盖个别日期（带 ★ 标记）。</p>
+     <div id="attGlobalBox" class="attgw-box">${boxes}</div>
+     <div class="attgw-actions">
+       <button class="btns" onclick="attGwQuick('satOnly')">↺ 工作日休息·周六上课</button>
+       <button class="btns" onclick="attGwQuick('weekday')">↺ 工作日上课·周末休息</button>
+       <button class="btns" onclick="attGwQuick('allRest')">↺ 每天休息</button>
+       <button class="btns" onclick="attGwQuick('allClass')">↺ 每天上课</button>
+     </div>
+     <p class="muted" style="margin:10px 0 0;font-size:12px">提示：默认＝工作日休息、仅周六上课、周日休息。要改回「工作日上课」点上方第二个按钮即可。班级单独设置的日期不受影响（除非点下方「应用到全部班级」）。</p>`,
+    `<button class="btn" onclick="applyAttGlobal('default')">💾 保存为默认规则</button>
+     <button class="btn primary" onclick="applyAttGlobal('all')">🌐 应用到全部班级</button>
+     <button class="btn" onclick="closeModal()">取消</button>`, 580);
+}
+function applyAttGlobal(scope){
+  state.attWeekRest = (state.attWeekRest || []).slice();
+  if (scope === 'all') state.classes.forEach(c => { c.attendanceOff = {}; }); // 清除各自单独设置，统一跟随全局规则
+  save(); closeModal(); renderMain();
+  toast(scope === 'all' ? '已应用统一考勤规则到全部班级（清除了各自的单独设置）' : '已保存为默认考勤规则（新班级及未单独设置的班级将自动遵循）');
 }
 function ckAllDone(date){
   const c = activeClass(); if (!c || !c.students.length) return;
@@ -10478,7 +10581,7 @@ function fallbackCopyStr(str, done){
 function smartDates(cls){
   const set = new Set();
   cls.students.forEach(s => Object.keys(s.records || {}).forEach(d => set.add(d)));
-  return Array.from(set).filter(d => !(cls.attendanceOff && cls.attendanceOff[d])).sort();
+  return Array.from(set).filter(d => !(attIsRest(cls, d))).sort();
 }
 function qAvg(s, arr){ let sum = 0, n = 0; arr.forEach(d => { const q = num(s.records[d] && s.records[d].quiz); if (q != null) { sum += q; n++; } }); return n ? sum / n : null; }
 function smartProgress(cls){
@@ -10788,18 +10891,18 @@ function weeklySummaryText(cls, days){
   const d = state.activeDate;
   const fromD = shiftDate(d, -(days - 1));
   const daySet = new Set();
-  cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => { if (dd >= fromD && dd <= d && !(cls.attendanceOff && cls.attendanceOff[dd])) daySet.add(dd); }));
+  cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => { if (dd >= fromD && dd <= d && !(attIsRest(cls, dd))) daySet.add(dd); }));
   const attDays = Array.from(daySet).sort();
   let present = 0, late = 0, leave = 0, absent = 0;
   attDays.forEach(dd => cls.students.forEach(s => { const a = (s.records && s.records[dd] && s.records[dd].attendance) || 'present'; if (a === 'present') present++; else if (a === 'late') late++; else if (a === 'leave') leave++; else if (a === 'absent') absent++; }));
   const pass = (state.quizThresholds && state.quizThresholds.pass) || (state.quizScale || 100) * 0.6;
   const qVals = [];
-  cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => { if (dd < fromD || dd > d) return; if (cls.attendanceOff && cls.attendanceOff[dd]) return; const q = num(s.records[dd] && s.records[dd].quiz); if (q !== null) qVals.push(q); }));
+  cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => { if (dd < fromD || dd > d) return; if (attIsRest(cls, dd)) return; const q = num(s.records[dd] && s.records[dd].quiz); if (q !== null) qVals.push(q); }));
   const qAvg = qVals.length ? qVals.reduce((a, b) => a + b, 0) / qVals.length : null;
   const qMax = qVals.length ? Math.max.apply(null, qVals) : null;
   const qPass = qVals.length ? qVals.filter(v => v >= pass).length / qVals.length * 100 : null;
   let hwDoneN = 0, hwTotal = 0;
-  cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => { if (dd < fromD || dd > d) return; if (cls.attendanceOff && cls.attendanceOff[dd]) return; const r = s.records[dd]; if (state.hwMode === 'done') { if (r.hwDone === true || r.hwDone === false) hwTotal++; if (r.hwDone === true) hwDoneN++; } else { if (num(r.homework) !== null) { hwTotal++; hwDoneN++; } } }));
+  cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => { if (dd < fromD || dd > d) return; if (attIsRest(cls, dd)) return; const r = s.records[dd]; if (state.hwMode === 'done') { if (r.hwDone === true || r.hwDone === false) hwTotal++; if (r.hwDone === true) hwDoneN++; } else { if (num(r.homework) !== null) { hwTotal++; hwDoneN++; } } }));
   const hwRate = hwTotal ? Math.round(hwDoneN / hwTotal * 100) : null;
   const pg = buildProgressRanking(cls, days);
   const warns = buildWarnings(cls);
@@ -10846,9 +10949,9 @@ function genTermSummaryByAI(sid, cb){
   state.classes.forEach(c => {
     const s = c.students.find(x => String(x.id) === id); if (!s) return;
     if (firstName === null) firstName = s.name;
-    Object.keys(s.records || {}).forEach(d => { if (c.attendanceOff && c.attendanceOff[d]) return; days++; const st = attStatus(s, d); if (st === 'present') present++; else if (st === 'late') late++; else if (st === 'leave') leave++; else if (st === 'makeup') makeup++; });
+    Object.keys(s.records || {}).forEach(d => { if (attIsRest(c, d)) return; days++; const st = attStatus(s, d); if (st === 'present') present++; else if (st === 'late') late++; else if (st === 'leave') leave++; else if (st === 'makeup') makeup++; });
     Object.entries(s.records || {}).forEach(([d, r]) => {
-      if (!(c.attendanceOff && c.attendanceOff[d])) { const q = num(r.quiz); if (q !== null) { qSum += q; qN++; } const h = hwEffective(r); if (h !== null) { hSum += h; hN++; } }
+      if (!(attIsRest(c, d))) { const q = num(r.quiz); if (q !== null) { qSum += q; qN++; } const h = hwEffective(r); if (h !== null) { hSum += h; hN++; } }
       if (r.hwDone === false) hwMiss++;
       if (r.remark && String(r.remark).trim()) remarks.push({ d: d, txt: String(r.remark).trim() });
     });
@@ -10890,7 +10993,7 @@ function genAnalysisByAI(sid, cb){
     const s = c.students.find(x => String(x.id) === id); if (!s) return;
     if (firstName === null) firstName = s.name;
     Object.entries(s.records || {}).forEach(([d, r]) => {
-      if (c.attendanceOff && c.attendanceOff[d]) return;
+      if (attIsRest(c, d)) return;
       const q = num(r.quiz);
       if (q !== null && q < pass) issues.push(d + ' ' + LBL('quiz') + q + ' 分（低于达标线' + fmt1(pass) + '）');
       if (state.hwMode === 'done') { if (r.hwDone === false) issues.push(d + ' 作业未完成'); }
