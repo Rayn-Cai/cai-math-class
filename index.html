@@ -439,6 +439,16 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .att-cal-cell .d-ovr{position:absolute;top:2px;right:4px;font-size:9px;color:var(--accent);line-height:1}
 .att-cal-cell.glo{outline:2px dashed #2b7de9}
 .att-cal-cell .d-glo{position:absolute;top:2px;right:4px;font-size:9px;line-height:1}
+.att-cal-cell .d-cs{position:absolute;bottom:2px;right:4px;font-size:9px;font-weight:800;line-height:1;
+  color:var(--accent-dark);background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:6px;padding:1px 3px}
+.att-cal-cell.has-cs{border-color:color-mix(in srgb,var(--accent) 45%,var(--border))}
+.att-cal-sync{border:1px dashed var(--border-strong);border-radius:10px;padding:9px 11px;margin-bottom:12px;background:var(--surface-alt)}
+.att-sync-t{font-size:12.5px;font-weight:800;color:var(--text-secondary);margin-bottom:6px}
+.att-sync-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.att-sync-info{font-size:12px;color:var(--text-muted)}
+.att-sync-info b{color:var(--text-primary)}
+.att-sync-tip{font-size:11.5px;color:var(--text-muted);margin-top:6px;line-height:1.55}
+.lg-cs{display:inline-block;width:14px;height:12px;border-radius:4px;background:color-mix(in srgb,var(--accent) 14%,#fff);border:1px solid color-mix(in srgb,var(--accent) 40%,#fff)}
 .att-cal-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap}
 .att-cal-legend{display:flex;gap:12px;font-size:11.5px;color:var(--text-muted);align-items:center}
 /* 统一考勤规则设置 */
@@ -4911,6 +4921,7 @@ function courseSectionHtml(sid){
       <div class="sc-cs-actions">
         <button class="btn sm" onclick="courseAddAtt('${sid}',${co.id})">＋已上一节</button>
         <button class="btn sm ghost" onclick="courseSubAtt('${sid}',${co.id})">－撤销一节</button>
+        <button class="btn sm ghost" onclick="courseSyncAttend('${sid}',${co.id})" title="按本班考勤日历的上课日，重算上课时间与课时数量">↻ 同步考勤</button>
         <button class="btn sm ghost" onclick="openCourseEditor('${sid}',${co.id})">✏️ 编辑</button>
         <button class="btn sm ghost del" onclick="courseDel('${sid}',${co.id})">🗑 删除</button>
       </div>
@@ -5121,6 +5132,26 @@ function renderBcCalendar(){
   const rules = (ui._bcRules || []).map(r => ({ dow:+r.dow, time:r.time, dur:+r.dur || 0 }));
   box.innerHTML = courseCalendarHtml(d.start || '', d.end || '', rules);
 }
+/* 批量排课时的考勤口径：所选学生都在同一班 → 用该班考勤日历；跨班 → 只用统一考勤规则 */
+function bcAttendClass(){
+  const set = {};
+  bcSelIds().forEach(id => { const f = findStudentById(id); if (f) set[String(f.c.id)] = f.c; });
+  const keys = Object.keys(set);
+  return keys.length === 1 ? set[keys[0]] : { attendanceOff: {} }; // 空覆盖对象 → 走全局规则
+}
+/* 按考勤日历填入：上课时间 + 课时数量都以考勤日历的上课日为准 */
+function bcFillFromAttend(){
+  const d = ui.bcDraft || {};
+  if (!d.start || !d.end) return toast('请先填写开始 / 结束日期');
+  const cls = bcAttendClass();
+  const days = attendClassDays(cls, d.start, d.end);
+  if (!days.length) return toast('该日期范围内，考勤日历没有上课日');
+  ui._bcRules = rulesFromDays(days, ui._bcRules);
+  ui.bcDraft.total = days.length;
+  const el = document.getElementById('bcTotal'); if (el) el.value = days.length;
+  renderBcRules(); renderBcCalendar();
+  toast(`已按考勤日历填入：${days.length} 节 · ${ui._bcRules.map(r => DOW_NAME[r.dow]).join('/')}`);
+}
 /* 按当前课表自动填入「上课次数」，免去手工数节数 */
 function bcFillTotal(){
   const d = ui.bcDraft || {};
@@ -5202,7 +5233,8 @@ function renderBatchCourse(){
       <label class="ff"><span>上课次数（共几节）</span>
         <span class="bc-total-row">
           <input id="bcTotal" class="inp" type="number" min="0" value="${d.total || ''}" oninput="ui.bcDraft.total=this.value">
-          <button class="btn sm" type="button" onclick="bcFillTotal()">↧ 按课表填入</button>
+          <button class="btn sm" type="button" onclick="bcFillFromAttend()" title="按考勤日历的上课日确定上课时间与课时数量">📅 按考勤日历</button>
+          <button class="btn sm ghost" type="button" onclick="bcFillTotal()" title="按下方已设的上课时间规则计算节数">↧ 按课表</button>
         </span></label>
       <div class="ff-block">
         <div class="ff-block-t">🕐 具体上课时间 <span class="muted">（点快捷按钮，或手动添加）</span></div>
@@ -7305,6 +7337,86 @@ function attToggleDay(date){
   toast(`${fmtDateCN(date)} 已设为${rest ? '休息日（日常反馈不统计）' : '上课日（正常考勤）'}${c.attendanceOff[date] !== undefined ? '（本班单独设置）' : '（跟随统一规则）'}`);
 }
 /* 考勤日历：以月历形式自定义上课日 / 休息日（仅影响日常反馈） */
+/* 汇总学生课时安排 → 按日期的课时数量（考勤日历展示 / 同步用）
+   scope: 'class' 当前班级 ｜ 'all' 全部班级
+   返回 { map:{date:{n,stus:Set}}, dates:[升序], students:涉及学生数, sessions:总节数 } */
+function courseDateStats(scope){
+  const map = {}, stus = new Set();
+  let sessions = 0;
+  const feed = (s, co) => courseSessions(co).forEach(se => {
+    const o = map[se.date] = map[se.date] || { n: 0, stus: new Set() };
+    o.n++; o.stus.add(String(s.id)); sessions++; stus.add(String(s.id));
+  });
+  if (scope === 'class') {
+    const c = activeClass(); if (!c) return { map, dates: [], students: 0, sessions: 0 };
+    c.students.forEach(s => (s.courses || []).forEach(co => feed(s, co)));
+  } else {
+    (state.classes || []).forEach(c => c.students.forEach(s => (s.courses || []).forEach(co => feed(s, co))));
+  }
+  return { map, dates: Object.keys(map).sort(), students: stus.size, sessions };
+}
+/* 依据考勤日历（班级覆盖 > 统一日历 > 周规则）算出 [start,end] 内的上课日 */
+function attendClassDays(cls, start, end){
+  if (!start || !end || start > end) return [];
+  const out = [];
+  for (let d = start; d <= end; d = shiftDate(d, 1)) if (!attIsRest(cls, d)) out.push(d);
+  return out;
+}
+/* 由上课日反推课时规则（星期几）：时间/时长沿用原规则，无则取默认 19:00 / 90 分钟 */
+function rulesFromDays(days, oldRules){
+  const byDow = {};
+  days.forEach(d => { const w = new Date(d + 'T00:00:00').getDay(); byDow[w] = (byDow[w] || 0) + 1; });
+  const oldByDow = {};
+  (oldRules || []).forEach(r => { oldByDow[+r.dow] = r; });
+  const ref = (oldRules && oldRules[0]) || {};
+  return Object.keys(byDow).sort((a, b) => a - b).map(w => ({
+    dow: +w,
+    time: (oldByDow[w] && oldByDow[w].time) || ref.time || '19:00',
+    dur: +((oldByDow[w] && oldByDow[w].dur) || ref.dur || 90),
+  }));
+}
+/* 以考勤日历为准：重算某段课时的「上课时间 + 课时数量」 */
+function courseSyncAttend(sid, cid){
+  const f = findStudentById(sid); if (!f) return;
+  const co = (f.s.courses || []).find(x => x.id === cid); if (!co) return;
+  if (!co.start || !co.end) return toast('请先为该课时安排填写开始 / 结束日期');
+  const days = attendClassDays(f.c, co.start, co.end);
+  if (!days.length) return toast('该日期范围内，本班考勤日历没有上课日');
+  co.total = days.length;
+  co.rules = rulesFromDays(days, co.rules);
+  co.attended = Math.min(+co.attended || 0, co.total);
+  save(); refreshCourseSection(sid);
+  toast(`已按考勤日历重算：${days.length} 节 · ${co.rules.map(r => DOW_NAME[r.dow]).join('/')}`);
+}
+/* 以考勤日历为准：批量重算本班全部学生的课时安排 */
+function attCalSyncToCourses(){
+  const c = activeClass(); if (!c) return;
+  const pairs = [];
+  c.students.forEach(s => (s.courses || []).forEach(co => { if (co.start && co.end) pairs.push({ s, co }); }));
+  if (!pairs.length) return toast('本班还没有填写了起止日期的课时安排');
+  let segs = 0, total = 0, skip = 0;
+  const detail = [];
+  pairs.forEach(({ s, co }) => {
+    const n = attendClassDays(c, co.start, co.end).length;
+    if (!n) { skip++; return; }
+    segs++; total += n;
+    if (detail.length < 8) detail.push(`${esc(s.name)}·${esc(co.name)}：<b>${+co.total || 0}</b> → <b>${n}</b> 节`);
+  });
+  if (!segs) return toast('这些课时安排的日期范围内，本日历没有上课日');
+  askConfirm(`将以<b>本班考勤日历</b>为准，重算 <b>${segs}</b> 段课时的上课时间与课时数量，合计 <b>${total}</b> 节${skip ? `（${skip} 段日期范围内无上课日，已跳过）` : ''}。<br><br>
+    ${detail.join('<br>')}${pairs.length > 8 ? '<br>…' : ''}<br><br>
+    课时数量＝该段起止日期内本日历的<b>上课日天数</b>；上课时间＝这些上课日对应的<b>星期</b>（沿用原时间）。已上节数会同步限制在新总数内。`, () => {
+    pairs.forEach(({ co }) => {
+      const days = attendClassDays(c, co.start, co.end);
+      if (!days.length) return;
+      co.total = days.length;
+      co.rules = rulesFromDays(days, co.rules);
+      co.attended = Math.min(+co.attended || 0, co.total);
+    });
+    save(); renderAttCal();
+    toast(`已按考勤日历同步 ${segs} 段课时，合计 ${total} 节`);
+  }, { title: '📚 以考勤日历同步学生课时', width: 520 });
+}
 function openAttendCal(){
   const c = activeClass(); if (!c) return;
   ui.attCalMonth = (state.activeDate || todayStr()).slice(0, 7);
@@ -7336,6 +7448,12 @@ function attCalBodyHtml(){
   const dows = ['一', '二', '三', '四', '五', '六', '日'];
   let rest = 0, cls = 0;
   cells.forEach(dt => { if (dt) (attIsRest(c, dt)) ? rest++ : cls++; });
+  /* 本班学生课时：用于日历格子显示当天节数 + 同步区块统计 */
+  const cs = courseDateStats('class');
+  let monthSess = 0, monthDays = 0;
+  cells.forEach(dt => { if (dt && cs.map[dt]) { monthSess += cs.map[dt].n; monthDays++; } });
+  const syncPairs = [];
+  c.students.forEach(s => (s.courses || []).forEach(co => { if (co.start && co.end) syncPairs.push(1); }));
   const grid = cells.map(dt => {
     if (!dt) return `<div class="att-cal-cell empty"></div>`;
     const wd = new Date(dt + 'T00:00:00').getDay();
@@ -7353,8 +7471,12 @@ function attCalBodyHtml(){
     const num = +dt.slice(8, 10);
     const mark = isOverride ? '<span class="d-ovr">★</span>' : (isGlobal ? '<span class="d-glo">🌐</span>' : '');
     const tip = isOverride ? '（本班单独设置）' : (isGlobal ? '（统一日历设置）' : '（跟随周规则）');
-    return `<div class="${clsName.join(' ')}" onclick="attCalToggle('${dt}')" title="${esc(fmtDateCN(dt))}${tip}">
-        <span class="d-num">${num}</span><span class="d-tag">${isRest ? '休' : '课'}</span>${mark}</div>`;
+    /* 当天本班学生的课时数量（节 / 涉及学生数） */
+    const ci = cs.map[dt];
+    const csMark = ci ? `<span class="d-cs" title="当天有 ${ci.n} 节课 · ${ci.stus.size} 名学生">${ci.n}</span>` : '';
+    const csTip = ci ? `｜课时 ${ci.n} 节 / ${ci.stus.size} 人` : '';
+    return `<div class="${clsName.join(' ')}${ci ? ' has-cs' : ''}" onclick="attCalToggle('${dt}')" title="${esc(fmtDateCN(dt))}${tip}${csTip}">
+        <span class="d-num">${num}</span><span class="d-tag">${isRest ? '休' : '课'}</span>${mark}${csMark}</div>`;
   }).join('');
   return `
     <div class="att-cal-head">
@@ -7382,6 +7504,15 @@ function attCalBodyHtml(){
         <div class="att-opt-d">本月全部不考勤</div>
       </div>
     </div>
+    <div class="att-cal-sync">
+      <div class="att-sync-t">📚 以考勤日历为准 · 确定学生上课时间与课时数量</div>
+      <div class="att-sync-row">
+        <span class="att-sync-info">本班 <b>${syncPairs.length}</b> 段课时安排（含起止日期）· 本月按本日历 <b>上课 ${cls} 天</b>${
+          monthSess ? ` · 已排课时 <b>${monthSess}</b> 节（${monthDays} 天）` : ' · 本月暂无已排课时'}</span>
+        <button class="btn primary sm" onclick="attCalSyncToCourses()" ${syncPairs.length ? '' : 'disabled'}>🔄 同步到学生课时</button>
+      </div>
+      <div class="att-sync-tip">课时数量＝该段起止日期内<b>本日历的上课日天数</b>；上课时间＝这些上课日对应的<b>星期</b>（沿用原上课时间）。也可在学生档案卡的每段课时上点「↻ 同步考勤」单独同步。</div>
+    </div>
     <div class="att-cal-grid">
       ${dows.map((d, i) => `<div class="att-cal-dow ${i >= 5 ? 'we' : ''}">${d}</div>`).join('')}
       ${grid}
@@ -7390,8 +7521,9 @@ function attCalBodyHtml(){
       <div class="att-cal-legend">
         <span><i style="background:#eafaf0;border:1px solid #a7e0b8"></i>上课日</span>
         <span><i style="background:#fff4e8;border:1px solid #f2cfa2"></i>休息日</span>
+        ${monthSess ? '<span><i class="lg-cs"></i>右下数字＝当天课时节数</span>' : ''}
       </div>
-      <div class="att-cal-sum">本月：<b class="cls">上课 ${cls} 天</b> · <b class="rest">休息 ${rest} 天</b></div>
+      <div class="att-cal-sum">本月：<b class="cls">上课 ${cls} 天</b> · <b class="rest">休息 ${rest} 天</b>${monthSess ? ` · 课时 ${monthSess} 节` : ''}</div>
     </div>`;
 }
 function renderAttCal(){
