@@ -935,6 +935,26 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .pf-dd-tbl input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--danger,#d64545)}
 .pf-dd-tbl .pf-dd-keep td{background:color-mix(in srgb,var(--accent) 7%,transparent)}
 .pf-dd-tip{font-size:11.5px;color:var(--text-muted);margin-top:6px;line-height:1.5}
+/* 批量排课弹窗：左选学生 / 右设课时 */
+.bc-wrap{display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);gap:16px;align-items:start}
+.bc-col{min-width:0}
+.bc-t{font-size:13px;font-weight:800;margin-bottom:8px;color:var(--text-primary)}
+.bc-stu-list{max-height:44vh;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--surface-alt)}
+.bc-cls{margin-bottom:8px}
+.bc-cls-h{display:flex;align-items:center;gap:5px;font-size:12.5px;padding:3px 2px;cursor:pointer;border-bottom:1px dashed var(--border);margin-bottom:4px}
+.bc-cls-h input,.bc-stu input{width:14px;height:14px;cursor:pointer;accent-color:var(--accent);flex:0 0 auto}
+.bc-stus{display:flex;flex-wrap:wrap;gap:6px}
+.bc-stu{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;padding:3px 8px;border:1px solid var(--border);border-radius:99px;background:var(--surface);cursor:pointer}
+.bc-stu.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent-dark);font-weight:600}
+.bc-stu-tag{font-size:10.5px;color:var(--text-muted);background:var(--surface-alt);border-radius:99px;padding:0 5px}
+.bc-total-row{display:flex;gap:6px;align-items:center}
+.bc-total-row .inp{flex:1}
+.bc-mode{margin-top:14px;padding:9px 11px;border:1px dashed var(--border-strong);border-radius:10px;background:var(--surface-alt);font-size:12.5px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.bc-mode b{color:var(--text-secondary);margin-right:6px}
+@media(max-width:720px){
+  .bc-wrap{grid-template-columns:1fr}
+  .bc-stu-list{max-height:34vh}
+}
 .medal{font-size:16px}
 tr.nodata{opacity:.45}
 
@@ -2031,6 +2051,11 @@ const ui = {
   profileSel: {},     // 学生档案：批量选择（已勾选的档案 id -> true）
   pfBatchDraft: null, // 学生档案：批量修改草稿
   pfDedupSel: null,   // 学生档案：除重弹窗内勾选待删的档案 id -> true
+  bcSel: {},          // 批量排课：已选学生 id -> true
+  bcSearch: '',       // 批量排课：学生搜索词
+  bcMode: 'skip',     // 批量排课：同名课程处理 skip/update/append
+  bcDraft: null,      // 批量排课：课程表单草稿
+  _bcRules: null,     // 批量排课：上课时间规则
 };
 
 /* ===== AI 大模型配置常量（必须在 aiCfg/aiReady/renderSmart 之前声明，避免 TDZ） ===== */
@@ -4262,6 +4287,7 @@ function renderRosterSelectBar(cls){
   return `<div class="sel-bar" id="rosterSelBar">
     <span class="sel-info">已选 <b>${n}</b> / ${total} 人</span>
     <button class="btn sm" onclick="selectAllStudents()">全选全班</button>
+    <button class="btn sm" onclick="openBatchCourse(ui.rosterSel)" title="给所选学生批量添加同一段课时安排">📚 批量加课时</button>
     <button class="btn sm" onclick="clearRosterSel()">清空选择</button>
     <button class="btn sm ${n ? 'danger' : ''}" onclick="batchDelStudents()" ${n ? '' : 'disabled'}>🗑️ 删除所选</button>
     <button class="btn sm ghost" onclick="toggleRosterSelect()">退出选择</button>
@@ -4988,17 +5014,11 @@ function courseQuickAddBatch(dows){
   renderCourseRules(); renderCourseCalendar();
   toast('已批量添加 ' + added + ' 个上课日');
 }
-/* 课表日历预览：按起止日期 + 规则推算，按月渲染并高亮上课日 */
-function renderCourseCalendar(){
-  const box = document.getElementById('coCal'); if (!box) return;
-  const g = id => document.getElementById(id);
-  const start = g('coStart') ? g('coStart').value : '';
-  const end = g('coEnd') ? g('coEnd').value : '';
-  if (!start || !end){ box.innerHTML = '<div class="muted" style="padding:8px 0">设置起止日期后，这里会自动显示课表日历</div>'; return; }
-  if (start > end){ box.innerHTML = '<div class="muted" style="padding:8px 0">开始日期不能晚于结束日期</div>'; return; }
-  const rules = (ui._coRules || []).map(r => ({ dow:+r.dow, time:r.time, dur:+r.dur || 0 }));
-  const co = { start, end, rules };
-  const sessions = courseSessions(co);
+/* 课表日历预览：按起止日期 + 规则推算，按月渲染并高亮上课日（单人编辑器与批量排课共用） */
+function courseCalendarHtml(start, end, rules){
+  if (!start || !end) return '<div class="muted" style="padding:8px 0">设置起止日期后，这里会自动显示课表日历</div>';
+  if (start > end) return '<div class="muted" style="padding:8px 0">开始日期不能晚于结束日期</div>';
+  const sessions = courseSessions({ start, end, rules });
   if (!sessions.length){ box.innerHTML = '<div class="muted" style="padding:8px 0">当前规则在日期范围内没有对应的上课日，请调整日期或上课时间</div>'; return; }
   const set = {}; sessions.forEach(s => set[s.date] = s);
   const d0 = new Date(start + 'T00:00:00');
@@ -5024,7 +5044,15 @@ function renderCourseCalendar(){
     html += '</div></div>';
   });
   html += '</div><div class="co-cal-info muted">共 <b>' + sessions.length + '</b> 节课 ｜ 首节 ' + sessions[0].date + (sessions[0].time ? ' ' + sessions[0].time : '') + ' ｜ 末节 ' + sessions[sessions.length - 1].date + (sessions[sessions.length - 1].time ? ' ' + sessions[sessions.length - 1].time : '') + '</div>';
-  box.innerHTML = html;
+  return html;
+}
+function renderCourseCalendar(){
+  const box = document.getElementById('coCal'); if (!box) return;
+  const g = id => document.getElementById(id);
+  const start = g('coStart') ? g('coStart').value : '';
+  const end = g('coEnd') ? g('coEnd').value : '';
+  const rules = (ui._coRules || []).map(r => ({ dow:+r.dow, time:r.time, dur:+r.dur || 0 }));
+  box.innerHTML = courseCalendarHtml(start, end, rules);
 }
 function saveCourse(sid, cid){
   const f = findStudentById(sid); if (!f) return;
@@ -5044,6 +5072,205 @@ function saveCourse(sid, cid){
   }
   ui._coRules = null;
   save(); closeModal(); openStudentCard(sid); toast('课时安排已保存 ✅');
+}
+
+/* ==================================================================
+   📚 批量排课：一次给多名学生添加同一段课时安排（课程名/起止日期/次数/上课时间）
+   入口：课表 Tab、日常反馈表批量选择、学生档案批量勾选
+   ================================================================== */
+function bcRuleRowHtml(i, r){
+  return `<div class="co-rule">
+    <select class="inp co-dow" onchange="ui._bcRules[${i}].dow=+this.value;renderBcCalendar()">${DOW_NAME.map((n, k) => '<option value="' + k + '" ' + (k === +r.dow ? 'selected' : '') + '>' + n + '</option>').join('')}</select>
+    <input class="inp co-time" type="time" value="${esc(r.time || '19:00')}" onchange="ui._bcRules[${i}].time=this.value;renderBcCalendar()">
+    <input class="inp co-dur" type="number" min="0" value="${r.dur || 90}" onchange="ui._bcRules[${i}].dur=+this.value" placeholder="时长" title="时长(分钟)">
+    <span class="muted co-dur-u">分钟</span>
+    <button class="icon-btn del" type="button" onclick="bcRuleDel(${i})" title="删除">✕</button>
+  </div>`;
+}
+function bcRuleAdd(){
+  ui._bcRules = ui._bcRules || [];
+  ui._bcRules.push({ dow:1, time:'19:00', dur:90 });
+  renderBcRules(); renderBcCalendar();
+}
+function bcRuleDel(i){ if (ui._bcRules) ui._bcRules.splice(i, 1); renderBcRules(); renderBcCalendar(); }
+function renderBcRules(){
+  const box = document.getElementById('bcRules'); if (!box) return;
+  if (!ui._bcRules || !ui._bcRules.length){ box.innerHTML = '<div class="muted">还没添加上课时间，点上方快捷按钮试试「周六」</div>'; return; }
+  box.innerHTML = ui._bcRules.map((r, i) => bcRuleRowHtml(i, r)).join('');
+}
+function bcQuickAdd(dow){
+  ui._bcRules = ui._bcRules || [];
+  if (ui._bcRules.some(r => +r.dow === +dow)) return toast('「' + DOW_NAME[+dow] + '」已在上课时间中');
+  const ref = ui._bcRules[0] || { time:'19:00', dur:90 };
+  ui._bcRules.push({ dow:+dow, time:ref.time, dur:ref.dur });
+  renderBcRules(); renderBcCalendar();
+  toast('已添加 ' + DOW_NAME[+dow] + ' 上课');
+}
+function bcQuickAddBatch(dows){
+  ui._bcRules = ui._bcRules || [];
+  const ref = ui._bcRules[0] || { time:'19:00', dur:90 };
+  let added = 0;
+  dows.forEach(d => { if (!ui._bcRules.some(r => +r.dow === +d)) { ui._bcRules.push({ dow:+d, time:ref.time, dur:ref.dur }); added++; } });
+  if (!added) return toast('这些上课日已全部存在');
+  renderBcRules(); renderBcCalendar();
+  toast('已批量添加 ' + added + ' 个上课日');
+}
+function renderBcCalendar(){
+  const box = document.getElementById('bcCal'); if (!box) return;
+  const d = ui.bcDraft || {};
+  const rules = (ui._bcRules || []).map(r => ({ dow:+r.dow, time:r.time, dur:+r.dur || 0 }));
+  box.innerHTML = courseCalendarHtml(d.start || '', d.end || '', rules);
+}
+/* 按当前课表自动填入「上课次数」，免去手工数节数 */
+function bcFillTotal(){
+  const d = ui.bcDraft || {};
+  if (!d.start || !d.end) return toast('请先填写开始 / 结束日期');
+  const rules = (ui._bcRules || []).map(r => ({ dow:+r.dow, time:r.time, dur:+r.dur || 0 }));
+  const n = courseSessions({ start: d.start, end: d.end, rules }).length;
+  if (!n) return toast('当前规则在日期范围内没有上课日，请调整日期或上课时间');
+  ui.bcDraft.total = n;
+  const el = document.getElementById('bcTotal'); if (el) el.value = n;
+  toast('已按课表自动填入 ' + n + ' 节');
+}
+function bcSelIds(){
+  ui.bcSel = ui.bcSel || {};
+  return Object.keys(ui.bcSel).filter(id => ui.bcSel[id]);
+}
+function bcToggleStudent(id, on){
+  ui.bcSel = ui.bcSel || {};
+  if (on) ui.bcSel[id] = true; else delete ui.bcSel[id];
+  renderBatchCourse();
+}
+function bcToggleClass(cid, on){
+  ui.bcSel = ui.bcSel || {};
+  const c = (state.classes || []).find(x => String(x.id) === String(cid)); if (!c) return;
+  (c.students || []).forEach(s => { if (on) ui.bcSel[String(s.id)] = true; else delete ui.bcSel[String(s.id)]; });
+  renderBatchCourse();
+}
+function bcSetSearch(v){ ui.bcSearch = v; renderBatchCourse(); }
+function bcSetMode(v){ ui.bcMode = v; renderBatchCourse(); }
+/* 打开批量排课弹窗：presetIds 可从「日常反馈表 / 学生档案」的已有勾选带入 */
+function openBatchCourse(presetIds){
+  ui.bcSel = {};
+  (presetIds || []).forEach(id => { ui.bcSel[String(id)] = true; });
+  ui.bcSearch = '';
+  ui.bcMode = ui.bcMode || 'skip';
+  ui.bcDraft = { name: '', start: '', end: '', total: '' };
+  ui._bcRules = [{ dow: 6, time: '19:00', dur: 90 }]; // 默认周六 19:00（机构常见），可改可删
+  ui.bcPreset = (presetIds || []).length;
+  renderBatchCourse();
+}
+function bcStudentListHtml(){
+  const q = (ui.bcSearch || '').trim().toLowerCase();
+  const sel = ui.bcSel || {};
+  const groups = (state.classes || []).map(c => ({
+    c, list: (c.students || []).filter(s => !q || String(s.name || '').toLowerCase().includes(q))
+  })).filter(g => g.list.length);
+  if (!groups.length) return '<div class="muted" style="padding:10px 0">' + (q ? '没有匹配的学生' : '还没有学生，请先在「日常反馈表」添加') + '</div>';
+  return groups.map(({ c, list }) => {
+    const cid = String(c.id);
+    const allOn = list.every(s => sel[String(s.id)]);
+    return `<div class="bc-cls">
+      <label class="bc-cls-h"><input type="checkbox" ${allOn ? 'checked' : ''} onchange="bcToggleClass('${cid}',this.checked)"> <b>${esc(c.name)}</b><span class="muted">（${list.length} 人）</span></label>
+      <div class="bc-stus">${list.map(s => {
+        const sid = String(s.id);
+        const has = (s.courses || []).length;
+        return `<label class="bc-stu ${sel[sid] ? 'on' : ''}"><input type="checkbox" ${sel[sid] ? 'checked' : ''} onchange="bcToggleStudent('${sid}',this.checked)"> <span>${esc(s.name)}</span>${has ? `<span class="bc-stu-tag" title="已有 ${has} 段课时安排">${has} 段</span>` : ''}</label>`;
+      }).join('')}</div>
+    </div>`;
+  }).join('');
+}
+function renderBatchCourse(){
+  const d = ui.bcDraft = ui.bcDraft || { name:'', start:'', end:'', total:'' };
+  const n = bcSelIds().length;
+  const quickDows = [1,2,3,4,5,6,0].map(k => '<button class="co-qb" type="button" onclick="bcQuickAdd(' + k + ')">' + DOW_NAME[k] + '</button>').join('');
+  /* 预选里「不在任何班级」的学生（如档案里独立档案）无法写入课时，提前提示 */
+  const orphans = bcSelIds().filter(id => !findStudentById(id)).length;
+  const body = `<div class="bc-wrap">
+    <div class="bc-col">
+      <div class="bc-t">① 选择学生 <span class="muted">（已选 <b>${n}</b> 人${orphans ? '，其中 ' + orphans + ' 人无班级将被跳过' : ''}）</span></div>
+      <input class="inp" placeholder="🔍 搜索学生姓名…" value="${esc(ui.bcSearch || '')}" oninput="bcSetSearch(this.value)" style="margin-bottom:8px">
+      <div class="bc-stu-list" id="bcStuList">${bcStudentListHtml()}</div>
+    </div>
+    <div class="bc-col">
+      <div class="bc-t">② 设置课时安排</div>
+      <label class="ff"><span>课程名称</span><input id="bcName" class="inp" placeholder="如：初一数学秋季班" value="${esc(d.name)}" oninput="ui.bcDraft.name=this.value"></label>
+      <div class="ff-row2">
+        <label class="ff"><span>开始日期</span><input id="bcStart" class="inp" type="date" value="${esc(d.start)}" onchange="ui.bcDraft.start=this.value;renderBcCalendar()"></label>
+        <label class="ff"><span>结束日期</span><input id="bcEnd" class="inp" type="date" value="${esc(d.end)}" onchange="ui.bcDraft.end=this.value;renderBcCalendar()"></label>
+      </div>
+      <label class="ff"><span>上课次数（共几节）</span>
+        <span class="bc-total-row">
+          <input id="bcTotal" class="inp" type="number" min="0" value="${d.total || ''}" oninput="ui.bcDraft.total=this.value">
+          <button class="btn sm" type="button" onclick="bcFillTotal()">↧ 按课表填入</button>
+        </span></label>
+      <div class="ff-block">
+        <div class="ff-block-t">🕐 具体上课时间 <span class="muted">（点快捷按钮，或手动添加）</span></div>
+        <div class="co-quick">${quickDows}<span class="co-q-sep"></span><button class="co-qb batch" type="button" onclick="bcQuickAddBatch([1,2,3,4,5])">工作日</button><button class="co-qb batch" type="button" onclick="bcQuickAddBatch([0,6])">周末</button><button class="co-qb batch" type="button" onclick="bcQuickAddBatch([0,1,2,3,4,5,6])">每天</button></div>
+        <div id="bcRules">${(ui._bcRules || []).map((r, i) => bcRuleRowHtml(i, r)).join('') || '<div class="muted">还没添加上课时间，点上方快捷按钮试试「周六」</div>'}</div>
+        <button class="btn sm ghost" type="button" onclick="bcRuleAdd()">＋ 手动添加</button>
+      </div>
+      <div class="ff-block">
+        <div class="ff-block-t">📅 课表预览</div>
+        <div id="bcCal" class="co-cal-wrap"></div>
+      </div>
+    </div>
+  </div>
+  <div class="bc-mode">
+    <b>同名课程已存在时：</b>
+    <label class="pf-radio"><input type="radio" name="bcMode" ${(ui.bcMode || 'skip') === 'skip' ? 'checked' : ''} onchange="bcSetMode('skip')"> 跳过不改动（推荐）</label>
+    <label class="pf-radio"><input type="radio" name="bcMode" ${ui.bcMode === 'update' ? 'checked' : ''} onchange="bcSetMode('update')"> 更新为该设置（保留已上节数）</label>
+    <label class="pf-radio"><input type="radio" name="bcMode" ${ui.bcMode === 'append' ? 'checked' : ''} onchange="bcSetMode('append')"> 仍然追加一段</label>
+  </div>`;
+  openModal('📚 批量排课 · 一次给多名学生添加课时', body,
+    `<span class="muted" style="font-size:12.5px;margin-right:auto">将为 <b>${n}</b> 名学生添加这段课时安排</span>
+     <button class="btn primary" type="button" onclick="applyBatchCourse()" ${n ? '' : 'disabled'}>✅ 应用到 ${n} 名学生</button>
+     <button class="btn ghost" type="button" onclick="closeModal()">取消</button>`, 780);
+  renderBcCalendar();
+}
+function applyBatchCourse(){
+  const d = ui.bcDraft || {};
+  const name = String(d.name || '').trim();
+  const start = d.start || '', end = d.end || '';
+  const total = Math.max(0, num(d.total) || 0);
+  const rules = (ui._bcRules || []).map(r => ({ dow:+r.dow, time:r.time, dur:+r.dur || 0 })).filter(r => r.time);
+  if (!name) return toast('请填写课程名称');
+  if (start && end && start > end) return toast('开始日期不能晚于结束日期');
+  const ids = bcSelIds();
+  if (!ids.length) return toast('请至少选择 1 名学生');
+  const mode = ui.bcMode || 'skip';
+  let added = 0, updated = 0, skipSame = 0, noCls = 0;
+  const created = [];
+  ids.forEach(id => {
+    const f = findStudentById(id);
+    if (!f) { noCls++; return; }               // 无班级（仅档案）无法挂课时，跳过
+    f.s.courses = f.s.courses || [];
+    const exist = f.s.courses.find(x => String(x.name || '').trim() === name);
+    if (exist && mode === 'skip') { skipSame++; return; }
+    if (exist && mode === 'update') { Object.assign(exist, { start, end, total, rules: rules.slice() }); updated++; return; }
+    const co = { id: uid(), name, start, end, total, rules: rules.slice(), attended: 0 };
+    f.s.courses.push(co); created.push({ sid: id, cid: co.id }); added++;
+  });
+  if (!added && !updated) {
+    return toast(skipSame ? '所选学生都已有同名课时安排（当前策略为「跳过」），未做改动' : '未写入任何课时安排');
+  }
+  ui._bcRules = null; ui.bcDraft = null; ui.bcSel = {};
+  save(); closeModal(); renderMain();
+  const parts = [];
+  if (added) parts.push('新增 ' + added + ' 人');
+  if (updated) parts.push('更新 ' + updated + ' 人');
+  if (skipSame) parts.push('同名跳过 ' + skipSame + ' 人');
+  if (noCls) parts.push('无班级跳过 ' + noCls + ' 人');
+  const msg = '已批量排课：' + parts.join(' / ');
+  if (created.length) {
+    toastAction(msg, '撤销', () => {
+      created.forEach(x => {
+        const f = findStudentById(x.sid); if (!f) return;
+        f.s.courses = (f.s.courses || []).filter(c => c.id !== x.cid);
+      });
+      save(); renderMain(); toast('已撤销本次批量排课');
+    });
+  } else toast(msg);
 }
 /* ==================================================================
    📄 成绩单（导出 / 打印 / 截图）：学生维度完整成绩单
@@ -7839,6 +8066,7 @@ function renderProfile(){
     ${selN ? `<div class="sel-bar" id="pfSelBar">
       <span class="sel-info">已选 <b>${selN}</b> 条档案</span>
       <button class="btn sm" onclick="openPfBatchEdit()">✏️ 批量修改</button>
+      <button class="btn sm" onclick="openBatchCourse(pfSelIds())" title="给所选（在班）学生批量添加同一段课时安排">📚 批量加课时</button>
       <button class="btn sm danger" onclick="batchDelProfiles()">🗑️ 批量删除</button>
       <button class="btn sm ghost" onclick="pfSelClear()">清空选择</button>
     </div>` : ''}
@@ -9132,7 +9360,10 @@ function renderSchedule(){
       <button class="nav-btn" onclick="moveSchedule('next')">›</button>
       <button class="btn sm" onclick="ui.scheduleCursor=todayStr();renderMain()">今天</button>
     </div>
-    <div class="seg-toggle"><button class="seg-btn ${view==='week'?'on':''}" onclick="setScheduleView('week')">📅 周视图</button><button class="seg-btn ${view==='month'?'on':''}" onclick="setScheduleView('month')">🗓️ 月历</button></div>
+    <div class="row" style="gap:8px">
+      <button class="btn primary sm" onclick="openBatchCourse()" title="一次给多名学生添加同一段课时安排">📚 批量排课</button>
+      <div class="seg-toggle"><button class="seg-btn ${view==='week'?'on':''}" onclick="setScheduleView('week')">📅 周视图</button><button class="seg-btn ${view==='month'?'on':''}" onclick="setScheduleView('month')">🗓️ 月历</button></div>
+    </div>
   </div>`;
   const inner = (view === 'month') ? scheduleMonth(items, cursor) : scheduleWeek(items, cursor);
   return `${nav}
@@ -9158,7 +9389,7 @@ function scheduleWeek(items, cursor){
   const mon = weekMonday(cursor);
   const days = [];
   for (let i = 0; i < 7; i++) days.push(shiftDate(mon, i));
-  if (!items.length) return '<div class="empty">还没有排课。请到「学生档案」里为每个学生的课时安排设置上课时间（如每周一三五 19:00），这里会自动汇总成课表。</div>';
+  if (!items.length) return '<div class="empty"><span class="ico">📚</span>还没有排课。点上方「📚 批量排课」可一次给多名学生添加课时；或到学生档案里为单个学生设置上课时间。<br><button class="btn primary sm" style="margin-top:10px" onclick="openBatchCourse()">📚 批量排课</button></div>';
   const cols = days.map((date, i) => {
     const list = items.filter(x => x.date === date).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
     const cards = list.length ? list.map(x => `<div class="sch-card">
@@ -9189,7 +9420,7 @@ function scheduleMonth(items, cursor){
     const more = list.length > 3 ? `<div class="sch-m-more">+${list.length - 3}</div>` : '';
     cells += `<span class="co-cal-c${list.length ? ' on' : ''}">${dd}${list.length ? `<div class="sch-m">${inside}${more}</div>` : ''}</span>`;
   }
-  if (!items.length) return '<div class="empty">还没有排课。请到「学生档案」里为每个学生的课时安排设置上课时间（如每周一三五 19:00），这里会自动汇总成课表。</div>';
+  if (!items.length) return '<div class="empty"><span class="ico">📚</span>还没有排课。点上方「📚 批量排课」可一次给多名学生添加课时；或到学生档案里为单个学生设置上课时间。<br><button class="btn primary sm" style="margin-top:10px" onclick="openBatchCourse()">📚 批量排课</button></div>';
   return `<div class="co-cal"><div class="co-cal-m" style="width:100%"><div class="co-cal-grid" style="grid-template-columns:repeat(7,1fr)">${DOW_NAME.map(n => '<span class="co-cal-wd">' + n.replace('周', '') + '</span>').join('')}${cells}</div></div></div>`;
 }
 
