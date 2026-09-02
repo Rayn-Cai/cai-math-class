@@ -923,6 +923,18 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .pf-custom .pf-cl{flex:0 0 38%}
 .pf-custom .pf-cv{flex:1}
 .pf-empty{border:1.5px dashed var(--border-strong);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--text-muted);text-align:center;background:var(--surface-alt)}
+.pf-ck input{width:15px;height:15px;cursor:pointer;accent-color:var(--accent)}
+.pf-radio{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:500;margin-right:14px;cursor:pointer}
+.pf-radio input{accent-color:var(--accent)}
+.pf-dd-grp{border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:10px;background:var(--surface)}
+.pf-dd-head{font-size:13px;margin-bottom:6px}
+.pf-dd-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.pf-dd-tbl th{text-align:left;padding:4px 6px;color:var(--text-muted);font-size:11.5px;border-bottom:1px solid var(--border)}
+.pf-dd-tbl td{padding:5px 6px;border-bottom:1px dashed var(--border)}
+.pf-dd-tbl tr:last-child td{border-bottom:none}
+.pf-dd-tbl input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--danger,#d64545)}
+.pf-dd-tbl .pf-dd-keep td{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.pf-dd-tip{font-size:11.5px;color:var(--text-muted);margin-top:6px;line-height:1.5}
 .medal{font-size:16px}
 tr.nodata{opacity:.45}
 
@@ -2016,6 +2028,9 @@ const ui = {
   smartStyle: 'calm', // 评语风格：calm 平和 / enc 鼓励 / pro 专业
   attGwMonth: '',     // 统一考勤「按日历微调」当前查看的月份（YYYY-MM），空则跟随当前日期
   attGwTab: 'week',   // 统一考勤弹窗当前标签：week=按星期 / cal=按日历微调
+  profileSel: {},     // 学生档案：批量选择（已勾选的档案 id -> true）
+  pfBatchDraft: null, // 学生档案：批量修改草稿
+  pfDedupSel: null,   // 学生档案：除重弹窗内勾选待删的档案 id -> true
 };
 
 /* ===== AI 大模型配置常量（必须在 aiCfg/aiReady/renderSmart 之前声明，避免 TDZ） ===== */
@@ -7753,22 +7768,46 @@ function addProfileOption(id, key){
   save(); renderProfile();
   toast('已新增并选择：' + v);
 }
-function renderProfile(){
+/* 当前搜索条件下可见的档案 id 列表（批量「全选」也按此口径） */
+function profileFilteredIds(){
   const sp = state.studentProfiles || {};
   const q = (ui.profileSearch || '').trim().toLowerCase();
-  const ids = Object.keys(sp);
-  const enrolled = new Set();
-  state.classes.forEach(c => c.students.forEach(s => enrolled.add(String(s.id))));
-  const rows = ids.filter(id => {
+  return Object.keys(sp).filter(id => {
     if (!q) return true;
     const p = sp[id] || {};
     return String(p.name || '').toLowerCase().includes(q)
       || String(p.class || '').toLowerCase().includes(q)
       || String(p.school || '').toLowerCase().includes(q)
       || (p.tags || []).some(t => String(t).toLowerCase().includes(q));
-  }).map((id, i) => {
+  });
+}
+/* 批量选择：当前有效（仍存在）的已选 id 列表 */
+function pfSelIds(){
+  ui.profileSel = ui.profileSel || {};
+  const sp = state.studentProfiles || {};
+  return Object.keys(ui.profileSel).filter(id => ui.profileSel[id] && sp[id]);
+}
+function pfSelToggle(id, on){
+  ui.profileSel = ui.profileSel || {};
+  if (on) ui.profileSel[id] = true; else delete ui.profileSel[id];
+  renderMain();
+}
+function pfSelAll(on){
+  ui.profileSel = ui.profileSel || {};
+  profileFilteredIds().forEach(id => { if (on) ui.profileSel[id] = true; else delete ui.profileSel[id]; });
+  renderMain();
+}
+function pfSelClear(){ ui.profileSel = {}; renderMain(); }
+function renderProfile(){
+  const sp = state.studentProfiles || {};
+  const ids = profileFilteredIds();
+  const selN = pfSelIds().length;
+  const enrolled = new Set();
+  state.classes.forEach(c => c.students.forEach(s => enrolled.add(String(s.id))));
+  const rows = ids.map((id, i) => {
     const p = sp[id] || {};
     const inClass = enrolled.has(id);
+    const checked = !!(ui.profileSel && ui.profileSel[id]);
     const custom = (p.custom || []).filter(x => x && x.label);
     const remark = (p.remark || '');
     const remarkTxt = remark ? (remark.length > 18 ? esc(remark.slice(0, 18)) + '…' : esc(remark)) : '—';
@@ -7780,6 +7819,7 @@ function renderProfile(){
       ? `<span class="pf-tags">${tags.slice(0, 2).map(t => `<span class="pf-tag">${esc(t)}</span>`).join('')}${tags.length > 2 ? `<span class="pf-tag more">+${tags.length - 2}</span>` : ''}</span>`
       : '—';
     return `<tr>
+      <td class="c pf-ck"><input type="checkbox" ${checked ? 'checked' : ''} onchange="pfSelToggle('${id}',this.checked)" title="勾选后可批量修改 / 批量删除"></td>
       <td class="nm"><span class="pf-name-cell"><span class="pf-num">${i + 1}</span>${avatar}<button class="stu-link" onclick="openProfileEditor('${id}')" title="点击填写 / 编辑基础信息">${esc(p.name || '未命名')}</button></span></td>
       <td>${profileSelect(id, 'class', p.class)}</td>
       <td>${profileSelect(id, 'school', p.school)}</td>
@@ -7792,14 +7832,21 @@ function renderProfile(){
   }).join('');
   return `<div class="row" style="margin-bottom:10px;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn primary" onclick="addProfile()">＋ 新增学生档案</button>
+      <button class="btn" onclick="openProfileDedup()" title="按姓名查找重复档案，核对后合并删除">🔍 除重</button>
       <input class="inp pf-search" placeholder="🔍 搜索姓名 / 班级 / 学校 / 标签…" value="${esc(ui.profileSearch || '')}" oninput="ui.profileSearch=this.value;renderProfile()">
       <span class="muted" style="font-size:12.5px">档案独立于班级：班级新增学生自动进入档案；删除班级学生，档案保留。点姓名即可填写 / 编辑基础信息（支持<b>照片、标签、自定义字段</b>）。</span>
     </div>
+    ${selN ? `<div class="sel-bar" id="pfSelBar">
+      <span class="sel-info">已选 <b>${selN}</b> 条档案</span>
+      <button class="btn sm" onclick="openPfBatchEdit()">✏️ 批量修改</button>
+      <button class="btn sm danger" onclick="batchDelProfiles()">🗑️ 批量删除</button>
+      <button class="btn sm ghost" onclick="pfSelClear()">清空选择</button>
+    </div>` : ''}
     ${ids.length ? `<div class="tbl-wrap"><table>
-      <thead><tr><th style="width:150px">姓名</th><th>班级</th><th>学校</th><th style="min-width:90px">标签</th><th>备注</th><th style="width:64px" class="c">自定义</th><th style="width:64px" class="c">状态</th><th style="width:56px" class="c">操作</th></tr></thead>
-      <tbody>${rows.length ? rows : '<tr><td colspan="8" class="empty">没有匹配的学生档案</td></tr>'}</tbody></table></div>`
+      <thead><tr><th class="c" style="width:34px" title="全选 / 取消全选（按当前搜索结果）"><input type="checkbox" onchange="pfSelAll(this.checked)"></th><th style="width:150px">姓名</th><th>班级</th><th>学校</th><th style="min-width:90px">标签</th><th>备注</th><th style="width:64px" class="c">自定义</th><th style="width:64px" class="c">状态</th><th style="width:56px" class="c">操作</th></tr></thead>
+      <tbody>${rows.length ? rows : '<tr><td colspan="9" class="empty">没有匹配的学生档案</td></tr>'}</tbody></table></div>`
       : `<div class="empty"><span class="ico">👤</span>还没有学生档案。点上方「＋ 新增学生档案」添加；或在班级里添加学生后会自动进入档案。</div>`}
-    <div class="hint" style="margin-top:10px">💡 点学生姓名可填写基础信息：支持 <b>上传照片、打标签</b>（如"数学之星"）、添加自定义字段，保存后自动显示在档案卡与列表中。</div>`;
+    <div class="hint" style="margin-top:10px">💡 点学生姓名可填写基础信息：支持 <b>上传照片、打标签</b>（如"数学之星"）、添加自定义字段，保存后自动显示在档案卡与列表中。勾选多条可<b>批量修改 / 批量删除</b>；「🔍 除重」可按姓名找出重复档案，核对后再删除。</div>`;
 }
 /* 点击学生姓名：打开基础信息编辑（支持界面内自行添加字段） */
 function openProfileEditor(id){
@@ -7868,6 +7915,229 @@ function addProfile(){
   ensureProfile(sid, name.trim());
   save(); renderMain();
   toast('已新增学生档案：' + name.trim());
+}
+
+/* -------- 学生档案：批量修改 / 批量删除 / 除重 -------- */
+/* 批量修改弹窗：学校/班级留「不修改」则跳过；备注/标签留空则跳过，可一次性应用到所有已选档案 */
+function openPfBatchEdit(){
+  const ids = pfSelIds();
+  if (!ids.length) return toast('请先勾选要修改的学生档案');
+  ui.pfBatchDraft = { school: '', class: '', remark: '', tags: '', tagMode: 'append' };
+  renderPfBatchEdit();
+}
+function pfBatchSel(key, val){ if (ui.pfBatchDraft) ui.pfBatchDraft[key] = val; }
+/* 学校/班级批量下拉：选项来自 profileOptions；含「不修改」与「清空为未填」两个特殊值 */
+function pfBatchOptions(key){
+  const arr = (state.profileOptions && state.profileOptions[key]) || [];
+  return arr.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+}
+function renderPfBatchEdit(){
+  const d = ui.pfBatchDraft; if (!d) return;
+  const n = pfSelIds().length;
+  openModal(`✏️ 批量修改 ${n} 条学生档案`, `
+    <p class="muted" style="margin:0 0 12px">将以下设置一次性应用到已勾选的 <b>${n}</b> 条学生档案。<b>留「不修改」/ 留空的项不会变动</b>。</p>
+    <div class="pf-editor">
+      <div class="pf-field"><label>学校</label>
+        <select class="sel" onchange="pfBatchSel('school',this.value)">
+          <option value="">✋ 不修改</option>
+          <option value="__clear__">🧹 清空为未填</option>
+          ${pfBatchOptions('school')}
+        </select></div>
+      <div class="pf-field"><label>班级</label>
+        <select class="sel" onchange="pfBatchSel('class',this.value)">
+          <option value="">✋ 不修改</option>
+          <option value="__clear__">🧹 清空为未填</option>
+          ${pfBatchOptions('class')}
+        </select></div>
+      <div class="pf-field"><label>标签（逗号分隔，如：数学之星,进步快）</label>
+        <input class="sel" value="${esc(d.tags)}" placeholder="留空则不修改" oninput="pfBatchSel('tags',this.value)"></div>
+      <div class="pf-field"><label>标签写入方式</label>
+        <label class="pf-radio"><input type="radio" name="pfTagMode" ${d.tagMode === 'append' ? 'checked' : ''} onchange="pfBatchSel('tagMode','append')"> 追加到已有标签（去重）</label>
+        <label class="pf-radio"><input type="radio" name="pfTagMode" ${d.tagMode === 'replace' ? 'checked' : ''} onchange="pfBatchSel('tagMode','replace')"> 替换原有标签</label></div>
+      <div class="pf-field"><label>备注（覆盖写入，留空不修改）</label>
+        <textarea class="sel" placeholder="留空则不修改" oninput="pfBatchSel('remark',this.value)">${esc(d.remark)}</textarea></div>
+    </div>
+  `, `<button class="btn primary" onclick="applyPfBatchEdit()">💾 应用到 ${n} 条档案</button>
+     <button class="btn" onclick="closeModal()">取消</button>`, 540);
+}
+function applyPfBatchEdit(){
+  const d = ui.pfBatchDraft; if (!d) return closeModal();
+  const ids = pfSelIds();
+  if (!ids.length) { closeModal(); return toast('请先勾选学生档案'); }
+  const tags = d.tags.split(/[,，、\s]+/).map(t => t.trim()).filter(Boolean);
+  let changed = 0;
+  ids.forEach(id => {
+    const p = state.studentProfiles[id]; if (!p) return;
+    if (d.school === '__clear__') p.school = '';
+    else if (d.school) p.school = d.school;
+    if (d.class === '__clear__') p.class = '';
+    else if (d.class) p.class = d.class;
+    if (d.remark && d.remark.trim()) p.remark = d.remark.trim();
+    if (tags.length) {
+      if (d.tagMode === 'replace') p.tags = tags.slice();
+      else { const s = new Set(p.tags || []); tags.forEach(t => s.add(t)); p.tags = [...s]; }
+    }
+    changed++;
+  });
+  /* 新写入的学校/班级值并入下拉选项，保证列表里能选回 */
+  if (d.school && d.school !== '__clear__') addPfOptionSilent('school', d.school);
+  if (d.class && d.class !== '__clear__') addPfOptionSilent('class', d.class);
+  ui.pfBatchDraft = null;
+  save(); closeModal(); renderMain();
+  toast('已批量修改 ' + changed + ' 条学生档案');
+}
+/* 静默把一个值并入下拉选项库（不弹窗不重渲染） */
+function addPfOptionSilent(key, v){
+  if (!v || !v.trim()) return;
+  state.profileOptions = state.profileOptions || {};
+  const arr = state.profileOptions[key] = state.profileOptions[key] || [];
+  if (!arr.includes(v.trim())) arr.push(v.trim());
+}
+/* 批量删除：全部进回收站，可整批撤销 */
+function batchDelProfiles(){
+  const ids = pfSelIds();
+  if (!ids.length) return toast('请先勾选要删除的学生档案');
+  const names = ids.map(id => (state.studentProfiles[id] || {}).name).filter(Boolean);
+  const show = names.slice(0, 6).join('、') + (names.length > 6 ? ` 等 ${names.length} 人` : '');
+  askConfirm(`确定删除选中的 <b>${ids.length}</b> 条学生档案吗？<br>${esc(show)}<br><br>档案将移入回收站，可随时恢复；其所在班级与成绩不受影响。`, () => {
+    state.trash = state.trash || { classes: [], students: [], profiles: [] };
+    ids.forEach(id => {
+      const p = state.studentProfiles[id];
+      if (!p) return;
+      state.trash.profiles.push({ id: String(id), name: p.name || '未命名', data: p, deletedAt: trashStamp() });
+      delete state.studentProfiles[id];
+      delete ui.profileSel[id];
+    });
+    save(); renderMain();
+    toastAction(`已批量删除 ${ids.length} 条学生档案，可恢复`, '撤销', () => {
+      ids.forEach(id => restoreTrash('profiles', String(id)));
+    });
+  }, { title: '🗑️ 批量删除学生档案' });
+}
+
+/* 除重：按姓名归组，核对后删除（删除前会把有用信息合并进保留的那条） */
+function pfDedupGroups(){
+  const sp = state.studentProfiles || {};
+  const enrolled = new Set();
+  state.classes.forEach(c => c.students.forEach(s => enrolled.add(String(s.id))));
+  const byName = {};
+  Object.keys(sp).forEach(id => {
+    const nm = String((sp[id] || {}).name || '').trim();
+    if (!nm) return; // 未命名档案不参与除重
+    (byName[nm] = byName[nm] || []).push(id);
+  });
+  return Object.keys(byName).map(nm => ({ name: nm, ids: byName[nm] }))
+    .filter(g => g.ids.length > 1)
+    .map(g => {
+      /* 每组默认保留：在班 > 信息更全 > 先创建 */
+      const weight = id => {
+        const p = sp[id] || {};
+        let w = 0;
+        if (enrolled.has(id)) w += 100;
+        if (p.photo) w += 8;
+        w += (p.tags || []).length * 2 + (p.custom || []).filter(x => x && x.label).length * 2;
+        if (p.school) w += 3; if (p.class) w += 3; if (p.remark) w += 2;
+        return w;
+      };
+      const sorted = g.ids.slice().sort((a, b) => weight(b) - weight(a));
+      return { name: g.name, keep: sorted[0], dead: sorted.slice(1), ids: g.ids };
+    });
+}
+function openProfileDedup(){
+  const groups = pfDedupGroups();
+  if (!groups.length) return toast('未发现重名学生档案，无需除重');
+  ui.pfDedupSel = {};
+  groups.forEach(g => g.dead.forEach(id => { ui.pfDedupSel[id] = true; }));
+  renderProfileDedup();
+}
+function pfDedupToggle(id, on){
+  ui.pfDedupSel = ui.pfDedupSel || {};
+  if (on) ui.pfDedupSel[id] = true; else delete ui.pfDedupSel[id];
+  renderProfileDedup();
+}
+/* 删除前把 d 档案里有用的信息合并进 k（k 已有值不覆盖） */
+function mergeProfileInto(keptId, deadId){
+  const k = state.studentProfiles && state.studentProfiles[keptId];
+  const d = state.studentProfiles && state.studentProfiles[deadId];
+  if (!k || !d) return;
+  ['school','class','remark'].forEach(f => { if (!k[f] && d[f]) k[f] = d[f]; });
+  if (!k.photo && d.photo) k.photo = d.photo;
+  const tags = new Set(k.tags || []);
+  (d.tags || []).forEach(t => t && tags.add(t));
+  k.tags = [...tags];
+  const labels = new Set((k.custom || []).map(x => x.label));
+  (d.custom || []).forEach(x => {
+    if (x && x.label && !labels.has(x.label)) { (k.custom = k.custom || []).push(x); labels.add(x.label); }
+  });
+}
+function renderProfileDedup(){
+  const sp = state.studentProfiles || {};
+  const groups = pfDedupGroups();
+  if (!groups.length) {
+    closeModal();
+    return toast('未发现重名学生档案，无需除重');
+  }
+  const selN = Object.keys(ui.pfDedupSel || {}).filter(id => ui.pfDedupSel[id]).length;
+  const grpHtml = groups.map((g, gi) => `
+    <div class="pf-dd-grp">
+      <div class="pf-dd-head">👤 <b>${esc(g.name)}</b> · 共 ${g.ids.length} 条档案</div>
+      <table class="pf-dd-tbl">
+        <thead><tr><th style="width:34px" class="c">删除</th><th>学校</th><th>班级</th><th>标签</th><th>状态</th></tr></thead>
+        <tbody>${g.ids.map(id => {
+          const p = sp[id] || {};
+          const inClass = (state.classes || []).some(c => (c.students || []).some(s => String(s.id) === id));
+          const checked = !!(ui.pfDedupSel && ui.pfDedupSel[id]);
+          const tags = (p.tags || []).filter(Boolean).join('、') || '—';
+          return `<tr class="${id === g.keep ? 'pf-dd-keep' : ''}">
+            <td class="c"><input type="checkbox" ${checked ? 'checked' : ''} onchange="pfDedupToggle('${id}',this.checked)"></td>
+            <td>${esc(p.school || '—')}</td><td>${esc(p.class || '—')}</td>
+            <td>${esc(tags)}</td>
+            <td>${id === g.keep ? '<span class="tag-ok">✔ 保留（默认）</span>' : inClass ? '<span class="tag-ok">在班</span>' : '<span class="tag-off">无班级</span>'}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+      <div class="pf-dd-tip">✔ 保留条为系统推荐（在班 / 信息更全）；勾选「删除」前请核对，每组至少保留 1 条。删除时会先把对方有用的学校/班级/标签等信息合并进保留条。</div>
+    </div>`).join('');
+  openModal('🔍 学生档案除重', `
+    <p class="muted" style="margin:0 0 10px">发现 <b>${groups.length}</b> 组重名档案。已按「<b>保留信息更全 / 在班的那条</b>」预勾选其余条目，<b>请逐条核对</b>后再删除。</p>
+    ${grpHtml}
+  `, `<span class="muted" style="font-size:12.5px;margin-right:auto">待删除 <b>${selN}</b> 条</span>
+     <button class="btn primary" onclick="doProfileDedup()" ${selN ? '' : 'disabled'}>🗑️ 核对无误，删除选中</button>
+     <button class="btn ghost" onclick="closeModal()">取消</button>`, 620);
+}
+function doProfileDedup(){
+  const groups = pfDedupGroups();
+  const sel = ui.pfDedupSel || {};
+  /* 每组至少保留一条 */
+  for (const g of groups) {
+    if (g.ids.every(id => sel[id])) {
+      return toast('「' + g.name + '」组至少需要保留 1 条档案，请取消一人的勾选');
+    }
+  }
+  const delIds = [];
+  groups.forEach(g => g.ids.forEach(id => { if (sel[id]) delIds.push(id); }));
+  if (!delIds.length) return toast('未勾选任何要删除的档案');
+  const names = delIds.map(id => (state.studentProfiles[id] || {}).name || '未命名');
+  askConfirm(`确定删除 <b>${delIds.length}</b> 条重复档案吗？<br>${esc(names.slice(0, 8).join('、'))}${names.length > 8 ? ' 等' : ''}<br><br>删除前会自动把对方有用的信息（学校/班级/备注/照片/标签/自定义字段）合并进每组保留的那条；被删档案进入回收站，可恢复。`, () => {
+    state.trash = state.trash || { classes: [], students: [], profiles: [] };
+    groups.forEach(g => {
+      const keepId = g.ids.find(id => !sel[id]);
+      if (!keepId) return;
+      g.ids.forEach(id => {
+        if (!sel[id] || id === keepId) return;
+        mergeProfileInto(keepId, id);
+        const p = state.studentProfiles[id]; if (!p) return;
+        state.trash.profiles.push({ id: String(id), name: p.name || '未命名', data: p, deletedAt: trashStamp() });
+        delete state.studentProfiles[id];
+        delete ui.profileSel[id];
+      });
+    });
+    ui.pfDedupSel = null;
+    save(); closeModal(); renderMain();
+    toastAction(`已删除 ${delIds.length} 条重复档案（信息已合并），可恢复`, '撤销', () => {
+      delIds.forEach(id => restoreTrash('profiles', String(id)));
+    });
+  }, { title: '🗑️ 删除重复档案' });
 }
 
 /* ==================================================================
