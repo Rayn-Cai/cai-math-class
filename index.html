@@ -7388,33 +7388,58 @@ function courseSyncAttend(sid, cid){
   save(); refreshCourseSection(sid);
   toast(`已按考勤日历重算：${days.length} 节 · ${co.rules.map(r => DOW_NAME[r.dow]).join('/')}`);
 }
-/* 以考勤日历为准：批量重算本班全部学生的课时安排 */
+/* 引导弹窗：说明为何无法同步 + 快捷去批量排课（点任何情况都保证有反应） */
+function attSyncGuide(msgHtml){
+  openModal('📚 同步学生课时', `
+    <div class="cf-msg">${msgHtml}</div>
+    <p class="muted" style="margin:10px 0 0;font-size:12px;line-height:1.6">💡 到「📚 批量排课」里选学生、填课程名称与起止日期后，点「📅 按考勤日历填入」会自动按本日历的上课日算好节数与上课时间——批量排好后再回到这里即可一键「同步到学生课时」。</p>`,
+    `<button class="btn primary" onclick="closeModal();openBatchCourse()">📚 去批量排课</button>
+     <button class="btn" onclick="closeModal()">取消</button>`, 500);
+}
+/* 以考勤日历为准：批量重算本班全部学生的课时安排。
+   按钮永不置灰：无课时 / 缺日期 / 无上课日都会给明确反馈或引导 */
 function attCalSyncToCourses(){
   const c = activeClass(); if (!c) return;
-  const pairs = [];
-  c.students.forEach(s => (s.courses || []).forEach(co => { if (co.start && co.end) pairs.push({ s, co }); }));
-  if (!pairs.length) return toast('本班还没有填写了起止日期的课时安排');
-  let segs = 0, total = 0, skip = 0;
+  if (!c.students || !c.students.length) return toast('本班还没有学生，先到班级里添加学生再同步');
+  const segs = [];          // 带完整起止日期的课时 → 可同步
+  let noDate = 0;           // 有课时但没填起止日期
+  c.students.forEach(s => (s.courses || []).forEach(co => {
+    if (co && co.start && co.end && co.start <= co.end) segs.push({ s, co });
+    else if (co) noDate++;
+  }));
+  const stuNoCourse = c.students.filter(s => !(s.courses || []).length).length;
+  if (!segs.length){
+    const parts = [];
+    parts.push(`本班共 <b>${c.students.length}</b> 名学生，还没有「带起止日期」的课时可同步。`);
+    if (noDate) parts.push(`其中 <b>${noDate}</b> 段课时没填开始 / 结束日期，无法按日历推算节数。`);
+    else if (stuNoCourse) parts.push(`目前还没有人为学生排课时。`);
+    return attSyncGuide(parts.join('<br>'));
+  }
+  let ok = 0, total = 0, emptyRange = 0;
   const detail = [];
-  pairs.forEach(({ s, co }) => {
+  segs.forEach(({ s, co }) => {
     const n = attendClassDays(c, co.start, co.end).length;
-    if (!n) { skip++; return; }
-    segs++; total += n;
+    if (!n) { emptyRange++; return; }
+    ok++; total += n;
     if (detail.length < 8) detail.push(`${esc(s.name)}·${esc(co.name)}：<b>${+co.total || 0}</b> → <b>${n}</b> 节`);
   });
-  if (!segs) return toast('这些课时安排的日期范围内，本日历没有上课日');
-  askConfirm(`将以<b>本班考勤日历</b>为准，重算 <b>${segs}</b> 段课时的上课时间与课时数量，合计 <b>${total}</b> 节${skip ? `（${skip} 段日期范围内无上课日，已跳过）` : ''}。<br><br>
-    ${detail.join('<br>')}${pairs.length > 8 ? '<br>…' : ''}<br><br>
+  const extra = [];
+  if (emptyRange) extra.push(`另有 <b>${emptyRange}</b> 段课时在其日期范围内<b>没有上课日</b>（本次跳过，可先调整日历或课时日期）`);
+  if (noDate) extra.push(`<b>${noDate}</b> 段课时未填起止日期（本次跳过）`);
+  if (stuNoCourse) extra.push(`<b>${stuNoCourse}</b> 名学生还没排课时`);
+  if (!ok) return attSyncGuide(`本班有课时，但这些课时的日期范围内<b>本日历没有上课日</b>。<br>请先在上方日历把对应日期点成<b>上课日</b>，再回来同步。${extra.length ? '<br><br>· ' + extra.join('<br>· ') : ''}`);
+  askConfirm(`将以<b>本班考勤日历</b>为准，重算 <b>${ok}</b> 段课时的上课时间与课时数量，合计 <b>${total}</b> 节。<br><br>
+    ${detail.join('<br>')}${segs.length > 8 ? '<br>…' : ''}${extra.length ? '<br><br><span class="muted">本次不处理：' + extra.join('；') + '。</span>' : ''}<br><br>
     课时数量＝该段起止日期内本日历的<b>上课日天数</b>；上课时间＝这些上课日对应的<b>星期</b>（沿用原时间）。已上节数会同步限制在新总数内。`, () => {
-    pairs.forEach(({ co }) => {
+    segs.forEach(({ co }) => {
       const days = attendClassDays(c, co.start, co.end);
       if (!days.length) return;
       co.total = days.length;
       co.rules = rulesFromDays(days, co.rules);
       co.attended = Math.min(+co.attended || 0, co.total);
     });
-    save(); renderAttCal();
-    toast(`已按考勤日历同步 ${segs} 段课时，合计 ${total} 节`);
+    save(); renderMain();
+    toast(`已按考勤日历同步 ${ok} 段课时，合计 ${total} 节${emptyRange ? `，${emptyRange} 段因范围内无上课日跳过` : ''}`);
   }, { title: '📚 以考勤日历同步学生课时', width: 520 });
 }
 function openAttendCal(){
@@ -7452,8 +7477,12 @@ function attCalBodyHtml(){
   const cs = courseDateStats('class');
   let monthSess = 0, monthDays = 0;
   cells.forEach(dt => { if (dt && cs.map[dt]) { monthSess += cs.map[dt].n; monthDays++; } });
-  const syncPairs = [];
-  c.students.forEach(s => (s.courses || []).forEach(co => { if (co.start && co.end) syncPairs.push(1); }));
+  const segOk = [], segNoDate = [];
+  c.students.forEach(s => (s.courses || []).forEach(co => {
+    if (co && co.start && co.end && co.start <= co.end) segOk.push(1);
+    else if (co) segNoDate.push(1);
+  }));
+  const stuNoCourseN = c.students.filter(s => !(s.courses || []).length).length;
   const grid = cells.map(dt => {
     if (!dt) return `<div class="att-cal-cell empty"></div>`;
     const wd = new Date(dt + 'T00:00:00').getDay();
@@ -7507,11 +7536,11 @@ function attCalBodyHtml(){
     <div class="att-cal-sync">
       <div class="att-sync-t">📚 以考勤日历为准 · 确定学生上课时间与课时数量</div>
       <div class="att-sync-row">
-        <span class="att-sync-info">本班 <b>${syncPairs.length}</b> 段课时安排（含起止日期）· 本月按本日历 <b>上课 ${cls} 天</b>${
-          monthSess ? ` · 已排课时 <b>${monthSess}</b> 节（${monthDays} 天）` : ' · 本月暂无已排课时'}</span>
-        <button class="btn primary sm" onclick="attCalSyncToCourses()" ${syncPairs.length ? '' : 'disabled'}>🔄 同步到学生课时</button>
+        <span class="att-sync-info">本班 <b>${c.students.length}</b> 名学生 · 带日期课时 <b>${segOk.length}</b> 段${segNoDate.length ? ` · ${segNoDate.length} 段未填日期` : ''}${stuNoCourseN ? ` · ${stuNoCourseN} 人未排课` : ''} · 本月按本日历 <b>上课 ${cls} 天</b>${
+          monthSess ? ` · 已排课时 <b>${monthSess}</b> 节（${monthDays} 天）` : ''}</span>
+        <button class="btn primary sm" onclick="attCalSyncToCourses()">🔄 同步到学生课时</button>
       </div>
-      <div class="att-sync-tip">课时数量＝该段起止日期内<b>本日历的上课日天数</b>；上课时间＝这些上课日对应的<b>星期</b>（沿用原上课时间）。也可在学生档案卡的每段课时上点「↻ 同步考勤」单独同步。</div>
+      <div class="att-sync-tip">课时数量＝该段起止日期内<b>本日历的上课日天数</b>；上课时间＝这些上课日对应的<b>星期</b>（沿用原上课时间）。还没排课的同学可点下方「📚 批量排课」统一补排（选学生 → 填日期 → 点「📅 按考勤日历填入」）。</div>
     </div>
     <div class="att-cal-grid">
       ${dows.map((d, i) => `<div class="att-cal-dow ${i >= 5 ? 'we' : ''}">${d}</div>`).join('')}
