@@ -388,6 +388,7 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .ck-legend .lg.miss{background:var(--red);border-color:var(--red)}
 .ck-legend .lg.off{background:var(--surface-alt);border-color:var(--border)}
 .ck-legend .lg.na{background:transparent;border-color:var(--border)}
+.ck-legend .lg.none{background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(0,0,0,.13) 3px,rgba(0,0,0,.13) 6px);border-color:var(--border)}
 .ck-attend{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;
   border-top:1px dashed var(--border)}
 .ck-attend-t{font-size:12.5px;font-weight:800;color:var(--text)}
@@ -558,6 +559,40 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .ck-table td.ck-rate b{font-size:13px;font-weight:800;display:block}
 .ck-table td.ck-rate i{font-style:normal;font-size:9.5px;color:var(--text-muted);font-weight:700}
 
+/* ---- 打卡任务（老师发布，未发布任务的日期不要求打卡、不计入完成率） ---- */
+.ck-th{position:relative}
+.ck-th .ck-tk-dot{position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--accent,#0f6e56)}
+.ck-th.ck-no-task-th .ck-dd{opacity:.45}
+.ck-td.ck-none{color:var(--text-muted);opacity:.5;
+  background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(0,0,0,.028) 4px,rgba(0,0,0,.028) 8px)}
+.ck-task-card{display:flex;align-items:flex-start;gap:9px;margin-top:11px;padding:9px 12px;
+  border:1px solid var(--accent-soft,#cfe6de);border-left:3px solid var(--accent,#0f6e56);
+  border-radius:10px;background:var(--accent-soft,#eef6f3)}
+.ck-task-card .ck-tk-ico{font-size:15px;line-height:1.25;flex:0 0 auto}
+.ck-task-card .ck-tk-main{flex:1;min-width:0}
+.ck-task-card .ck-tk-t{font-size:13px;font-weight:800;color:var(--text);word-break:break-all;line-height:1.35}
+.ck-task-card .ck-tk-n{font-size:11.5px;color:var(--text-secondary);margin-top:3px;white-space:pre-wrap;word-break:break-all;line-height:1.45}
+.ck-task-card .ck-tk-acts{display:flex;gap:6px;flex:0 0 auto;align-items:center}
+.ck-no-task{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:11px;padding:10px 12px;
+  border:1px dashed var(--border-strong);border-radius:10px;background:var(--surface-alt);
+  font-size:12.5px;color:var(--text-secondary)}
+.ck-tk-sec{font-size:12.5px;font-weight:800;margin:13px 0 7px;color:var(--text)}
+.ck-tk-modes{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px}
+.ck-tk-mode{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:99px;
+  padding:4px 12px;font-size:12.5px;cursor:pointer;background:var(--surface);color:var(--text)}
+.ck-tk-mode.on{border-color:var(--accent);background:var(--accent-light);color:var(--accent-dark);font-weight:700}
+.ck-tk-mode input{accent-color:var(--accent);cursor:pointer}
+.ck-tk-dows{display:flex;gap:6px;flex-wrap:wrap}
+.ck-tk-dow{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:4px 11px;
+  font-size:12.5px;cursor:pointer;color:var(--text)}
+.ck-tk-dow.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.ck-tk-prev{margin-top:10px;padding:8px 10px;border-radius:9px;background:var(--surface-alt);
+  font-size:11.5px;color:var(--text-muted);max-height:104px;overflow:auto;line-height:1.6}
+.ck-tl-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border);font-size:12.5px}
+.ck-tl-row:last-child{border-bottom:none}
+.ck-tl-date{font-weight:800;min-width:92px;color:var(--text)}
+.ck-tl-t{flex:1;min-width:0;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 /* ============ TABLES ============ */
 .tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:auto}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
@@ -649,19 +684,35 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .hw-btn.on-miss{background:var(--red-light);border-color:#f0b6b6;color:var(--red)}
 .v-g{color:var(--green)}.v-y{color:var(--yellow)}.v-r{color:var(--red)}
 
-.multi-btn{min-width:120px;max-width:210px;text-align:left;border:1px dashed var(--border-strong);border-radius:9px;
-  padding:5px 8px;background:var(--surface-alt);font-size:11.5px;color:var(--text-muted);line-height:1.5}
+.multi-btn{min-width:128px;max-width:206px;text-align:left;border:1px dashed var(--border-strong);border-radius:9px;
+  padding:4px 7px;background:var(--surface-alt);font-size:11.5px;color:var(--text-muted);line-height:1.5;
+  display:flex;flex-wrap:wrap;align-items:center;gap:2px 3px;max-height:56px;overflow:hidden}
 .multi-btn:hover{border-color:var(--accent);background:var(--accent-light)}
-.chip{display:inline-block;border-radius:6px;padding:1px 6px;font-size:11px;font-weight:700;margin:1px 2px 1px 0}
-.chip.positive{background:var(--green-light);color:var(--green)}
-.chip.negative{background:var(--red-light);color:var(--red)}
-.chip.neutral{background:var(--yellow-light);color:var(--yellow)}
+.multi-btn .ph{opacity:.65;font-size:11px}
+/* 课堂表现 / 课堂吸收 小标签：独立 class，避免与批量排课的 .chip 胶囊样式冲突 */
+.tag-chip{display:inline-flex;align-items:center;max-width:82px;border-radius:5px;padding:0 5px;
+  font-size:10.5px;font-weight:700;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  vertical-align:middle}
+.tag-chip.positive{background:var(--green-light);color:var(--green)}
+.tag-chip.negative{background:var(--red-light);color:var(--red)}
+.tag-chip.neutral{background:var(--yellow-light);color:var(--yellow)}
+.tag-chip.remark{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);max-width:96px}
+.tag-more{display:inline-flex;align-items:center;border-radius:5px;padding:0 5px;font-size:10.5px;font-weight:800;
+  line-height:16px;background:var(--surface-alt);color:var(--text-muted);border:1px dashed var(--border-strong)}
 
 .multi-panel{position:fixed;z-index:900;background:#fff;border:1px solid var(--border-strong);border-radius:var(--radius);
-  box-shadow:0 16px 44px rgba(20,55,120,.22);width:290px;max-height:60vh;display:flex;flex-direction:column;overflow:hidden}
-.mp-head{padding:10px 13px;border-bottom:1px solid var(--border);font-weight:800;font-size:13px;
-  display:flex;justify-content:space-between;align-items:center;background:var(--surface-alt)}
-.mp-body{overflow-y:auto;padding:6px}
+  box-shadow:0 16px 44px rgba(20,55,120,.22);width:322px;max-height:62vh;display:flex;flex-direction:column;overflow:hidden}
+.mp-head{padding:9px 12px;border-bottom:1px solid var(--border);font-weight:800;font-size:13px;
+  display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--surface-alt)}
+.mp-head .mp-sub{font-size:11px;font-weight:600;color:var(--text-muted)}
+.mp-body{overflow-y:auto;padding:8px 9px}
+.mp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.mp-chip{display:flex;align-items:center;gap:5px;min-width:0;border:1px solid var(--border);background:var(--surface);
+  border-radius:8px;padding:5px 7px;font-size:11.5px;line-height:1.25;cursor:pointer;text-align:left;
+  color:var(--text);transition:border-color .12s,background .12s}
+.mp-chip:hover{border-color:var(--accent)}
+.mp-chip.on{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);font-weight:700}
+.mp-chip .mp-txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mp-item{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:8px;font-size:12.5px;cursor:pointer}
 .mp-item:hover{background:var(--surface-alt)}
 .mp-item.on{background:var(--accent-light);font-weight:700;color:var(--accent-dark)}
@@ -767,6 +818,12 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 /* 概览：进步/退步对比 */
 .ov-prog{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:640px){.ov-prog{grid-template-columns:1fr}}
+/* 窄屏：表现/吸收浮层不超出屏幕，任务卡片按钮自动换行 */
+@media(max-width:640px){
+  .multi-panel{width:min(322px,calc(100vw - 20px))}
+  .ck-task-card{flex-wrap:wrap}
+  .ck-task-card .ck-tk-acts{margin-left:auto}
+}
 .ov-col{min-width:0}
 .ov-prow{display:flex;align-items:center;gap:8px;padding:4px 0}
 .ov-prow .pnm{font-weight:700;font-size:13px;min-width:56px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -4076,16 +4133,24 @@ function statRowHtml(cls, d){
     </div>`;
 }
 
-function multiBtnHtml(s, d, field){
-  const r = rec(s, d);
+/* 课堂表现 / 课堂吸收 单元格：紧凑小标签，最多显示 2 个 + 「+N」，避免选多了撑爆行高 */
+const TAG_SHOW_MAX = 2;
+function tagCellInner(r, field){
   const opts = field === 'behavior' ? BOPTS() : AOPTS();
   const sel = r[field] || [];
-  let inner = sel.length
-    ? sel.map(k => { const o = optOf(opts, k); return o ? `<span class="chip ${o.type}">${o.short}</span>` : ''; }).join('')
-    : '<span style="opacity:.7">点击选择…</span>';
+  const chips = sel.map(k => { const o = optOf(opts, k); return o ? { t:o.short, ty:o.type } : null; }).filter(Boolean);
+  let html = chips.slice(0, TAG_SHOW_MAX)
+    .map(c => `<span class="tag-chip ${c.ty}">${esc(c.t)}</span>`).join('');
+  if (chips.length > TAG_SHOW_MAX)
+    html += `<span class="tag-more" title="${esc(chips.slice(TAG_SHOW_MAX).map(c => c.t).join('、'))}">+${chips.length - TAG_SHOW_MAX}</span>`;
   const rm = (r.remark || '').trim();
-  if (rm) inner += `<span class="chip neutral" title="评语：${esc(rm)}">💬 ${rm.length > 8 ? rm.slice(0, 8) + '…' : rm}</span>`;
-  return `<button class="multi-btn" id="mb-${field}-${s.id}" onclick="openMulti(event,${s.id},'${field}')">${inner}</button>`;
+  if (rm) html += `<span class="tag-chip remark" title="评语：${esc(rm)}">💬 ${esc(rm.length > 6 ? rm.slice(0, 6) + '…' : rm)}</span>`;
+  return html || '<span class="ph">点击选择…</span>';
+}
+function multiBtnHtml(s, d, field){
+  const r = rec(s, d);
+  return `<button class="multi-btn" id="mb-${field}-${s.id}" title="点击选择${field === 'behavior' ? '课堂表现' : '课堂吸收'} / 写评语"
+    onclick="openMulti(event,${s.id},'${field}')">${tagCellInner(r, field)}</button>`;
 }
 
 /* 家庭作业单元格：分数输入/完成模式 + 📝 详情按钮 + 完成情况徽标 */
@@ -6079,17 +6144,18 @@ function openMulti(ev, sid, field){
   p.onclick = e => e.stopPropagation();
   p.innerHTML = `
     <div class="mp-head">
-      <span>${esc(f.s.name)} · ${field === 'behavior' ? '课堂表现' : '课堂吸收'}</span>
+      <span>${esc(f.s.name)} · ${field === 'behavior' ? '课堂表现' : '课堂吸收'}
+        <span class="mp-sub" id="mpCnt">已选 ${sel.length} 项</span></span>
       <span><button class="btn sm" onclick="clearMulti(${sid},'${field}')">清空</button>
       <button class="close-x" onclick="closeMulti()">×</button></span>
     </div>
     <div class="mp-body">
-      ${opts.map(o => `
-        <label class="mp-item ${sel.includes(o.key) ? 'on' : ''}">
-          <input type="checkbox" ${sel.includes(o.key) ? 'checked' : ''}
-            onchange="toggleMulti(${sid},'${field}','${o.key}',this.checked)">
-          <span class="dot t-${o.type}"></span>${o.label}
-        </label>`).join('')}
+      <div class="mp-grid">
+        ${opts.map(o => `
+          <button type="button" class="mp-chip ${sel.includes(o.key) ? 'on' : ''}" data-k="${o.key}"
+            title="${esc(o.label)}" onclick="toggleMulti(${sid},'${field}','${o.key}')">
+            <span class="dot t-${o.type}"></span><span class="mp-txt">${esc(o.label)}</span></button>`).join('')}
+      </div>
     </div>
     <div class="mp-remark">
       <div class="mp-remark-t">💬 当日评语
@@ -6102,9 +6168,9 @@ function openMulti(ev, sid, field){
     </div>`;
   document.body.appendChild(p);
   const rect = ev.currentTarget.getBoundingClientRect();
-  const w = 290, ph = Math.min(p.scrollHeight + 4, window.innerHeight * 0.6);
+  const w = 322, ph = Math.min(p.scrollHeight + 4, window.innerHeight * 0.62);
   let left = rect.left, top = rect.bottom + 6;
-  if (left + w > window.innerWidth - 10) left = window.innerWidth - w - 10;
+  if (left + w > window.innerWidth - 10) left = Math.max(8, window.innerWidth - w - 10);
   if (top + ph > window.innerHeight - 10) top = Math.max(10, rect.top - ph - 6);
   p.style.left = left + 'px';
   p.style.top = top + 'px';
@@ -6113,17 +6179,21 @@ function toggleMulti(sid, field, key, on){
   const f = findStudentById(sid); if (!f) return;
   const r = rec(f.s, state.activeDate);
   const arr = new Set(r[field] || []);
-  if (on) arr.add(key); else arr.delete(key);
+  const want = (on === undefined) ? !arr.has(key) : !!on;   // 不传 on 时按当前状态取反（面板点选）
+  if (want) arr.add(key); else arr.delete(key);
   r[field] = Array.from(arr);
   save();
   refreshMultiBtn(f.s, field);
+  syncMultiPanel(f.s, field);
+}
+/* 面板内选中态与数据保持同步（点选后不重建面板，避免滚动位置跳动） */
+function syncMultiPanel(s, field){
   const p = document.getElementById('multiPanel');
-  if (p) {
-    p.querySelectorAll('.mp-item').forEach(item => {
-      const cb = item.querySelector('input');
-      item.classList.toggle('on', cb.checked);
-    });
-  }
+  if (!p) return;
+  const sel = rec(s, state.activeDate)[field] || [];
+  p.querySelectorAll('.mp-chip').forEach(el => el.classList.toggle('on', sel.indexOf(el.dataset.k) >= 0));
+  const cnt = document.getElementById('mpCnt');
+  if (cnt) cnt.textContent = `已选 ${sel.length} 项`;
 }
 function clearMulti(sid, field){
   const f = findStudentById(sid); if (!f) return;
@@ -6305,15 +6375,8 @@ function pbDel(i){
 function refreshMultiBtn(s, field){
   const btn = document.getElementById(`mb-${field}-${s.id}`);
   if (!btn) return;
-  const opts = field === 'behavior' ? BOPTS() : AOPTS();
   const r = rec(s, state.activeDate);
-  const sel = r[field] || [];
-  let inner = sel.length
-    ? sel.map(k => { const o = optOf(opts, k); return o ? `<span class="chip ${o.type}">${o.short}</span>` : ''; }).join('')
-    : '<span style="opacity:.7">点击选择…</span>';
-  const rm = (r.remark || '').trim();
-  if (rm) inner += `<span class="chip neutral" title="评语：${esc(rm)}">💬 ${rm.length > 8 ? rm.slice(0, 8) + '…' : rm}</span>`;
-  btn.innerHTML = inner;
+  btn.innerHTML = tagCellInner(r, field);
 }
 document.addEventListener('click', () => { closeMulti(); closeErrPick(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMulti(); closeModal(); } });
@@ -7281,8 +7344,21 @@ function ckStore(date){
 function ckRec(cls, sid, date){
   return (cls.checkins && cls.checkins[date] && cls.checkins[date][String(sid)]) || null;
 }
+/* ===== 打卡任务：任务由老师发布，只有「发布过任务」的日期才需要打卡 =====
+   cls.checkinTasks = { 'YYYY-MM-DD': { id, title, note, at } }
+   未发布任务的日期 → 状态 none：不要求打卡、不计入完成率、不标红。
+   兼容老数据：班级没有任何任务时（checkinTasks 为空）沿用「每天打卡」旧规则；
+   进入任务模式后，历史上已有打卡记录的日期仍视为有效打卡日。 */
+function ckTasks(cls){ return cls.checkinTasks || (cls.checkinTasks = {}); }
+function ckTaskOf(cls, date){ return (cls.checkinTasks && cls.checkinTasks[date]) || null; }
+function ckTaskMode(cls){ return !!(cls.checkinTasks && Object.keys(cls.checkinTasks).length); }
+function ckDayHasRec(cls, date){
+  const st = cls.checkins && cls.checkins[date];
+  return !!(st && Object.keys(st).length);
+}
 function ckState(cls, sid, date){
   if (cls.checkinOff && cls.checkinOff[date]) return 'off';
+  if (ckTaskMode(cls) && !ckTaskOf(cls, date) && !ckDayHasRec(cls, date)) return 'none';  // 未发布任务
   if (cls.checkinStart && date < cls.checkinStart) return 'na';
   const r = ckRec(cls, sid, date);
   if (r && r.st === 'done') return 'done';
@@ -7307,7 +7383,17 @@ function ckMark(sid, date, st, at){
 }
 function ckToggle(sid, date){
   const c = activeClass(); if (!c) return;
+  if (ckState(c, sid, date) === 'none') return ckNoTaskGuide(date);
   ckMark(sid, date, ckState(c, sid, date) === 'done' ? 'miss' : 'done');
+}
+/* 未发布任务时的引导：不做静默处理，任何点击都给明确反馈与下一步入口 */
+function ckNoTaskGuide(date){
+  openModal('📭 该日还没有打卡任务', `
+    <div class="ck-cur"><b>${fmtDateCN(date)}</b> 尚未发布打卡任务，所以学生无需打卡，也不会被记「未完成」。</div>
+    <div class="hint">发布任务后，这一天才会进入月历统计。适合「不是每天都有任务」的班级节奏：哪天布置了练习，就发布哪天的任务。</div>`,
+    `<button class="btn" onclick="closeModal()">知道了</button>
+     <button class="btn" onclick="closeModal();openCkTaskList()">📋 任务管理</button>
+     <button class="btn primary" onclick="closeModal();openCkTask('${date}')">📢 发布这天任务</button>`, 480);
 }
 function ckToggleOff(date){
   const c = activeClass(); if (!c) return;
@@ -7769,6 +7855,7 @@ function applyAttGlobal(scope){
 }
 function ckAllDone(date){
   const c = activeClass(); if (!c || !c.students.length) return;
+  if (ckTaskMode(c) && !ckTaskOf(c, date)) return ckNoTaskGuide(date);
   const st = ckStore(date);
   let n = 0;
   c.students.forEach(s => { const id = String(s.id); if (!st[id]) { st[id] = { st:'done' }; n++; } });
@@ -7789,7 +7876,7 @@ function ckStats(cls, sid, month){
   let need = 0, done = 0, makeup = 0, miss = 0;
   ckDays(month).forEach(d => {
     const s = ckState(cls, sid, d);
-    if (s === 'off' || s === 'na' || s === 'future') return;
+    if (s === 'off' || s === 'na' || s === 'future' || s === 'none') return;   // 未发布任务的日子不计入
     need++;
     if (s === 'done') done++;
     else if (s === 'makeup') { done++; makeup++; }
@@ -7801,7 +7888,9 @@ function openCkCell(sid, date, noAnim){
   const c = activeClass(); if (!c) return;
   const s = c.students.find(x => String(x.id) === String(sid)); if (!s) return;
   const cur = ckState(c, sid, date), r = ckRec(c, sid, date) || {};
-  const label = { done:'✅ 已打卡', makeup:'🕘 补卡', miss:'❌ 未完成', off:'☕ 免打卡日', na:'— 打卡开始日之前', future:'· 日期未到' }[cur];
+  if (cur === 'none') return ckNoTaskGuide(date);
+  const label = { done:'✅ 已打卡', makeup:'🕘 补卡', miss:'❌ 未完成', off:'☕ 免打卡日', na:'— 打卡开始日之前',
+                  future:'· 日期未到', none:'📭 无打卡任务' }[cur];
   const isOff = !!(c.checkinOff && c.checkinOff[date]);
   const m = r.m || '';
   const mBtns = [['master','🟢 掌握','m-green'],['partial','🟡 部分掌握','m-yellow'],['unknown','🔴 未掌握','m-red']]
@@ -7864,6 +7953,149 @@ function ckSaveMakeup(sid, date){
   const at = (el && el.value) || todayStr();
   ckMark(sid, date, 'makeup', at);
   closeModal(); toast(`已登记补卡（${at}）`);
+}
+
+/* ==================================================================
+   打卡任务：由老师发布，只有发布过的日期才需要打卡
+   ================================================================== */
+const CK_TASK_BTNS = `<button class="btn" onclick="closeModal()">取消</button>
+  <button class="btn primary" onclick="ckTaskSave()">📢 发布任务</button>`;
+function openCkTask(presetDate){
+  const c = activeClass(); if (!c) return;
+  const d0 = presetDate || state.activeDate || todayStr();
+  ui.ckTaskMode = ui.ckTaskMode || 'single';
+  const d = ui.ckTaskDraft = ui.ckTaskDraft || {};
+  if (!d.single && !presetDate) d.single = d0;
+  if (presetDate) { d.single = presetDate; d.s = presetDate; d.wFrom = presetDate; }
+  if (!d.s) d.s = d0;
+  if (!d.e) d.e = shiftDate(d0, 6);
+  if (!d.wFrom) d.wFrom = d0;
+  if (!d.weeks) d.weeks = '4';
+  if (!ui.ckTaskDows || !ui.ckTaskDows.length) ui.ckTaskDows = [new Date(d0 + 'T00:00:00').getDay()];
+  openModal('📢 发布打卡任务', ckTaskFormHtml(), CK_TASK_BTNS, 560);
+  ckTaskPreview();
+}
+function ckTaskFormHtml(){
+  const d = ui.ckTaskDraft || {}, m = ui.ckTaskMode || 'single';
+  const modeBtn = (v, t) => `<label class="ck-tk-mode ${m === v ? 'on' : ''}" onclick="ckTaskSetMode('${v}')">
+      <input type="radio" name="ckTkMode" ${m === v ? 'checked' : ''} onclick="ckTaskSetMode('${v}')">${t}</label>`;
+  let body = '';
+  if (m === 'single') {
+    body = `<div class="field"><label>任务日期</label><input type="date" id="ckTkSingle" value="${d.single || ''}" onchange="ckTaskPreview()"></div>`;
+  } else if (m === 'range') {
+    body = `<div class="row" style="gap:8px">
+      <div class="field" style="flex:1"><label>开始日期</label><input type="date" id="ckTkStart" value="${d.s || ''}" onchange="ckTaskPreview()"></div>
+      <div class="field" style="flex:1"><label>结束日期</label><input type="date" id="ckTkEnd" value="${d.e || ''}" onchange="ckTaskPreview()"></div>
+    </div>`;
+  } else {
+    body = `<div class="field"><label>从哪天开始</label><input type="date" id="ckTkWFrom" value="${d.wFrom || ''}" onchange="ckTaskPreview()"></div>
+    <div class="field" style="margin-top:8px"><label>重复星期（可多选）</label>
+      <div class="ck-tk-dows">${[1,2,3,4,5,6,0].map(w => `<button type="button" class="ck-tk-dow ${(ui.ckTaskDows || []).indexOf(w) >= 0 ? 'on' : ''}"
+        onclick="ckTaskToggleDow(${w})">${'周' + '日一二三四五六'[w]}</button>`).join('')}</div></div>
+    <div class="field" style="margin-top:8px"><label>持续周数</label>
+      <input type="number" id="ckTkWeeks" min="1" max="52" value="${d.weeks || '4'}" oninput="ckTaskPreview()"></div>`;
+  }
+  return `
+    <div class="field"><label>任务标题</label>
+      <input id="ckTkTitle" value="${esc(d.title || '')}" placeholder="例如：有理数混合运算 20 题（限时 15 分钟）"></div>
+    <div class="field" style="margin-top:8px"><label>要求 / 说明（可选）</label>
+      <textarea id="ckTkNote" placeholder="例如：完成后拍照上传，错题当天订正">${esc(d.note || '')}</textarea></div>
+    <div class="ck-tk-sec">发布到哪些日期</div>
+    <div class="ck-tk-modes">${modeBtn('single','单个日期')}${modeBtn('range','连续日期')}${modeBtn('week','按星期批量')}</div>
+    ${body}
+    <div class="ck-tk-prev" id="ckTkPrev">—</div>
+    <div class="hint" style="margin-top:9px">只有发布任务的日期才需要打卡、才计入完成率；没有任务的日子在月历里显示为空，学生不会被记「未完成」。</div>`;
+}
+/* 表单 ↔ 草稿同步：切换模式 / 预览前先把已填内容收进 ui.ckTaskDraft，避免丢失 */
+function ckTaskReadDraft(){
+  const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const d = ui.ckTaskDraft = ui.ckTaskDraft || {};
+  d.title = g('ckTkTitle'); d.note = g('ckTkNote');
+  const sv = g('ckTkSingle'); if (sv) d.single = sv;
+  const s = g('ckTkStart'); if (s) d.s = s;
+  const e = g('ckTkEnd'); if (e) d.e = e;
+  const w = g('ckTkWFrom'); if (w) d.wFrom = w;
+  const k = g('ckTkWeeks'); if (k) d.weeks = k;
+  return d;
+}
+function ckTaskSetMode(m){ ckTaskReadDraft(); ui.ckTaskMode = m; openCkTask(); }
+function ckTaskToggleDow(w){
+  ckTaskReadDraft();
+  ui.ckTaskDows = ui.ckTaskDows || [];
+  const i = ui.ckTaskDows.indexOf(w);
+  if (i >= 0) ui.ckTaskDows.splice(i, 1); else ui.ckTaskDows.push(w);
+  openCkTask();
+}
+/* 依据当前模式算出将发布的日期列表 */
+function ckTaskDates(){
+  const m = ui.ckTaskMode || 'single', d = ui.ckTaskDraft || {}, out = [];
+  if (m === 'single') { if (d.single) out.push(d.single); }
+  else if (m === 'range') { if (d.s && d.e && d.s <= d.e) for (let x = d.s; x <= d.e; x = shiftDate(x, 1)) out.push(x); }
+  else {
+    const from = d.wFrom || todayStr();
+    const weeks = Math.max(1, Math.min(52, parseInt(d.weeks || '4', 10) || 4));
+    const dows = ui.ckTaskDows || [];
+    for (let i = 0; i < weeks * 7; i++){
+      const x = shiftDate(from, i);
+      if (dows.indexOf(new Date(x + 'T00:00:00').getDay()) >= 0) out.push(x);
+    }
+  }
+  return out.filter(Boolean).sort().filter((v, i, a) => i === 0 || v !== a[i - 1]);
+}
+function ckTaskPreview(){
+  ckTaskReadDraft();
+  const el = document.getElementById('ckTkPrev');
+  if (!el) return;
+  const ds = ckTaskDates(), c = activeClass();
+  let dup = 0;
+  if (c && c.checkinTasks) ds.forEach(x => { if (c.checkinTasks[x]) dup++; });
+  el.innerHTML = ds.length
+    ? `将发布 <b>${ds.length}</b> 天${dup ? `（其中 <b>${dup}</b> 天已有任务，将被覆盖）` : ''}：<br>${ds.slice(0, 40).map(x => x.slice(5).replace('-', '/')).join('、')}${ds.length > 40 ? ' …' : ''}`
+    : '请先选择日期（上方日期或星期）';
+}
+function ckTaskSave(){
+  ckTaskReadDraft();
+  const c = activeClass(); if (!c) return;
+  const dates = ckTaskDates();
+  if (!dates.length) return toast('请先选择要发布任务的日期');
+  const title = String((ui.ckTaskDraft && ui.ckTaskDraft.title) || '').trim() || '打卡';
+  const note = String((ui.ckTaskDraft && ui.ckTaskDraft.note) || '').trim();
+  const ts = ckTasks(c);
+  dates.forEach(dt => { ts[dt] = { id: 'tk' + uid(), title, note, at: todayStr() }; });
+  ui.ckTaskDraft = {}; ui.ckTaskDows = null;
+  save(); closeModal(); renderMain();
+  toast(`已发布 ${dates.length} 天打卡任务：${title}`);
+}
+/* 任务管理：已发布任务列表（编辑 / 删除） */
+function openCkTaskList(){
+  const c = activeClass(); if (!c) return;
+  const tk = c.checkinTasks || {};
+  const keys = Object.keys(tk).sort();
+  const rows = keys.map(dt => {
+    const t = tk[dt] || {};
+    const wd = '日一二三四五六'[new Date(dt + 'T00:00:00').getDay()];
+    return `<div class="ck-tl-row">
+      <span class="ck-tl-date">${dt.slice(5).replace('-', '/')} 周${wd}</span>
+      <span class="ck-tl-t" title="${esc((t.title || '打卡') + (t.note ? ' · ' + t.note : ''))}">${esc(t.title || '打卡')}${t.note ? `<span style="opacity:.6"> · ${esc(t.note)}</span>` : ''}</span>
+      <button class="btn sm" onclick="closeModal();openCkTask('${dt}')">编辑</button>
+      <button class="btn sm danger" onclick="ckTaskDel('${dt}')">删除</button>
+    </div>`;
+  }).join('');
+  openModal('📋 打卡任务管理', `
+    <div class="muted" style="font-size:12.5px;margin-bottom:8px">共 <b>${keys.length}</b> 天已发布任务。删除任务后该日不再计入完成率（已登记的打卡记录会保留）。</div>
+    <div style="max-height:50vh;overflow:auto;border:1px solid var(--border);border-radius:10px">
+      ${rows || '<div class="empty" style="padding:16px">还没有发布过任务，点「发布任务」开始</div>'}</div>
+    <div class="hint" style="margin-top:9px">💡 任务模式下，只有这里列出的日期才要求打卡。</div>`,
+    `<button class="btn" onclick="closeModal()">关闭</button>
+     <button class="btn primary" onclick="closeModal();openCkTask()">📢 发布任务</button>`, 620);
+}
+function ckTaskDel(date, silent){
+  const c = activeClass(); if (!c || !c.checkinTasks) return;
+  delete c.checkinTasks[date];
+  const left = Object.keys(c.checkinTasks).length;
+  save(); renderMain();
+  toast(left ? `已删除 ${date} 的打卡任务` : '已删除任务，本班回到「每天打卡」模式');
+  if (!silent) openCkTaskList();
 }
 
 /* ===== 每日打卡内容（按日期，班级级附件） ===== */
@@ -8014,6 +8246,8 @@ function renderCheckin(){
   cls.students.forEach(s => { const st = ckStats(cls, s.id, month); tn += st.need; td += st.done; });
   const monthRate = tn ? Math.round(td / tn * 100) : 0;
 
+  const tkMode = ckTaskMode(cls);
+  const tkN = tkMode ? Object.keys(cls.checkinTasks).length : 0;
   const bar = `
     <div class="card ck-bar">
       <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
@@ -8021,6 +8255,9 @@ function renderCheckin(){
         <b style="min-width:104px;text-align:center">${month.split('-')[0]} 年 ${+month.split('-')[1]} 月</b>
         <button class="btn sm" onclick="ckShiftMonth(1)">▶</button>
         <button class="btn sm" onclick="ckSetMonth('${today.slice(0, 7)}')">本月</button>
+        <span class="ck-sep"></span>
+        <button class="btn primary" onclick="openCkTask()" title="发布打卡任务：只有发布过任务的日期才需要打卡">📢 发布任务</button>
+        <button class="btn" onclick="openCkTaskList()" title="查看 / 编辑 / 删除已发布的任务">📋 任务管理${tkN ? ` (${tkN})` : ''}</button>
         <span class="ck-sep"></span>
         <span class="muted">打卡开始日</span>
         <input type="date" class="ck-date" value="${cls.checkinStart || ''}" onchange="ckSetStart(this.value)" title="早于该日期的格子不计入统计">
@@ -8032,9 +8269,11 @@ function renderCheckin(){
       </div>
       <div class="ck-legend">
         <span><i class="lg done"></i>已打卡</span><span><i class="lg makeup"></i>补卡</span>
-        <span><i class="lg miss"></i>未完成</span><span><i class="lg off"></i>休息日（免打卡）</span>
-        <span><i class="lg na"></i>未开始 / 未到</span>
-        <span class="muted" style="margin-left:auto">休息日（免打卡）不计入完成率统计</span>
+        <span><i class="lg miss"></i>未完成</span><span><i class="lg off"></i>免打卡日</span>
+        ${tkMode ? '<span><i class="lg none"></i>未发布任务（无需打卡）</span>' : '<span><i class="lg na"></i>未开始 / 未到</span>'}
+        <span class="muted" style="margin-left:auto">${tkMode
+          ? '当前为「<b>按任务打卡</b>」模式：只有发布过任务的日期才统计'
+          : '当前为「每天打卡」模式 —— 点「📢 发布任务」即可改为按任务打卡'}</span>
       </div>
     </div>`;
 
@@ -8057,22 +8296,39 @@ function renderCheckin(){
         </div>`).join('')}</div>`
         : `<div class="muted" style="padding:2px 0">暂无当日打卡内容，点击「＋ 上传」添加图片或文件</div>`}
     </div>`;
+  const task = ckTaskOf(cls, d);
+  const noTask = tkMode && !task;
+  const taskBlock = noTask
+    ? `<div class="ck-no-task">📭 ${fmtDateCN(d)} <b>未发布打卡任务</b> —— 学生无需打卡，也不计入完成率。
+        <button class="btn primary sm" style="margin-left:auto" onclick="openCkTask('${d}')">📢 发布今日任务</button></div>`
+    : (task ? `<div class="ck-task-card">
+        <span class="ck-tk-ico">📢</span>
+        <div class="ck-tk-main">
+          <div class="ck-tk-t">${esc(task.title || '打卡')}</div>
+          ${task.note ? `<div class="ck-tk-n">${esc(task.note)}</div>` : ''}
+        </div>
+        <div class="ck-tk-acts">
+          <button class="btn sm" onclick="openCkTask('${d}')">编辑</button>
+          <button class="btn sm danger" onclick="ckTaskDel('${d}',1)">删除</button>
+        </div></div>` : '');
   const quick = `
     <div class="card ck-quick">
       <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
         <div><b style="font-size:15px">📌 ${fmtDateCN(d)} 打卡</b>
-          <span class="muted" style="margin-left:8px">${isOff ? '本日为免打卡日' : `已完成 ${doneN}/${cls.students.length} 人`}</span></div>
+          <span class="muted" style="margin-left:8px">${isOff ? '本日为免打卡日' : noTask ? '今日无任务' : `已完成 ${doneN}/${cls.students.length} 人`}</span></div>
         <div class="row">
-          <button class="btn primary" onclick="ckAllDone('${d}')">✅ 全班打卡</button>
-          <button class="btn ${isOff ? '' : 'warn'}" onclick="ckToggleOff('${d}')">${isOff ? '↩️ 恢复打卡日' : '☕ 设为免打卡日'}</button>
+          ${noTask ? `<button class="btn" onclick="openCkTaskList()">📋 任务管理</button>`
+                   : `<button class="btn primary" onclick="ckAllDone('${d}')">✅ 全班打卡</button>
+                      <button class="btn ${isOff ? '' : 'warn'}" onclick="ckToggleOff('${d}')">${isOff ? '↩️ 恢复打卡日' : '☕ 设为免打卡日'}</button>`}
           <button class="btn danger" onclick="ckClearDay('${d}')">清除当日</button>
         </div>
       </div>
+      ${taskBlock}
       <div class="ck-grid">
         ${cls.students.map(s => {
           const st = ckState(cls, s.id, d), r = ckRec(cls, s.id, d);
           const txt = st === 'done' ? '已打卡' : st === 'makeup' ? `补卡 ${r && r.at ? r.at.slice(5) : ''}`
-                    : st === 'off' ? '免打卡' : st === 'na' ? '未开始' : '未完成';
+                    : st === 'off' ? '免打卡' : st === 'na' ? '未开始' : st === 'none' ? '无任务' : '未完成';
           return `<button class="ck-chip ck-${st}" onclick="ckToggle('${s.id}','${d}')"
             oncontextmenu="event.preventDefault();openCkCell('${s.id}','${d}')"
             title="左键切换 已打卡/未完成 · 右键更多操作（补卡等）">
@@ -8085,8 +8341,13 @@ function renderCheckin(){
 
   const head = days.map(dd => {
     const off = !!(cls.checkinOff && cls.checkinOff[dd]);
+    const tk = ckTaskOf(cls, dd);
+    const noTk = tkMode && !tk;
     const wd = ['日','一','二','三','四','五','六'][new Date(dd + 'T00:00:00').getDay()];
-    return `<th class="ck-th ${off ? 'off' : ''} ${dd === today ? 'today' : ''}" onclick="ckToggleOff('${dd}')" title="${dd} · ${off ? '免打卡日（点击恢复）' : '点击设为免打卡日'}">
+    const title = `${dd} · ${off ? '免打卡日（点击恢复）' : tk ? '已发布任务：' + (tk.title || '打卡') + '（点击设为免打卡日）' : '点击设为免打卡日'}`;
+    return `<th class="ck-th ${off ? 'off' : ''} ${dd === today ? 'today' : ''} ${noTk ? 'ck-no-task-th' : ''}"
+      onclick="ckToggleOff('${dd}')" title="${esc(title)}">
+      ${tk ? '<i class="ck-tk-dot" title="已发布打卡任务"></i>' : ''}
       <div class="ck-dd">${+dd.slice(8)}</div><div class="ck-wd">${off ? '休' : wd}</div></th>`;
   }).join('');
 
@@ -8094,12 +8355,12 @@ function renderCheckin(){
     const st = ckStats(cls, s.id, month);
     const tds = days.map(dd => {
       const k = ckState(cls, s.id, dd), r = ckRec(cls, s.id, dd);
-      const sym = { done:'✓', makeup:'补', miss:'✕', off:'·', na:'–', future:'' }[k];
+      const sym = { done:'✓', makeup:'补', miss:'✕', off:'·', na:'–', future:'', none:'·' }[k];
       const mBadge = r && r.m ? `<i class="ck-m-badge m-${r.m}" title="${r.m === 'master' ? '掌握' : r.m === 'partial' ? '部分掌握' : '未掌握'}"></i>` : '';
       const mTxt = r && r.m ? ` · ${r.m === 'master' ? '掌握' : r.m === 'partial' ? '部分掌握' : '未掌握'}` : '';
       const tip = k === 'makeup' && r && r.at ? `${dd} 未按时打卡，补卡于 ${r.at}${mTxt}`
                 : k === 'miss' ? `${dd} 未完成` : k === 'done' ? `${dd} 已打卡${mTxt}`
-                : k === 'off' ? `${dd} 免打卡日` : dd;
+                : k === 'off' ? `${dd} 免打卡日` : k === 'none' ? `${dd} 未发布打卡任务（点击可发布）` : dd;
       return `<td class="ck-td ck-${k}" onclick="openCkCell('${s.id}','${dd}')" title="${esc(tip)}">
         <span class="ck-sym">${sym}</span>${k === 'makeup' && r && r.at ? `<i class="ck-at">${r.at.slice(5).replace('-', '/')}</i>` : ''}${mBadge}</td>`;
     }).join('');
@@ -10823,6 +11084,11 @@ function exportCheckinCSV(){
   if (!cls || !cls.students.length) return toast('本班暂无学生');
   const month = ckMonth(), days = ckDays(month);
   const rows = [['姓名', ...days.map(d => +d.slice(8) + '日'), '应打卡', '已完成', '补卡', '未完成', '完成率']];
+  if (ckTaskMode(cls)) {                       // 任务模式：导出一份「当日任务」行，便于核对
+    const tr = ['📢 当日任务'];
+    days.forEach(d => { const t = ckTaskOf(cls, d); tr.push(t ? (t.title || '打卡') : '无任务'); });
+    rows.push(tr);
+  }
   cls.students.forEach(s => {
     const line = [s.name];
     days.forEach(d => {
