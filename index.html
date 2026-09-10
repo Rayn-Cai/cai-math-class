@@ -5009,8 +5009,24 @@ function ymdLocal(d){
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
 }
 /* 依据起止日期 + 上课时间规则，推算所有上课日期 */
-function courseSessions(co){
-  if (!co || !co.start || !co.end || !co.rules || !co.rules.length) return [];
+function courseSessions(co, cls){
+  if (!co || !co.start || !co.end) return [];
+  /* 传了班级 → 以「本班考勤日历」为准展开：起止范围内标记为「上课」的日期即为课时。
+     这是 2026-09-10 的关键改动：日历说休息就不排课，避免 rules 与日历不一致时多算/误销。 */
+  if (cls){
+    const out = [];
+    const byDow = {};
+    (co.rules || []).forEach(r => { byDow[+r.dow] = r; });
+    const ref = (co.rules && co.rules[0]) || {};
+    let guard = 0;
+    for (let d = co.start; d <= co.end && guard++ < 1000; d = shiftDate(d, 1)){
+      if (attIsRest(cls, d)) continue;                       // 日历标为休息 → 不计课时
+      const r = byDow[new Date(d + 'T00:00:00').getDay()] || ref;
+      out.push({ date: d, time: r.time || '', dur: +r.dur || 0 });
+    }
+    return out;
+  }
+  if (!co.rules || !co.rules.length) return [];
   const out = [];
   const cur = new Date(co.start + 'T00:00:00');
   const end = new Date(co.end + 'T23:59:59');
@@ -5041,7 +5057,7 @@ function courseSectionHtml(sid){
     const st = courseStatus(co);
     const pct = total ? Math.round(attended / total * 100) : 0;
     const rulesTxt = (co.rules || []).map(r => DOW_NAME[+r.dow] + ' ' + (r.time || '') + (r.dur ? ' (' + r.dur + '分钟)' : '')).join('、') || '（未设置具体时间）';
-    const sessions = courseSessions(co);
+    const sessions = courseSessions(co, f.c);   // 以本班考勤日历为准
     const schedHtml = sessions.length
       ? '<div class="sc-cs-sched">' + sessions.map(s => '<span class="sc-cs-day">' + mdShort(s.date) + (s.time ? ' ' + esc(s.time) : '') + '</span>').join('') + '</div>'
       : '';
@@ -5092,24 +5108,24 @@ function refreshCourseSection(sid){
 function attWent(k){ return k === 'present' || k === 'late'; }
 function coLogN(co){ return Object.keys(co.attLog || {}).length; }
 function coAttended(co){ return Math.min(+co.total || 0, (+co.attBase || 0) + coLogN(co)); }
-/* 找出某日期归属的课时安排：优先「规则星期匹配」，其次「日期范围覆盖」 */
-function courseOfDate(s, d){
+/* 找出某日期归属的课时安排。★ 以「本班考勤日历」为唯一真源（2026-09-10 强化）：
+   ① 日历标为休息 → 该日不销课（哪怕 rules 里写着这个星期几）；
+   ② 日历标为上课 → 优先取「星期匹配」的段，其次取覆盖该日期的段（手动排课没设星期）。
+   这样「排课 rules 与日历不一致」的历史数据不会再误销课时。 */
+function courseOfDate(s, d, cls){
   const list = (s.courses || []).filter(co => co && co.start && co.end && d >= co.start && d <= co.end);
   if (!list.length) return null;
+  if (!cls) cls = (findStudentById(s.id) || {}).c;
+  // ① 考勤日历说这天休息 → 不销课
+  if (cls && attIsRest(cls, d)) return null;
   const dow = new Date(d + 'T00:00:00').getDay();
-  // 1. 优先按星期匹配（按考勤日历排课时已自动写好 rules）
-  const hit = list.find(co => (co.rules || []).some(r => +r.dow === dow));
-  if (hit) return hit;
-  // 2. 没匹配但某段 rules 为空（手动排课没指定星期）→ 视为「整段都上课」
-  const anyFree = list.find(co => !(co.rules || []).length);
-  if (anyFree) return anyFree;
-  // 3. rules 已设但没有匹配的星期 → 该日不销课（避免误销）
-  return null;
+  // ② 优先按星期匹配（按考勤日历排课时已自动写好 rules）；否则取覆盖该日期的第一段
+  return list.find(co => (co.rules || []).some(r => +r.dow === dow)) || list[0];
 }
 /* 单次出勤写入后的课时同步（返回 +1 / -1 / 0） */
-function syncCourseHours(s, d, key){
+function syncCourseHours(s, d, key, cls){
   if (state.autoHours === false) return 0;
-  const co = courseOfDate(s, d);
+  const co = courseOfDate(s, d, cls);
   if (!co) return 0;
   co.attLog = co.attLog || {};
   const went = attWent(key);
@@ -5182,37 +5198,51 @@ function coursePendingDays(s, co){
   let n = 0;
   Object.keys(s.records || {}).forEach(d => {
     if (d < co.start || d > co.end) return;
+    if (cls && attIsRest(cls, d)) return;          // 日历标为休息 → 本来就不该有课时
     if (!studentWentOn(s, d, cls)) return;
     if (co.attLog && co.attLog[d]) return;
     n++;
   });
   return n;
 }
-/* 按历史考勤重算某个学生的全部课时「已上节数」（修复存量未销课） */
+/* 按历史考勤重算某个学生的全部课时「已上节数」（修复存量未销课）
+   ★ 2026-09-10：以「本班考勤日历」为准 —— 先清掉落在休息日的错误核销，再补漏销。
+   返回 { seg, auto:新增, removed:清理, changed } */
 function courseRecalcFromAttend(s){
   const list = (s.courses || []);
-  if (!list.length) return { seg: 0, auto: 0, changed: 0 };
-  let auto = 0;
+  if (!list.length) return { seg: 0, auto: 0, removed: 0, changed: 0 };
   const cls = arguments.length > 1 ? arguments[1] : (findStudentById(s.id) || {}).c;
+  let auto = 0, removed = 0;
+  const oldAttended = {};
+  list.forEach(co => { oldAttended[co.id] = +co.attended || 0; });
+  /* ① 补漏销：日历上课日 + 已出勤（或打卡，按设置）的日期 */
   const dates = {};
   Object.keys(s.records || {}).forEach(d => { dates[d] = 1; });
   if ((state.autoHoursSrc || 'att') === 'att+ck' && cls && cls.checkins) Object.keys(cls.checkins).forEach(d => { dates[d] = 1; });
   Object.keys(dates).sort().forEach(d => {
     if (!studentWentOn(s, d, cls)) return;
-    const co = courseOfDate(s, d);
+    const co = courseOfDate(s, d, cls);
     if (!co) return;
     co.attLog = co.attLog || {};
     if (co.attLog[d]) return;   // 保留已有核销（包括手动点选），不重复扣
     co.attLog[d] = 1; auto++;
   });
+  /* ② 清理不合法的核销：落在考勤日历的休息日、或超出该段起止日期的记录 */
+  /* ③ 首次重算：把「无法归因到日期」的历史节数固化为手动基线（老数据总数守恒，
+        但已清理掉的错误记录不再计入，保证课消跟着日历走） */
   list.forEach(co => {
-    if (co.attBase === undefined) {
-      // 首次重算：把「无法归因到具体日期」的历史手动节数保留为基线，避免旧数据被清零
-      co.attBase = Math.max(0, (+co.attended || 0) - coLogN(co));
-    }
+    co.attLog = co.attLog || {};
+    let rm = 0;
+    Object.keys(co.attLog).forEach(d => {
+      const inRange = !co.start || !co.end || (d >= co.start && d <= co.end);
+      const isClassDay = !cls || !attIsRest(cls, d);
+      if (!inRange || !isClassDay) { delete co.attLog[d]; rm++; }
+    });
+    removed += rm;
+    if (co.attBase === undefined) co.attBase = Math.max(0, (oldAttended[co.id] || 0) - coLogN(co) - rm);
     co.attended = coAttended(co);
   });
-  return { seg: list.length, auto, changed: list.length };
+  return { seg: list.length, auto, removed, changed: list.length };
 }
 /* 一键按考勤核销全班（只补漏销，不影响已有核销） */
 function quickRecalcAll(){
@@ -5220,19 +5250,19 @@ function quickRecalcAll(){
   if (!c.students.length) return toast('本班还没有学生');
   const withCourse = c.students.filter(s => (s.courses || []).length);
   if (!withCourse.length) return toast('本班还没有学生排课时，先到「📚 批量排课」排好再来');
-  let added = 0, people = 0;
+  let added = 0, removed = 0, people = 0;
   withCourse.forEach(s => {
-    let before = 0;
-    (s.courses || []).forEach(co => { before += coLogN(co); });
-    const r = courseRecalcFromAttend(s);
-    let after = 0;
-    (s.courses || []).forEach(co => { after += coLogN(co); });
-    if (after > before) { added += (after - before); people++; }
+    const r = courseRecalcFromAttend(s, c);
+    added += r.auto; removed += r.removed;
+    if (r.auto || r.removed) people++;
   });
   save(); renderMain();
-  toast(added > 0
-    ? `⚡ 一键核销完成：${people} 人新增 ${added} 节（已保留你之前手动点选的核销）`
-    : `已检查 ${withCourse.length} 人，无需补销（之前的核销没遗漏）`);
+  const bits = [];
+  if (removed) bits.push(`清理 <b>${removed}</b> 节落在非上课日的记录`);
+  if (added) bits.push(`补销 <b>${added}</b> 节`);
+  toast(people
+    ? `⚡ 已按考勤日历核销：${people} 人${bits.length ? '，' + bits.join('、') : ''}`
+    : `已核对 ${withCourse.length} 人，课消与考勤日历完全一致 ✅`);
 }
 /* 本班「已出勤但还没销课」的总天数（用于提示历史欠账） */
 function attPendingAll(){
@@ -5260,16 +5290,16 @@ function courseRecalcAll(){
   if (!c.students.length) return toast('本班还没有学生');
   const withCourse = c.students.filter(s => (s.courses || []).length);
   if (!withCourse.length) return toast('本班还没有学生排课时，先到「📚 批量排课」排好再来');
-  let days = 0, diff = 0, people = 0;
+  let days = 0, diff = 0, people = 0, removed = 0;
   withCourse.forEach(s => {
     const before = (s.courses || []).reduce((a, co) => a + (+co.attended || 0), 0);
-    const r = courseRecalcFromAttend(s);
+    const r = courseRecalcFromAttend(s, c);
     const after = (s.courses || []).reduce((a, co) => a + (+co.attended || 0), 0);
-    days += r.auto;
-    if (after !== before) { diff += after - before; people++; }
+    days += r.auto; removed += r.removed;
+    if (after !== before || r.removed) { diff += after - before; people++; }
   });
   save(); renderMain();
-  toast(`已按考勤重算 ${withCourse.length} 人：累计 ${days} 天有效出勤，${people ? diff + ' 节变化' : '节数无变化'}`);
+  toast(`已按考勤日历重算 ${withCourse.length} 人：累计 ${days} 天有效出勤${removed ? `，清理 ${removed} 条非上课日记录` : ''}，${people ? diff + ' 节变化' : '节数无变化'}`);
 }
 function courseAddAtt(sid, cid){
   const f = findStudentById(sid); if (!f) return;
@@ -5494,16 +5524,19 @@ function bcFillFromAttend(){
   renderBcRules(); renderBcCalendar();
   toast(`已按考勤日历填入：${days.length} 节 · ${ui._bcRules.map(r => DOW_NAME[r.dow]).join('/')}`);
 }
-/* 按当前课表自动填入「上课次数」，免去手工数节数 */
+/* 按「本班考勤日历」自动填入「上课次数」与上课星期（日历是唯一真源） */
 function bcFillTotal(){
   const d = ui.bcDraft || {};
   if (!d.start || !d.end) return toast('请先填写开始 / 结束日期');
-  const rules = (ui._bcRules || []).map(r => ({ dow:+r.dow, time:r.time, dur:+r.dur || 0 }));
-  const n = courseSessions({ start: d.start, end: d.end, rules }).length;
-  if (!n) return toast('当前规则在日期范围内没有上课日，请调整日期或上课时间');
+  const cls = bcAttendClass();
+  const days = attendClassDays(cls, d.start, d.end);
+  if (!days.length) return toast('该日期范围内，考勤日历没有上课日 —— 请先调整日历或起止日期');
+  const n = days.length;
+  ui._bcRules = rulesFromDays(days, ui._bcRules);   // 星期也按日历校正
   ui.bcDraft.total = n;
   const el = document.getElementById('bcTotal'); if (el) el.value = n;
-  toast('已按课表自动填入 ' + n + ' 节');
+  renderBcRules(); renderBcCalendar();
+  toast(`已按考勤日历填入 ${n} 节 · ${ui._bcRules.map(r => DOW_NAME[r.dow]).join('/')}`);
 }
 function bcSelIds(){
   ui.bcSel = ui.bcSel || {};
@@ -5619,10 +5652,17 @@ function applyBatchCourse(){
     const f = findStudentById(id);
     if (!f) { noCls++; return; }               // 无班级（仅档案）无法挂课时，跳过
     f.s.courses = f.s.courses || [];
+    /* ★ 以本班考勤日历为准：起止日期内按日历算出节数与上课星期（时间/时长沿用用户设置），
+       从源头避免「课时排的星期与日历不一致」导致非上课日也被算课时。 */
+    let segTotal = total, segRules = rules.slice();
+    if (start && end && start <= end && f.c){
+      const days = attendClassDays(f.c, start, end);
+      if (days.length){ segTotal = days.length; segRules = rulesFromDays(days, rules); }
+    }
     const exist = f.s.courses.find(x => String(x.name || '').trim() === name);
     if (exist && mode === 'skip') { skipSame++; return; }
-    if (exist && mode === 'update') { Object.assign(exist, { start, end, total, rules: rules.slice() }); updated++; return; }
-    const co = { id: uid(), name, start, end, total, rules: rules.slice(), attended: 0 };
+    if (exist && mode === 'update') { Object.assign(exist, { start, end, total: segTotal, rules: segRules.slice() }); updated++; return; }
+    const co = { id: uid(), name, start, end, total: segTotal, rules: segRules.slice(), attended: 0 };
     f.s.courses.push(co); created.push({ sid: id, cid: co.id }); added++;
   });
   if (!added && !updated) {
@@ -7047,7 +7087,7 @@ function setAttCell(cid, sid, date, key){
     setMakeup(f.s, date, '');
   } else {
     rec(f.s, date).attendance = key;
-    syncCourseHours(f.s, date, key);         // 出勤自动销课时
+    syncCourseHours(f.s, date, key, f.c);    // 出勤自动销课时（以本班考勤日历为准）
     if (key !== 'leave') setMakeup(f.s, date, '');
   }
   closeMulti(); save(); renderMain();
@@ -7749,15 +7789,16 @@ function attToggleDay(date){
 function courseDateStats(scope){
   const map = {}, stus = new Set();
   let sessions = 0;
-  const feed = (s, co) => courseSessions(co).forEach(se => {
+  /* ★ 以各班考勤日历为准：日历标为休息的日期不计入课时 */
+  const feed = (s, cls, co) => courseSessions(co, cls).forEach(se => {
     const o = map[se.date] = map[se.date] || { n: 0, stus: new Set() };
     o.n++; o.stus.add(String(s.id)); sessions++; stus.add(String(s.id));
   });
   if (scope === 'class') {
     const c = activeClass(); if (!c) return { map, dates: [], students: 0, sessions: 0 };
-    c.students.forEach(s => (s.courses || []).forEach(co => feed(s, co)));
+    c.students.forEach(s => (s.courses || []).forEach(co => feed(s, c, co)));
   } else {
-    (state.classes || []).forEach(c => c.students.forEach(s => (s.courses || []).forEach(co => feed(s, co))));
+    (state.classes || []).forEach(c => c.students.forEach(s => (s.courses || []).forEach(co => feed(s, c, co))));
   }
   return { map, dates: Object.keys(map).sort(), students: stus.size, sessions };
 }
@@ -7788,11 +7829,18 @@ function courseSyncAttend(sid, cid){
   if (!co.start || !co.end) return toast('请先为该课时安排填写开始 / 结束日期');
   const days = attendClassDays(f.c, co.start, co.end);
   if (!days.length) return toast('该日期范围内，本班考勤日历没有上课日');
+  /* 老数据首次同步：先把「无法归因到日期」的历史节数固化为手动基线（必须在清理 attLog 前算） */
+  if (co.attBase === undefined) co.attBase = Math.max(0, (+co.attended || 0) - coLogN(co));
+  /* 同步时一并清理「非上课日」的核销记录，保证课消与日历同频 */
+  const daySet = {}; days.forEach(d => { daySet[d] = 1; });
+  co.attLog = co.attLog || {};
+  let removed = 0;
+  Object.keys(co.attLog).forEach(d => { if (!daySet[d]) { delete co.attLog[d]; removed++; } });
   co.total = days.length;
   co.rules = rulesFromDays(days, co.rules);
-  co.attended = Math.min(+co.attended || 0, co.total);
+  co.attended = coAttended(co);   // = min(total, 手动基线 + 有效核销数)
   save(); refreshCourseSection(sid);
-  toast(`已按考勤日历重算：${days.length} 节 · ${co.rules.map(r => DOW_NAME[r.dow]).join('/')}`);
+  toast(`已按考勤日历重算：${days.length} 节 · ${co.rules.map(r => DOW_NAME[r.dow]).join('/')}${removed ? `，并清理 ${removed} 条非上课日记录` : ''}`);
 }
 /* 引导弹窗：说明为何无法同步 + 快捷去批量排课（点任何情况都保证有反应） */
 function attSyncGuide(msgHtml){
@@ -7899,6 +7947,14 @@ function attCalBodyHtml(){
     else if (co) segNoDate.push(1);
   }));
   const stuNoCourseN = c.students.filter(s => !(s.courses || []).length).length;
+  /* ★ 一致性体检：学生课时的「星期规则」口径 vs 「考勤日历」口径，本月不一致的段数。
+     不一致＝历史上先按 rules 排的课，还没跟着日历同步过来（会造成非上课日也被算课时）。 */
+  let mismatch = 0;
+  c.students.forEach(s => (s.courses || []).forEach(co => {
+    if (!co || !co.start || !co.end) return;
+    const inM = x => x.date.slice(0, 7) === ui.attCalMonth;
+    if (courseSessions(co).filter(inM).length !== courseSessions(co, c).filter(inM).length) mismatch++;
+  }));
   const grid = cells.map(dt => {
     if (!dt) return `<div class="att-cal-cell empty"></div>`;
     const wd = new Date(dt + 'T00:00:00').getDay();
@@ -7953,10 +8009,10 @@ function attCalBodyHtml(){
       <div class="att-sync-t">📚 以考勤日历为准 · 确定学生上课时间与课时数量</div>
       <div class="att-sync-row">
         <span class="att-sync-info">本班 <b>${c.students.length}</b> 名学生 · 带日期课时 <b>${segOk.length}</b> 段${segNoDate.length ? ` · ${segNoDate.length} 段未填日期` : ''}${stuNoCourseN ? ` · ${stuNoCourseN} 人未排课` : ''} · 本月按本日历 <b>上课 ${cls} 天</b>${
-          monthSess ? ` · 已排课时 <b>${monthSess}</b> 节（${monthDays} 天）` : ''}</span>
+          monthSess ? ` · 学生课时 <b>${monthSess}</b> 节（${monthDays} 天 · 按日历计）` : ''}${mismatch ? ` · <b style="color:var(--red)">⚠ ${mismatch} 段排的星期与日历不一致</b>` : ''}</span>
         <button class="btn primary sm" onclick="attCalSyncToCourses()">🔄 同步到学生课时</button>
       </div>
-      <div class="att-sync-tip">课时数量＝该段起止日期内<b>本日历的上课日天数</b>；上课时间＝这些上课日对应的<b>星期</b>（沿用原上课时间）。还没排课的同学可点下方「📚 批量排课」统一补排（选学生 → 填日期 → 点「📅 按考勤日历填入」）。</div>
+      <div class="att-sync-tip">📌 <b>课时核销以本日历为准</b>：只有日历标「课」的日期才算学生课时、才会被出勤核销；标「休」的日期即使登记了出勤也<b>不销课</b>。课时数量＝该段起止日期内<b>本日历的上课日天数</b>；上课时间＝这些上课日对应的<b>星期</b>（沿用原时间）。${mismatch ? '<br>⚠️ 检测到有课时的星期设置与日历不一致（多为早期先排课、后改日历所致），点上方「🔄 同步到学生课时」可一键按日历修正。' : ''}还没排课的同学可点下方「📚 批量排课」统一补排（选学生 → 填日期 → 点「📅 按考勤日历填入」）。</div>
       <div class="att-sync-row" style="margin-top:8px">
         <span class="att-sync-info">⚡ <b>已上节数</b>：在「日常反馈表」登记出勤/迟到会自动销 1 节${attPendingAll() ? ` —— 目前有 <b style="color:var(--yellow)">${attPendingAll()}</b> 天已出勤但还没销课` : '（已全部同步）'}</span>
         <button class="btn sm" onclick="courseRecalcAll()">⚡ 全班按考勤重算</button>
@@ -10117,7 +10173,7 @@ function summaryDailySection(cls){
 function renderSchedule(){
   const items = [];
   state.classes.forEach(c => c.students.forEach(s => (s.courses || []).forEach(co => {
-    courseSessions(co).forEach(se => items.push({ date: se.date, time: se.time || '', dur: se.dur || 0, sname: s.name, clsName: c.name, name: co.name }));
+    courseSessions(co, c).forEach(se => items.push({ date: se.date, time: se.time || '', dur: se.dur || 0, sname: s.name, clsName: c.name, name: co.name }));
   })));
   const view = ui.scheduleView || 'week';
   const cursor = ui.scheduleCursor || state.activeDate;
@@ -12221,7 +12277,7 @@ function ledgerDayHtml(s, cls, co, d){
 }
 function ledgerSegHtml(s, cls, co){
   const total = +co.total || 0, used = coAttended(co);
-  const days = (!co.start || !co.end) ? [] : courseSessions(co);
+  const days = (!co.start || !co.end) ? [] : courseSessions(co, cls);
   const gone = days.filter(x => x.date <= todayStr());
   const grid = days.length
     ? '<div class="lg-grid">' + days.map(x => ledgerDayHtml(s, cls, co, x.date)).join('') + '</div>'
