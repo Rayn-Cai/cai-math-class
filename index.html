@@ -4250,6 +4250,7 @@ function renderRoster(){
   const rows = rankedRows(cls, d);
   const ready = rankReady(cls, d);
   const qs = statsOf(cls, d, 'quiz'), hs = statsOf(cls, d, 'homework');
+  const pendingAll = attPendingAll();   // 顶部显示欠销天数
 
   /* #141 分页：学生多时只渲染当前页，避免大表格卡顿 */
   const PG_SIZE = 25;
@@ -4334,10 +4335,11 @@ function renderRoster(){
   <div class="stat-row" id="statRow">${statRowHtml(cls, d)}</div>
 
   <div class="batch-bar">
+    <button class="btn primary" onclick="quickRecalcAll()" title="扫全班×所有课时段，把「该上课 + 已出勤/打卡」的日期一次性核销；后续再点新出勤也会自动销">⚡ 一键按考勤核销全班</button>
     <button class="btn ${ui.rosterBatch ? 'primary' : ''}" onclick="toggleRosterBatch()">⚡ ${ui.rosterBatch ? '退出批量录入' : '批量录入'}</button>
     <button class="btn ${ui.quickBar ? 'primary' : ''}" onclick="toggleQuickBar()" title="一键全勤 / 作业全完成 / 全班同分等">🚀 今日快捷</button>
     <button class="btn ${ui.rosterSelect ? 'primary' : ''}" onclick="toggleRosterSelect()" title="勾选学生后可批量删除">☑️ ${ui.rosterSelect ? '退出选择' : '选择学生'}</button>
-    <span class="batch-tip">${ui.rosterBatch ? '紧凑模式：姓名·出勤·小测·作业，回车跳到下一格，改完自动保存' : '日常表支持回车跳格、↑↓跨行跳转；学生多时自动分页。点「选择学生」勾选后批量删除'}</span>
+    <span class="batch-tip">${pendingAll ? `<b style="color:#c0392b">⚠ 还有 ${pendingAll} 天欠销</b> · ` : ''}${ui.rosterBatch ? '紧凑模式：姓名·出勤·小测·作业，回车跳到下一格，改完自动保存' : '日常表支持回车跳格、↑↓跨行跳转；学生多时自动分页。点「选择学生」勾选后批量删除'}</span>
   </div>
   ${ui.quickBar ? quickBarHtml(cls, d) : ''}
   ${ui.rosterBatch ? renderBatchTable(cls, d) : ''}
@@ -5095,7 +5097,14 @@ function courseOfDate(s, d){
   const list = (s.courses || []).filter(co => co && co.start && co.end && d >= co.start && d <= co.end);
   if (!list.length) return null;
   const dow = new Date(d + 'T00:00:00').getDay();
-  return list.find(co => (co.rules || []).some(r => +r.dow === dow)) || list[0];
+  // 1. 优先按星期匹配（按考勤日历排课时已自动写好 rules）
+  const hit = list.find(co => (co.rules || []).some(r => +r.dow === dow));
+  if (hit) return hit;
+  // 2. 没匹配但某段 rules 为空（手动排课没指定星期）→ 视为「整段都上课」
+  const anyFree = list.find(co => !(co.rules || []).length);
+  if (anyFree) return anyFree;
+  // 3. rules 已设但没有匹配的星期 → 该日不销课（避免误销）
+  return null;
 }
 /* 单次出勤写入后的课时同步（返回 +1 / -1 / 0） */
 function syncCourseHours(s, d, key){
@@ -5183,7 +5192,6 @@ function coursePendingDays(s, co){
 function courseRecalcFromAttend(s){
   const list = (s.courses || []);
   if (!list.length) return { seg: 0, auto: 0, changed: 0 };
-  list.forEach(co => { co.attLog = {}; });
   let auto = 0;
   const cls = arguments.length > 1 ? arguments[1] : (findStudentById(s.id) || {}).c;
   const dates = {};
@@ -5192,7 +5200,9 @@ function courseRecalcFromAttend(s){
   Object.keys(dates).sort().forEach(d => {
     if (!studentWentOn(s, d, cls)) return;
     const co = courseOfDate(s, d);
-    if (!co || co.attLog[d]) return;
+    if (!co) return;
+    co.attLog = co.attLog || {};
+    if (co.attLog[d]) return;   // 保留已有核销（包括手动点选），不重复扣
     co.attLog[d] = 1; auto++;
   });
   list.forEach(co => {
@@ -5203,6 +5213,26 @@ function courseRecalcFromAttend(s){
     co.attended = coAttended(co);
   });
   return { seg: list.length, auto, changed: list.length };
+}
+/* 一键按考勤核销全班（只补漏销，不影响已有核销） */
+function quickRecalcAll(){
+  const c = activeClass(); if (!c) return;
+  if (!c.students.length) return toast('本班还没有学生');
+  const withCourse = c.students.filter(s => (s.courses || []).length);
+  if (!withCourse.length) return toast('本班还没有学生排课时，先到「📚 批量排课」排好再来');
+  let added = 0, people = 0;
+  withCourse.forEach(s => {
+    let before = 0;
+    (s.courses || []).forEach(co => { before += coLogN(co); });
+    const r = courseRecalcFromAttend(s);
+    let after = 0;
+    (s.courses || []).forEach(co => { after += coLogN(co); });
+    if (after > before) { added += (after - before); people++; }
+  });
+  save(); renderMain();
+  toast(added > 0
+    ? `⚡ 一键核销完成：${people} 人新增 ${added} 节（已保留你之前手动点选的核销）`
+    : `已检查 ${withCourse.length} 人，无需补销（之前的核销没遗漏）`);
 }
 /* 本班「已出勤但还没销课」的总天数（用于提示历史欠账） */
 function attPendingAll(){
