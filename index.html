@@ -577,6 +577,9 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
   font-size:12.5px;color:var(--text-secondary);line-height:1.55}
 .ck-orphan b{color:var(--yellow,#c98a1a)}
 .ck-orphan .btn{margin-left:auto}
+.ck-opt{display:flex;align-items:center;gap:7px;padding:8px 11px;margin-top:8px;
+  background:var(--accent-light);border-radius:9px;font-size:12.5px;line-height:1.5;cursor:pointer}
+.ck-opt input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
 .ck-task-card{display:flex;align-items:flex-start;gap:9px;margin-top:11px;padding:9px 12px;
   border:1px solid var(--accent-soft,#cfe6de);border-left:3px solid var(--accent,#0f6e56);
   border-radius:10px;background:var(--accent-soft,#eef6f3)}
@@ -1700,7 +1703,52 @@ th.atc-d.we-sun small{color:var(--red)}
 .sm-badge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
 .sm-badge.low{color:var(--red)}.sm-badge.low{background:var(--red-light)}
 .sm-badge.ok{background:var(--accent-light);color:var(--accent)}
-.sm-foot{margin-top:12px;text-align:right}
+.sm-mini2{height:26px;padding:0 9px;border-radius:7px;background:var(--surface-alt);font-size:11.5px;font-weight:700;white-space:nowrap}
+.sm-mini2:hover{background:var(--accent);color:#fff}
+.sm-seg{display:inline-block;margin-left:7px;font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;
+  background:var(--accent-light);color:var(--accent);vertical-align:1px}
+.sm-seg.legacy{background:var(--yellow-light);color:var(--yellow)}
+.sm-sel-src{width:auto!important;min-width:104px;padding:3px 6px!important;font-size:11.5px}
+.sm-foot{margin-top:12px;text-align:right;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+
+/* ---- 📒 课时账本（逐日核销 / 手动改课消） ---- */
+.lg-head{margin-bottom:12px}
+.lg-kpi{display:flex;gap:10px}
+.lg-kpi > div{flex:1;text-align:center;padding:9px 4px;background:var(--surface-alt);border-radius:10px;border:1px solid var(--border)}
+.lg-kpi b{display:block;font-size:19px;font-weight:800;line-height:1.2}
+.lg-kpi i{font-style:normal;font-size:10.5px;color:var(--text-muted);font-weight:700}
+.lg-kpi .used b{color:var(--accent)}
+.lg-kpi .low b{color:var(--red)}
+.lg-note{margin-top:9px;font-size:11.5px;color:var(--text-secondary);line-height:1.65;
+  background:var(--accent-light);border-radius:9px;padding:8px 11px}
+.lg-seg{border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px;margin-bottom:11px;background:var(--surface)}
+.lg-seg-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.lg-seg-h b{font-size:13.5px}
+.lg-seg-r{font-size:11px;color:var(--text-muted);font-weight:700}
+.lg-seg-n{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:9px 0 7px}
+.lg-fld{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text-muted);font-weight:700}
+.lg-fld input{width:56px;padding:3px 6px;border:1px solid var(--border-strong);border-radius:7px;text-align:center;font-size:12.5px}
+.lg-fld.ro b{font-size:13px;color:var(--text)}
+.lg-fld.ro b.low{color:var(--red)}
+.lg-seg-bar{height:7px;background:var(--surface-alt);border-radius:999px;overflow:hidden}
+.lg-seg-bar > i{display:block;height:100%;background:linear-gradient(90deg,#0f6e56,#14b8a6);border-radius:999px}
+.lg-seg-tip{font-size:11px;color:var(--text-muted);margin:6px 0 8px;line-height:1.6}
+.lg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:5px;max-height:212px;overflow-y:auto;padding-right:2px}
+.lg-day{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 2px 4px;
+  border:1px solid var(--border);border-radius:8px;background:var(--surface-alt);cursor:pointer;min-height:46px}
+.lg-day i{font-style:normal;font-size:12.5px;font-weight:800;line-height:1.1}
+.lg-day em{font-style:normal;font-size:9px;font-weight:700;color:var(--text-muted);line-height:1.1}
+.lg-day em.at-present{color:var(--green)}
+.lg-day em.at-late{color:var(--yellow)}
+.lg-day em.at-leave{color:var(--orange)}
+.lg-day em.at-absent{color:var(--red)}
+.lg-day em.ck{color:var(--accent)}
+.lg-day b{position:absolute;top:1px;right:3px;font-size:10px;color:var(--green)}
+.lg-day.on{background:var(--accent-light);border-color:var(--accent)}
+.lg-day.on i{color:var(--accent-dark)}
+.lg-day.off{opacity:.55}
+.lg-day:hover{border-color:var(--accent);transform:translateY(-1px)}
+@media(max-width:640px){.lg-grid{grid-template-columns:repeat(auto-fill,minmax(46px,1fr))}}
 .sm-empty{padding:16px;color:var(--text-muted);font-size:13px;background:var(--surface-alt);border-radius:var(--radius);text-align:center}
 .sm-empty-sm{padding:8px;font-size:12px}
 .sm-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
@@ -2387,6 +2435,7 @@ function loadFromStorage(){
   } catch (e) { console.error(e); return false; }
 }
 function normalizeState(){
+  if (state.autoHoursSrc !== 'att' && state.autoHoursSrc !== 'att+ck') state.autoHoursSrc = 'att';
   state.classes = state.classes || [];
   state.classes.forEach(c => {
     c.students = c.students || [];
@@ -5010,6 +5059,7 @@ function courseSectionHtml(sid){
         <button class="btn sm" onclick="courseAddAtt('${sid}',${co.id})">＋已上一节</button>
         <button class="btn sm ghost" onclick="courseSubAtt('${sid}',${co.id})">－撤销一节</button>
         <button class="btn sm ghost" onclick="courseRecalcOne('${sid}')" title="按该生历史考勤记录重算已上节数（补齐过去漏销的课时）">⚡ 按考勤重算</button>
+        <button class="btn sm ghost" onclick="openCourseLedger('${sid}')" title="逐日查看并手动核销 / 取消核销">📒 课消明细</button>
         <button class="btn sm ghost" onclick="courseSyncAttend('${sid}',${co.id})" title="按本班考勤日历的上课日，重算上课时间与课时数量">↻ 同步考勤</button>
         <button class="btn sm ghost" onclick="openCourseEditor('${sid}',${co.id})">✏️ 编辑</button>
         <button class="btn sm ghost del" onclick="courseDel('${sid}',${co.id})">🗑 删除</button>
@@ -5018,7 +5068,8 @@ function courseSectionHtml(sid){
   }).join('');
   return `<div class="sc-sec" id="scCourseSec"><div class="sc-sec-t">📚 课时安排
       <button class="btn sm" style="margin-left:8px" onclick="openCourseEditor('${sid}',null)">＋ 新增课时安排</button>
-      ${list.length ? `<button class="btn sm ghost" style="margin-left:6px" onclick="courseRecalcOne('${sid}')" title="按该生历史考勤重算全部已上节数">⚡ 按考勤重算</button>` : ''}</div>
+      ${list.length ? `<button class="btn sm ghost" style="margin-left:6px" onclick="courseRecalcOne('${sid}')" title="按该生历史考勤重算全部已上节数">⚡ 按考勤重算</button>
+        <button class="btn sm ghost" style="margin-left:6px" onclick="openCourseLedger('${sid}')" title="逐日核销 / 取消核销，可直接改总课时与已上节数">📒 课消明细</button>` : ''}</div>
     ${autoOff ? '<div class="sc-cs-warn">⚠️ 「出勤自动计课时」已在设置中关闭，登记出勤不会自动销课。可到 ⚙️ 设置重新开启。</div>' : ''}
     ${items || '<div class="muted" style="padding:6px 0">还没有课时安排。点击「＋ 新增课时安排」，设置学习时间范围、上课次数与具体上课时间（如每周一三五 19:00）。</div>'}
   </div>`;
@@ -5059,13 +5110,70 @@ function syncCourseHours(s, d, key){
   if (delta) co.attended = Math.max(0, Math.min(+co.total || 0, (+co.attended || 0) + delta));
   return delta;
 }
+/* ==================================================================
+   课时单一真源（2026-09-10）：一切课时统计以 s.courses 为准
+   s.hoursTotal / hoursUsed 是早期遗留字段，仅在「该生还没排课」时兜底。
+   智能中心 / 续费预警 / 批量设置课时 全部走 hoursSummary，保证数据同频。
+   ================================================================== */
+function hoursSummary(s){
+  const list = s.courses || [];
+  if (list.length){
+    let total = 0, used = 0;
+    list.forEach(co => { total += (+co.total || 0); used += coAttended(co); });
+    return { total, used, left: Math.max(0, total - used), segs: list.length, src: 'courses' };
+  }
+  const total = +s.hoursTotal || 0, used = Math.min(total, +s.hoursUsed || 0);
+  return { total, used, left: Math.max(0, total - used), segs: 0, src: 'legacy' };
+}
+/* 把「已上节数」调整到目标值 want：差额分摊到各段课时的手动基线 attBase，返回实际达成值 */
+function setCourseUsed(s, want){
+  const list = s.courses || [];
+  if (!list.length) return null;
+  let diff = Math.max(0, +want || 0) - hoursSummary(s).used;
+  if (!diff) return hoursSummary(s).used;
+  const order = diff < 0 ? list.slice().reverse() : list.slice();
+  order.forEach(co => {
+    if (!diff) return;
+    co.attBase = +co.attBase || 0;
+    const cap = Math.max(0, (+co.total || 0) - coLogN(co));   // 手动基线上限
+    if (diff < 0) { const d = Math.min(co.attBase, -diff); co.attBase -= d; diff += d; }
+    else { const d = Math.min(cap - co.attBase, diff); if (d > 0) { co.attBase += d; diff -= d; } }
+    co.attended = coAttended(co);
+  });
+  return hoursSummary(s).used;
+}
+/* 把「总课时」调整到目标值 want：差额分摊到各段课时的 total */
+function setCourseTotal(s, want){
+  const list = s.courses || [];
+  if (!list.length) return null;
+  let diff = Math.max(0, +want || 0) - hoursSummary(s).total;
+  if (!diff) return hoursSummary(s).total;
+  (diff < 0 ? list.slice().reverse() : list.slice()).forEach(co => {
+    if (!diff) return;
+    const t = +co.total || 0;
+    if (diff < 0) { const d = Math.min(t, -diff); co.total = t - d; diff += d; }
+    else { co.total = t + diff; diff = 0; }
+    co.attended = coAttended(co);
+  });
+  return hoursSummary(s).total;
+}
+/* 核销判定：某天该生是否算到课（出勤登记为准，可选叠加打卡记录） */
+function studentWentOn(s, d, cls){
+  const a = (s.records && s.records[d] && s.records[d].attendance) || '';
+  if (a === 'present' || a === 'late') return true;
+  if (a === 'leave' || a === 'absent') return false;
+  if ((state.autoHoursSrc || 'att') !== 'att+ck') return false;   // 未登记出勤：按设置决定是否看打卡
+  const st = cls && cls.checkins && cls.checkins[d] && cls.checkins[d][String(s.id)];
+  return !!(st && (st.st === 'done' || st.st === 'makeup'));
+}
 /* 某段课时「出勤了但还没销课」的天数（用于提示历史欠账） */
 function coursePendingDays(s, co){
   if (!co.start || !co.end) return 0;
+  const cls = arguments.length > 2 ? arguments[2] : (findStudentById(s.id) || {}).c;
   let n = 0;
   Object.keys(s.records || {}).forEach(d => {
     if (d < co.start || d > co.end) return;
-    if (!attWent((s.records[d] || {}).attendance)) return;
+    if (!studentWentOn(s, d, cls)) return;
     if (co.attLog && co.attLog[d]) return;
     n++;
   });
@@ -5077,8 +5185,12 @@ function courseRecalcFromAttend(s){
   if (!list.length) return { seg: 0, auto: 0, changed: 0 };
   list.forEach(co => { co.attLog = {}; });
   let auto = 0;
-  Object.keys(s.records || {}).sort().forEach(d => {
-    if (!attWent((s.records[d] || {}).attendance)) return;
+  const cls = arguments.length > 1 ? arguments[1] : (findStudentById(s.id) || {}).c;
+  const dates = {};
+  Object.keys(s.records || {}).forEach(d => { dates[d] = 1; });
+  if ((state.autoHoursSrc || 'att') === 'att+ck' && cls && cls.checkins) Object.keys(cls.checkins).forEach(d => { dates[d] = 1; });
+  Object.keys(dates).sort().forEach(d => {
+    if (!studentWentOn(s, d, cls)) return;
     const co = courseOfDate(s, d);
     if (!co || co.attLog[d]) return;
     co.attLog[d] = 1; auto++;
@@ -7692,19 +7804,29 @@ function attCalSyncToCourses(){
   if (noDate) extra.push(`<b>${noDate}</b> 段课时未填起止日期（本次跳过）`);
   if (stuNoCourse) extra.push(`<b>${stuNoCourse}</b> 名学生还没排课时`);
   if (!ok) return attSyncGuide(`本班有课时，但这些课时的日期范围内<b>本日历没有上课日</b>。<br>请先在上方日历把对应日期点成<b>上课日</b>，再回来同步。${extra.length ? '<br><br>· ' + extra.join('<br>· ') : ''}`);
+  const srcTxt = (state.autoHoursSrc || 'att') === 'att+ck' ? '出勤登记或打卡记录' : '出勤登记（出勤 / 迟到）';
   askConfirm(`将以<b>本班考勤日历</b>为准，重算 <b>${ok}</b> 段课时的上课时间与课时数量，合计 <b>${total}</b> 节。<br><br>
     ${detail.join('<br>')}${segs.length > 8 ? '<br>…' : ''}${extra.length ? '<br><br><span class="muted">本次不处理：' + extra.join('；') + '。</span>' : ''}<br><br>
-    课时数量＝该段起止日期内本日历的<b>上课日天数</b>；上课时间＝这些上课日对应的<b>星期</b>（沿用原时间）。已上节数会同步限制在新总数内。`, () => {
-    segs.forEach(({ co }) => {
+    课时数量＝该段起止日期内本日历的<b>上课日天数</b>；上课时间＝这些上课日对应的<b>星期</b>（沿用原时间）。<br><br>
+    <label class="ck-opt"><input type="checkbox" id="attSyncRecalc" checked> 同时<b>按到课情况核销</b>已上节数（依据：${srcTxt}，已过的日期）</label>`, () => {
+    const doRecalc = !!(document.getElementById('attSyncRecalc') || {}).checked;
+    segs.forEach(({ s, co }) => {
       const days = attendClassDays(c, co.start, co.end);
       if (!days.length) return;
       co.total = days.length;
       co.rules = rulesFromDays(days, co.rules);
-      co.attended = Math.min(+co.attended || 0, co.total);
+      if (doRecalc){
+        if (co.attBase === undefined) co.attBase = 0;
+        co.attLog = {};
+        days.forEach(d => { if (d <= todayStr() && studentWentOn(s, d, c)) co.attLog[d] = 1; });
+        co.attended = coAttended(co);
+      } else {
+        co.attended = Math.min(+co.attended || 0, co.total);
+      }
     });
     save(); renderMain();
-    toast(`已按考勤日历同步 ${ok} 段课时，合计 ${total} 节${emptyRange ? `，${emptyRange} 段因范围内无上课日跳过` : ''}`);
-  }, { title: '📚 以考勤日历同步学生课时', width: 520 });
+    toast(`已按考勤日历同步 ${ok} 段课时，合计 ${total} 节${doRecalc ? '，并按到课情况核销' : ''}${emptyRange ? `，${emptyRange} 段因范围内无上课日跳过` : ''}`);
+  }, { title: '📚 以考勤日历同步学生课时', width: 540 });
 }
 function openAttendCal(){
   const c = activeClass(); if (!c) return;
@@ -11882,11 +12004,12 @@ function smartKpi(cls){
   }));
   return { quiz: qn ? Math.round(qsum / qn * 10) / 10 : null, hw: hwN ? Math.round(hwDone / hwN * 100) : null, att: attN ? Math.round(att / attN * 100) : null };
 }
+/* 续费 / 课时预警：一律走 hoursSummary（真源 s.courses），与排课、核销完全同频 */
 function renewalList(cls){
   const warn = +state.hourWarn || 4;
   const list = cls.students.map(s => {
-    const total = +s.hoursTotal || 0, used = +s.hoursUsed || 0, left = total - used;
-    return { s, total, used, left, low: total > 0 && left <= warn };
+    const h = hoursSummary(s);
+    return { s, total: h.total, used: h.used, left: h.left, segs: h.segs, src: h.src, low: h.total > 0 && h.left <= warn };
   }).filter(x => x.total > 0);
   list.sort((a, b) => (b.low ? 1 : 0) - (a.low ? 1 : 0) || a.left - b.left);
   return list;
@@ -11955,16 +12078,22 @@ function renderSmart(){
   const sceneOpts = Object.keys(AI_SCENES).map(k => '<option value="' + k + '" ' + (state.ai.scene === k ? 'selected' : '') + '>' + AI_SCENES[k] + '</option>').join('');
   const renHtml = ren.length ? '<div class="sm-rows">' + ren.map(x => {
     const pct = x.total ? Math.round(x.used / x.total * 100) : 0;
+    const segTip = x.src === 'courses'
+      ? '<span class="sm-seg" title="来自课时安排">📚 ' + x.segs + ' 段</span>'
+      : '<span class="sm-seg legacy" title="早期手填课时，未关联课时安排">旧数据</span>';
     return '<div class="sm-row"><span class="sm-nm">' + esc(x.s.name) + '</span>'
-      + '<span class="sm-sub">总' + x.total + ' · 已用' + x.used + ' · 剩 <b class="' + (x.low ? 'low' : '') + '">' + x.left + '</b></span>'
+      + '<span class="sm-sub">总' + x.total + ' · 已用' + x.used + ' · 剩 <b class="' + (x.low ? 'low' : '') + '">' + x.left + '</b>' + segTip + '</span>'
       + '<span class="sm-bar ' + (x.low ? 'low' : '') + '"><i style="width:' + Math.min(100, pct) + '%"></i></span>'
       + '<span class="sm-hact"><span class="sm-hl">已用</span><button class="sm-mini" onclick="adjustHours(' + x.s.id + ',-1)">－</button>'
-      + '<input class="sm-num2" type="number" value="' + x.used + '" onchange="setHoursUsed(' + x.s.id + ',this.value)" title="已用课时">'
+      + '<input class="sm-num2" type="number" value="' + x.used + '" onchange="setHoursUsed(' + x.s.id + ',this.value)" title="已用课时（可直接改，会写回课时安排）">'
       + '<button class="sm-mini" onclick="adjustHours(' + x.s.id + ',1)">＋</button>'
-      + '<span class="sm-hl">总课时</span><input class="sm-num2 sm-total" type="number" value="' + x.total + '" onchange="setHoursTotal(' + x.s.id + ',this.value)" title="总课时"></span>'
+      + '<span class="sm-hl">总课时</span><input class="sm-num2 sm-total" type="number" value="' + x.total + '" onchange="setHoursTotal(' + x.s.id + ',this.value)" title="总课时（可直接改）">'
+      + '<button class="sm-mini2" onclick="openCourseLedger(' + x.s.id + ')" title="查看 / 修改逐日课消明细">📒 明细</button></span>'
       + (x.low ? '<span class="sm-badge low">需续费</span>' : '<span class="sm-badge ok">充足</span>') + '</div>';
-  }).join('') + '</div><div class="sm-foot"><button class="btn ghost" onclick="openBatchHours()">⏱️ 批量设置课时</button><button class="btn" onclick="copyRenewal()">📋 复制需续费名单</button></div>'
-    : '<div class="sm-empty">还没有学生登记课时。在「总课时」一栏输入即可，出勤会自动累加已用课时。</div>';
+  }).join('') + '</div><div class="sm-foot"><button class="btn ghost" onclick="openBatchHours()">⏱️ 批量设置课时</button>'
+    + '<button class="btn ghost" onclick="courseRecalcAll()">⚡ 按考勤重算课消</button>'
+    + '<button class="btn" onclick="copyRenewal()">📋 复制需续费名单</button></div>'
+    : '<div class="sm-empty">还没有学生登记课时。<b>推荐做法</b>：到「📚 批量排课」给学生排课时（会自动按考勤日历算好节数），这里就会实时显示核销进度；也可以直接在下方「总课时」一栏手填。</div>';
   const prHtml = (pr.up.length ? '<div class="sm-pr"><span class="sm-pr-t up">进步 ▲</span>' + pr.up.map(x => '<span class="sm-pr-i">' + esc(x.s.name) + ' +' + (Math.round(x.d * 10) / 10) + '</span>').join('') + '</div>' : '')
     + (pr.down.length ? '<div class="sm-pr"><span class="sm-pr-t down">退步 ▼</span>' + pr.down.map(x => '<span class="sm-pr-i">' + esc(x.s.name) + ' ' + (Math.round(x.d * 10) / 10) + '</span>').join('') + '</div>' : '')
     + (!pr.up.length && !pr.down.length ? '<div class="sm-empty sm-empty-sm">样本不足或暂无明显波动</div>' : '');
@@ -11976,7 +12105,10 @@ function renderSmart(){
     + '<div class="sm-head"><div><div class="sm-title">🤖 智能中心</div><div class="sm-sub">基于你录入的数据自动分析 · 无需联网</div></div>'
     + '<div class="sm-set"><label><input type="checkbox" ' + (state.autoHours ? 'checked' : '') + ' onchange="toggleAutoHours()"> 出勤自动计课时</label>'
     + '<span class="sm-set-in">每节 <input class="sm-num" type="number" min="1" value="' + state.hoursPerClass + '" onchange="setHoursPerClass(this.value)"> 课时</span>'
-    + '<span class="sm-set-in">预警线 <input class="sm-num" type="number" min="1" value="' + state.hourWarn + '" onchange="setHourWarn(this.value)"> 课时</span></div></div>'
+    + '<span class="sm-set-in">预警线 <input class="sm-num" type="number" min="1" value="' + state.hourWarn + '" onchange="setHourWarn(this.value)"> 课时</span>'
+    + '<span class="sm-set-in">核销依据 <select class="sm-num sm-sel-src" onchange="setHoursSrc(this.value)" title="决定「哪些天算已上课」">'
+    + '<option value="att" ' + ((state.autoHoursSrc || 'att') === 'att' ? 'selected' : '') + '>仅出勤登记</option>'
+    + '<option value="att+ck" ' + (state.autoHoursSrc === 'att+ck' ? 'selected' : '') + '>出勤＋打卡</option></select></span></div></div>'
 
     + '<div class="sm-card"><div class="sm-card-t"><span class="sm-dot"></span>① 续费 / 课时预警看板<span class="sm-tip">剩余 ≤ ' + state.hourWarn + ' 课时自动标红</span></div>'
     + '<div class="sm-stat-row"><div class="sm-stat ' + (warnCount ? 'warn' : '') + '"><div class="v">' + warnCount + '</div><div class="k">需续费</div></div>'
@@ -12032,9 +12164,148 @@ function renderSmart(){
     + '</div>';
 }
 /* ---- 智能中心交互处理 ---- */
-function setHoursTotal(sid, v){ const f = findStudentById(sid); if (!f) return; f.s.hoursTotal = Math.max(0, num(v) || 0); save(); renderMain(); }
-function setHoursUsed(sid, v){ const f = findStudentById(sid); if (!f) return; f.s.hoursUsed = Math.min(f.s.hoursTotal, Math.max(0, num(v) || 0)); save(); renderMain(); }
-function adjustHours(sid, delta){ const f = findStudentById(sid); if (!f) return; f.s.hoursUsed = Math.max(0, Math.min(f.s.hoursTotal, (+f.s.hoursUsed || 0) + delta)); save(); renderMain(); }
+/* 手改「总课时」：优先写回课时安排，无排课时回退旧字段 */
+/* ==================================================================
+   📒 课时账本：查看并手动修改某个学生的课消情况
+   —— 按「考勤日历的上课日」逐日显示该生出勤/打卡状态与是否已核销，
+      点一下即可切换核销；也可直接改每段的「总课时 / 已上节数」。
+   ================================================================== */
+function ledgerDayHtml(s, cls, co, d){
+  co.attLog = co.attLog || {};
+  const on = !!co.attLog[d];
+  const r = (s.records || {})[d] || {};
+  const a = r.attendance || '';
+  const attTxt = a === 'present' ? '出勤' : a === 'late' ? '迟到' : a === 'leave' ? '请假'
+               : a === 'absent' ? '缺勤' : '';
+  const ck = cls.checkins && cls.checkins[d] && cls.checkins[d][String(s.id)];
+  const ckTxt = ck ? (ck.st === 'makeup' ? '补卡' : ck.st === 'done' ? '打卡' : '') : '';
+  const cls2 = ['lg-day'];
+  if (on) cls2.push('on');
+  if (a === 'leave' || a === 'absent') cls2.push('off');
+  const tip = fmtDateCN(d) + (attTxt ? ' · ' + attTxt : ' · 未登记出勤') + (ckTxt ? ' · ' + ckTxt : '')
+            + ' · ' + (on ? '已核销（点击取消）' : '未核销（点击核销）');
+  return '<button class="' + cls2.join(' ') + '" onclick="ledgerToggleDay(' + s.id + ',' + co.id + ',\'' + d + '\')" title="' + esc(tip) + '">'
+    + '<i>' + (+d.slice(8)) + '</i>'
+    + (attTxt ? '<em class="at-' + a + '">' + attTxt + '</em>' : (ckTxt ? '<em class="ck">' + ckTxt + '</em>' : ''))
+    + (on ? '<b>✓</b>' : '') + '</button>';
+}
+function ledgerSegHtml(s, cls, co){
+  const total = +co.total || 0, used = coAttended(co);
+  const days = (!co.start || !co.end) ? [] : courseSessions(co);
+  const gone = days.filter(x => x.date <= todayStr());
+  const grid = days.length
+    ? '<div class="lg-grid">' + days.map(x => ledgerDayHtml(s, cls, co, x.date)).join('') + '</div>'
+    : '<div class="muted" style="padding:4px 0 2px">这段还没设置上课时间规则，先在「✏️ 编辑」里加上（如每周六 19:00）。</div>';
+  const goneN = gone.filter(x => co.attLog && co.attLog[x.date]).length;
+  return '<div class="lg-seg">'
+    + '<div class="lg-seg-h"><b>' + esc(co.name || '未命名课程') + '</b>'
+    + '<span class="lg-seg-r">' + esc(co.start || '?') + ' ~ ' + esc(co.end || '?') + '</span></div>'
+    + '<div class="lg-seg-n">'
+    + '<span class="lg-fld">总课时<input type="number" min="0" value="' + total + '" onchange="ledgerSetTotal(' + s.id + ',' + co.id + ',this.value)"></span>'
+    + '<span class="lg-fld">已上<input type="number" min="0" value="' + used + '" onchange="ledgerSetUsed(' + s.id + ',' + co.id + ',this.value)"></span>'
+    + '<span class="lg-fld ro">剩 <b class="' + (total - used <= (state.hourWarn || 4) ? 'low' : '') + '">' + Math.max(0, total - used) + '</b></span>'
+    + '<button class="btn sm ghost" onclick="ledgerRecalcSeg(' + s.id + ',' + co.id + ')" title="按这段日期内的出勤/打卡重算已上节数">⚡ 按考勤重算</button>'
+    + '<button class="btn sm ghost" onclick="openCourseEditor(' + s.id + ',' + co.id + ')">✏️ 编辑</button>'
+    + '</div>'
+    + '<div class="lg-seg-bar"><i style="width:' + (total ? Math.min(100, Math.round(used / total * 100)) : 0) + '%"></i></div>'
+    + '<div class="lg-seg-tip">📅 按上课时间共 <b>' + days.length + '</b> 天' + (gone.length !== days.length ? '（已过 ' + gone.length + ' 天）' : '')
+    + ' · 已核销 <b>' + goneN + '</b> 天' + (used > goneN ? ' · 另含手动补录 <b>' + (used - goneN) + '</b> 节' : '') + '</div>'
+    + grid + '</div>';
+}
+function openCourseLedger(sid){
+  const f = findStudentById(sid); if (!f) return;
+  const s = f.s, cls = f.c;
+  const h = hoursSummary(s);
+  const body = (s.courses || []).length
+    ? (s.courses || []).map(co => ledgerSegHtml(s, cls, co)).join('')
+    : '<div class="muted" style="padding:8px 0">该生还没有课时安排。到「📚 批量排课」排课后，这里会按考勤日历逐日显示并可手动核销。</div>';
+  openModal('📒 课时账本 · ' + esc(s.name), ''
+    + '<div class="lg-head"><div class="lg-kpi"><div><b>' + h.total + '</b><i>总课时</i></div>'
+    + '<div class="used"><b>' + h.used + '</b><i>已核销</i></div>'
+    + '<div class="' + (h.left <= (state.hourWarn || 4) ? 'low' : '') + '"><b>' + h.left + '</b><i>剩余</i></div></div>'
+    + '<div class="lg-note">点日期格子可<b>手动核销 / 取消核销</b>；数字输入框可直接改总课时与已上节数。'
+    + '核销依据当前为「<b>' + ((state.autoHoursSrc || 'att') === 'att+ck' ? '出勤＋打卡' : '仅出勤登记') + '</b>」，可在智能中心顶部切换。</div></div>'
+    + body,
+    '<button class="btn ghost" onclick="courseRecalcOne(' + s.id + ');openCourseLedger(' + s.id + ')">⚡ 全部按考勤重算</button>'
+    + '<button class="btn" onclick="closeModal()">完成</button>', 620);
+}
+/* 逐日切换核销 */
+function ledgerToggleDay(sid, cid, d){
+  const f = findStudentById(sid); if (!f) return;
+  const co = (f.s.courses || []).find(x => x.id === cid); if (!co) return;
+  co.attLog = co.attLog || {};
+  if (co.attLog[d]) delete co.attLog[d];
+  else {
+    if (coAttended(co) >= (+co.total || 0)) return toast('已上节数已达总课时上限，先调大总课时');
+    co.attLog[d] = 1;
+  }
+  co.attended = coAttended(co);
+  save(); openCourseLedger(sid);
+}
+/* 直接改某段的总课时 / 已上节数 */
+function ledgerSetTotal(sid, cid, v){
+  const f = findStudentById(sid); if (!f) return;
+  const co = (f.s.courses || []).find(x => x.id === cid); if (!co) return;
+  co.total = Math.max(0, num(v) || 0);
+  co.attended = coAttended(co);
+  save(); openCourseLedger(sid);
+}
+function ledgerSetUsed(sid, cid, v){
+  const f = findStudentById(sid); if (!f) return;
+  const co = (f.s.courses || []).find(x => x.id === cid); if (!co) return;
+  const want = Math.max(0, Math.min(+co.total || 0, num(v) || 0));
+  const autoN = coLogN(co);
+  co.attBase = Math.max(0, want - autoN);      // 多出来的记为手动补录
+  co.attended = coAttended(co);
+  save(); openCourseLedger(sid);
+}
+/* 单段按考勤重算 */
+function ledgerRecalcSeg(sid, cid){
+  const f = findStudentById(sid); if (!f) return;
+  const s = f.s;
+  const co = (s.courses || []).find(x => x.id === cid); if (!co) return;
+  if (co.attBase === undefined) co.attBase = Math.max(0, (+co.attended || 0) - coLogN(co));
+  co.attLog = {};
+  let n = 0;
+  Object.keys(s.records || {}).sort().forEach(d => {
+    if (!studentWentOn(s, d, f.c)) return;
+    if (courseOfDate(s, d) !== co) return;
+    co.attLog[d] = 1; n++;
+  });
+  co.attended = coAttended(co);
+  save(); openCourseLedger(sid);
+  toast('已按考勤重算：' + n + ' 天有效到课');
+}
+function setHoursSrc(v){
+  state.autoHoursSrc = (v === 'att+ck') ? 'att+ck' : 'att';
+  save(); renderMain();
+  toast(state.autoHoursSrc === 'att+ck'
+    ? '核销依据已设为「出勤＋打卡」：没登记出勤但当天打了卡的，也算已上课'
+    : '核销依据已设为「仅出勤登记」：只有反馈表登记了出勤/迟到才算已上课');
+}
+function setHoursTotal(sid, v){
+  const f = findStudentById(sid); if (!f) return;
+  const want = Math.max(0, num(v) || 0);
+  if (setCourseTotal(f.s, want) === null) f.s.hoursTotal = want;
+  save(); renderMain();
+  toast(f.s.name + ' 总课时已设为 ' + want + ' 节');
+}
+/* 手改「已用课时」：优先写回课时安排（分摊为手动基线），无排课时回退旧字段 */
+function setHoursUsed(sid, v){
+  const f = findStudentById(sid); if (!f) return;
+  const h = hoursSummary(f.s);
+  const want = Math.max(0, Math.min(h.total, num(v) || 0));
+  const got = setCourseUsed(f.s, want);
+  if (got === null) f.s.hoursUsed = want; else if (got !== want) toast('已调整到 ' + got + ' 节（受总课时上限限制）');
+  save(); renderMain();
+}
+function adjustHours(sid, delta){
+  const f = findStudentById(sid); if (!f) return;
+  const h = hoursSummary(f.s);
+  if (setCourseUsed(f.s, h.used + delta) === null)
+    f.s.hoursUsed = Math.max(0, Math.min(h.total, h.used + delta));
+  save(); renderMain();
+}
 function dismissIntervention(key){ state.dismissedInterventions[key] = true; save(); renderMain(); }
 function copyRenewal(){ const cls = activeClass(); if (!cls) return; const list = renewalList(cls).filter(x => x.low); if (!list.length) return toast('暂无需续费学生'); copyText('【需续费名单】\n' + list.map(x => x.s.name + '：剩 ' + x.left + ' 课时（总' + x.total + '/已用' + x.used + '）').join('\n')); }
 function setSmartSid(v){ ui.smartSid = +v; ui.aiCache = null; ui.aiStatus = ''; try{renderMain();}catch(e){console.error('setSmartSid',e);} }
@@ -12322,16 +12593,22 @@ function applyBatchHours(mode, val, scope){
   if (val == null) val = Math.max(0, num((document.getElementById('bhVal')||{}).value) || 0);
   if (scope == null) scope = (document.getElementById('bhScope')||{}).value || 'all';
   const cls = activeClass(); if (!cls) return closeModal();
-  let n = 0;
+  let n = 0, skipped = 0;
   cls.students.forEach(s => {
-    if (scope === 'empty' && (+s.hoursTotal || 0) > 0) return;
-    if (mode === 'setTotal') s.hoursTotal = val;
-    else if (mode === 'addTotal') s.hoursTotal = (+s.hoursTotal || 0) + val;
-    else if (mode === 'addUsed') s.hoursUsed = Math.min((+s.hoursTotal||0), (+s.hoursUsed || 0) + val);
+    const h = hoursSummary(s);
+    if (scope === 'empty' && h.total > 0) return;
+    if (mode === 'setTotal') { if (setCourseTotal(s, val) === null) s.hoursTotal = val; }
+    else if (mode === 'addTotal') { if (setCourseTotal(s, h.total + val) === null) s.hoursTotal = h.total + val; }
+    else if (mode === 'addUsed') {
+      const got = setCourseUsed(s, h.used + val);
+      if (got === null) s.hoursUsed = Math.min((+s.hoursTotal || 0), (+s.hoursUsed || 0) + val);
+      else if (got < h.used + val) skipped++;
+    }
     n++;
   });
   save(); closeModal(); renderMain();
-  toast('已为 ' + n + ' 名学生批量' + ({ setTotal:'设置', addTotal:'增加', addUsed:'增加已用' })[mode] + '课时');
+  toast('已为 ' + n + ' 名学生批量' + ({ setTotal:'设置', addTotal:'增加', addUsed:'增加已用' })[mode] + '课时'
+    + (skipped ? `（${skipped} 人受总课时上限限制，已封顶）` : ''));
 }
 
 /* AI 设置弹窗 */
