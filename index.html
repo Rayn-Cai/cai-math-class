@@ -562,9 +562,21 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 /* ---- 打卡任务（老师发布，未发布任务的日期不要求打卡、不计入完成率） ---- */
 .ck-th{position:relative}
 .ck-th .ck-tk-dot{position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--accent,#0f6e56)}
+.ck-th.ck-no-task-th{background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(0,0,0,.03) 4px,rgba(0,0,0,.03) 8px)}
 .ck-th.ck-no-task-th .ck-dd{opacity:.45}
-.ck-td.ck-none{color:var(--text-muted);opacity:.5;
+.ck-th.ck-no-task-th .ck-wd{opacity:.55}
+.ck-td.ck-rest,.ck-td.ck-none{color:var(--text-muted);opacity:.5;
   background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(0,0,0,.028) 4px,rgba(0,0,0,.028) 8px)}
+.ck-chip.ck-rest{background:var(--surface-alt);color:var(--text-muted);opacity:.75;
+  border:1px dashed var(--border-strong)}
+.ck-legend .lg.rest{background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(0,0,0,.16) 3px,rgba(0,0,0,.16) 6px);
+  border-color:var(--border)}
+/* 历史打卡未关联任务：提示条 */
+.ck-orphan{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:9px;padding:9px 12px;
+  border:1px solid var(--yellow,#c98a1a);border-radius:10px;background:var(--yellow-light,#fdf3e0);
+  font-size:12.5px;color:var(--text-secondary);line-height:1.55}
+.ck-orphan b{color:var(--yellow,#c98a1a)}
+.ck-orphan .btn{margin-left:auto}
 .ck-task-card{display:flex;align-items:flex-start;gap:9px;margin-top:11px;padding:9px 12px;
   border:1px solid var(--accent-soft,#cfe6de);border-left:3px solid var(--accent,#0f6e56);
   border-radius:10px;background:var(--accent-soft,#eef6f3)}
@@ -1756,6 +1768,10 @@ th.atc-d.we-sun small{color:var(--red)}
 .sc-prog>i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-dark));border-radius:999px;transition:width .3s ease}
 .sc-cs-sched{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 2px;max-height:120px;overflow:auto}
 .sc-cs-day{font-size:11px;padding:2px 9px;border-radius:8px;background:var(--accent-light);color:var(--accent-dark);white-space:nowrap}
+.sc-cs-warn{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;padding:7px 10px;
+  background:var(--yellow-light);border:1px solid var(--yellow);border-radius:9px;
+  font-size:12px;font-weight:700;color:var(--yellow);line-height:1.5}
+.sc-cs-warn b{color:var(--text)}
 .sc-cs-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
 .sc-cs-actions .btn{padding:5px 11px;font-size:12px}
 .sc-cs-actions .btn.del{color:var(--red);border-color:rgba(220,38,38,.3)}
@@ -4966,6 +4982,7 @@ function courseStatus(co){
 function courseSectionHtml(sid){
   const f = findStudentById(sid); if (!f) return '';
   const list = (f.s.courses || []);
+  const autoOff = state.autoHours === false;
   const items = list.map(co => {
     const total = +co.total || 0;
     const attended = Math.min(total, Math.max(0, +co.attended || 0));
@@ -4977,15 +4994,22 @@ function courseSectionHtml(sid){
     const schedHtml = sessions.length
       ? '<div class="sc-cs-sched">' + sessions.map(s => '<span class="sc-cs-day">' + mdShort(s.date) + (s.time ? ' ' + esc(s.time) : '') + '</span>').join('') + '</div>'
       : '';
+    const autoN = Math.min(attended, coLogN(co));
+    const manN = Math.max(0, attended - autoN);
+    const pend = coursePendingDays(f.s, co);
     return `<div class="sc-cs-item">
       <div class="sc-cs-head"><b>${esc(co.name || '未命名课程')}</b><span class="sc-cs-st ${st === '进行中' ? 'on' : (st === '已结束' ? 'done' : 'wait')}">${st}</span></div>
       <div class="sc-cs-meta">📅 ${esc(co.start || '?')} ~ ${esc(co.end || '?')} ｜ 共 <b>${total}</b> 节 ｜ 已上 <b class="${attended < total ? 'low' : ''}">${attended}</b> ｜ 剩 <b>${left}</b></div>
+      <div class="sc-cs-meta">🎯 已上构成：自动销课 <b>${autoN}</b> 节${manN ? ` ｜ 手动补录 <b>${manN}</b> 节` : ''}</div>
       <div class="sc-cs-meta">🕐 上课时间：${esc(rulesTxt)}</div>
       <div class="sc-prog"><i style="width:${pct}%"></i></div>
       ${schedHtml}
+      ${pend ? `<div class="sc-cs-warn">⚠️ 有 <b>${pend}</b> 天已出勤但还没销课
+        <button class="btn sm" style="margin-left:auto" onclick="courseRecalcOne('${sid}')">⚡ 按考勤补销</button></div>` : ''}
       <div class="sc-cs-actions">
         <button class="btn sm" onclick="courseAddAtt('${sid}',${co.id})">＋已上一节</button>
         <button class="btn sm ghost" onclick="courseSubAtt('${sid}',${co.id})">－撤销一节</button>
+        <button class="btn sm ghost" onclick="courseRecalcOne('${sid}')" title="按该生历史考勤记录重算已上节数（补齐过去漏销的课时）">⚡ 按考勤重算</button>
         <button class="btn sm ghost" onclick="courseSyncAttend('${sid}',${co.id})" title="按本班考勤日历的上课日，重算上课时间与课时数量">↻ 同步考勤</button>
         <button class="btn sm ghost" onclick="openCourseEditor('${sid}',${co.id})">✏️ 编辑</button>
         <button class="btn sm ghost del" onclick="courseDel('${sid}',${co.id})">🗑 删除</button>
@@ -4993,7 +5017,9 @@ function courseSectionHtml(sid){
     </div>`;
   }).join('');
   return `<div class="sc-sec" id="scCourseSec"><div class="sc-sec-t">📚 课时安排
-      <button class="btn sm" style="margin-left:8px" onclick="openCourseEditor('${sid}',null)">＋ 新增课时安排</button></div>
+      <button class="btn sm" style="margin-left:8px" onclick="openCourseEditor('${sid}',null)">＋ 新增课时安排</button>
+      ${list.length ? `<button class="btn sm ghost" style="margin-left:6px" onclick="courseRecalcOne('${sid}')" title="按该生历史考勤重算全部已上节数">⚡ 按考勤重算</button>` : ''}</div>
+    ${autoOff ? '<div class="sc-cs-warn">⚠️ 「出勤自动计课时」已在设置中关闭，登记出勤不会自动销课。可到 ⚙️ 设置重新开启。</div>' : ''}
     ${items || '<div class="muted" style="padding:6px 0">还没有课时安排。点击「＋ 新增课时安排」，设置学习时间范围、上课次数与具体上课时间（如每周一三五 19:00）。</div>'}
   </div>`;
 }
@@ -5002,16 +5028,125 @@ function refreshCourseSection(sid){
   if (!el) return;
   try { el.outerHTML = courseSectionHtml(sid); } catch(e) { console.error('refreshCourseSection', e); }
 }
+/* ==================================================================
+   出勤 → 自动销课时（2026-09-09）
+   学生登记「出勤 / 迟到」→ 自动从覆盖该日期的课时安排扣 1 节；
+   改为「请假 / 缺勤 / 清除」→ 退回 1 节。
+   用 co.attLog = { 'YYYY-MM-DD': 1 } 记账，同一天只销一次（幂等）。
+   手动补录的节数记在 co.attBase。
+   已上节数 = min(total, attBase + attLog 天数)
+   ================================================================== */
+function attWent(k){ return k === 'present' || k === 'late'; }
+function coLogN(co){ return Object.keys(co.attLog || {}).length; }
+function coAttended(co){ return Math.min(+co.total || 0, (+co.attBase || 0) + coLogN(co)); }
+/* 找出某日期归属的课时安排：优先「规则星期匹配」，其次「日期范围覆盖」 */
+function courseOfDate(s, d){
+  const list = (s.courses || []).filter(co => co && co.start && co.end && d >= co.start && d <= co.end);
+  if (!list.length) return null;
+  const dow = new Date(d + 'T00:00:00').getDay();
+  return list.find(co => (co.rules || []).some(r => +r.dow === dow)) || list[0];
+}
+/* 单次出勤写入后的课时同步（返回 +1 / -1 / 0） */
+function syncCourseHours(s, d, key){
+  if (state.autoHours === false) return 0;
+  const co = courseOfDate(s, d);
+  if (!co) return 0;
+  co.attLog = co.attLog || {};
+  const went = attWent(key);
+  let delta = 0;
+  if (went && !co.attLog[d]) { co.attLog[d] = 1; delta = 1; }
+  else if (!went && co.attLog[d]) { delete co.attLog[d]; delta = -1; }
+  if (delta) co.attended = Math.max(0, Math.min(+co.total || 0, (+co.attended || 0) + delta));
+  return delta;
+}
+/* 某段课时「出勤了但还没销课」的天数（用于提示历史欠账） */
+function coursePendingDays(s, co){
+  if (!co.start || !co.end) return 0;
+  let n = 0;
+  Object.keys(s.records || {}).forEach(d => {
+    if (d < co.start || d > co.end) return;
+    if (!attWent((s.records[d] || {}).attendance)) return;
+    if (co.attLog && co.attLog[d]) return;
+    n++;
+  });
+  return n;
+}
+/* 按历史考勤重算某个学生的全部课时「已上节数」（修复存量未销课） */
+function courseRecalcFromAttend(s){
+  const list = (s.courses || []);
+  if (!list.length) return { seg: 0, auto: 0, changed: 0 };
+  list.forEach(co => { co.attLog = {}; });
+  let auto = 0;
+  Object.keys(s.records || {}).sort().forEach(d => {
+    if (!attWent((s.records[d] || {}).attendance)) return;
+    const co = courseOfDate(s, d);
+    if (!co || co.attLog[d]) return;
+    co.attLog[d] = 1; auto++;
+  });
+  list.forEach(co => {
+    if (co.attBase === undefined) {
+      // 首次重算：把「无法归因到具体日期」的历史手动节数保留为基线，避免旧数据被清零
+      co.attBase = Math.max(0, (+co.attended || 0) - coLogN(co));
+    }
+    co.attended = coAttended(co);
+  });
+  return { seg: list.length, auto, changed: list.length };
+}
+/* 本班「已出勤但还没销课」的总天数（用于提示历史欠账） */
+function attPendingAll(){
+  const c = activeClass(); if (!c) return 0;
+  let n = 0;
+  c.students.forEach(s => (s.courses || []).forEach(co => { n += coursePendingDays(s, co); }));
+  return n;
+}
+/* 本生一键重算（档案卡按钮） */
+function courseRecalcOne(sid){
+  const f = findStudentById(sid); if (!f) return;
+  if (!(f.s.courses || []).length) return toast('该生还没有课时安排');
+  const before = (f.s.courses || []).map(co => +co.attended || 0);
+  const r = courseRecalcFromAttend(f.s);
+  save(); refreshCourseSection(sid);
+  const after = (f.s.courses || []).map(co => +co.attended || 0);
+  const diff = after.reduce((a, b, i) => a + (b - (before[i] || 0)), 0);
+  toast(diff > 0 ? `已按考勤补销 ${diff} 节课时 ✅（共 ${r.auto} 天有效出勤）`
+      : diff < 0 ? `已按考勤重算，已上节数减少 ${-diff} 节`
+      : `已重算：${r.auto} 天有效出勤，节数无变化`);
+}
+/* 全班一键重算（考勤日历弹窗 / 课时相关入口） */
+function courseRecalcAll(){
+  const c = activeClass(); if (!c) return;
+  if (!c.students.length) return toast('本班还没有学生');
+  const withCourse = c.students.filter(s => (s.courses || []).length);
+  if (!withCourse.length) return toast('本班还没有学生排课时，先到「📚 批量排课」排好再来');
+  let days = 0, diff = 0, people = 0;
+  withCourse.forEach(s => {
+    const before = (s.courses || []).reduce((a, co) => a + (+co.attended || 0), 0);
+    const r = courseRecalcFromAttend(s);
+    const after = (s.courses || []).reduce((a, co) => a + (+co.attended || 0), 0);
+    days += r.auto;
+    if (after !== before) { diff += after - before; people++; }
+  });
+  save(); renderMain();
+  toast(`已按考勤重算 ${withCourse.length} 人：累计 ${days} 天有效出勤，${people ? diff + ' 节变化' : '节数无变化'}`);
+}
 function courseAddAtt(sid, cid){
   const f = findStudentById(sid); if (!f) return;
   const co = (f.s.courses || []).find(x => x.id === cid); if (!co) return;
-  co.attended = Math.min((+co.total || 0), (+co.attended || 0) + 1);
-  save(); refreshCourseSection(sid); toast('已记录一节课程 ✅');
+  const cap = Math.max(0, (+co.total || 0) - coLogN(co));   // 手动基线不超过总课时
+  co.attBase = Math.min(cap, (+co.attBase || 0) + 1);
+  co.attended = coAttended(co);
+  save(); refreshCourseSection(sid); toast('已手动补录一节 ✅');
 }
 function courseSubAtt(sid, cid){
   const f = findStudentById(sid); if (!f) return;
   const co = (f.s.courses || []).find(x => x.id === cid); if (!co) return;
-  co.attended = Math.max(0, (+co.attended || 0) - 1);
+  if (+co.attBase > 0) co.attBase = +co.attBase - 1;
+  else {
+    const ks = Object.keys(co.attLog || {}).sort();
+    if (!ks.length) return toast('已上节数已为 0');
+    delete co.attLog[ks[ks.length - 1]];
+  }
+  co.attended = coAttended(co);
   save(); refreshCourseSection(sid);
 }
 function courseDel(sid, cid){
@@ -5796,6 +5931,7 @@ function setAttendance(id, key){
     else if (!was && now) f.s.hoursUsed = (+f.s.hoursUsed || 0) + step;
   }
   rec(f.s, state.activeDate).attendance = key;
+  syncCourseHours(f.s, state.activeDate, key);   // 出勤自动销课时
   try { recomputeStreakBonus(f.s); } catch(e){}
   save(); renderMain();
 }
@@ -5855,7 +5991,8 @@ function bulkAttendance(key){
   const cls = activeClass(); if (!cls) return;
   const label = { present:'出勤', late:'迟到', leave:'请假', absent:'缺勤' }[key] || key;
   if (!confirm(`确定将全班 ${cls.students.length} 名学生的今日出勤统一设为「${label}」吗？`)) return;
-  bulkSet(r => { r.attendance = key; });
+  const d = state.activeDate;
+  bulkSet((r, s) => { r.attendance = key; syncCourseHours(s, d, key); });
   toast('已设置全班' + label);
 }
 /* 一键作业全完成 / 全未完成（仅完成模式生效） */
@@ -6707,7 +6844,7 @@ function tblMakeup(cid, sid, date, v){
   const f = attFind(cid, sid); if (!f) return;
   if (v && v < date) { toast('补课日期不能早于缺课日期'); renderMain(); return; }
   const r = rec(f.s, date);
-  if (v) r.attendance = 'leave';
+  if (v) { r.attendance = 'leave'; syncCourseHours(f.s, date, 'leave'); }
   setMakeup(f.s, date, v || '');
   save(); renderMain();
   toast(v ? `已登记补课 ${mdShort(v)}` : '已清除补课日期');
@@ -6764,9 +6901,11 @@ function setAttCell(cid, sid, date, key){
         && !(r.behavior || []).length && !(r.absorption || []).length;
       if (bare) delete f.s.records[date]; else r.attendance = '';
     }
+    syncCourseHours(f.s, date, '');          // 清除登记 → 退回课时
     setMakeup(f.s, date, '');
   } else {
     rec(f.s, date).attendance = key;
+    syncCourseHours(f.s, date, key);         // 出勤自动销课时
     if (key !== 'leave') setMakeup(f.s, date, '');
   }
   closeMulti(); save(); renderMain();
@@ -7344,11 +7483,12 @@ function ckStore(date){
 function ckRec(cls, sid, date){
   return (cls.checkins && cls.checkins[date] && cls.checkins[date][String(sid)]) || null;
 }
-/* ===== 打卡任务：任务由老师发布，只有「发布过任务」的日期才需要打卡 =====
+/* ===== 打卡任务：任务由老师发布，只有「发布过任务」的日期才打卡 =====
    cls.checkinTasks = { 'YYYY-MM-DD': { id, title, note, at } }
-   未发布任务的日期 → 状态 none：不要求打卡、不计入完成率、不标红。
+   未发布任务的日期 → 状态 rest（等同休息日）：不打卡、不记录、不计完成率、不标红。
    兼容老数据：班级没有任何任务时（checkinTasks 为空）沿用「每天打卡」旧规则；
-   进入任务模式后，历史上已有打卡记录的日期仍视为有效打卡日。 */
+   进入任务模式后，只有发布过任务的日期才记录——历史打卡数据不会删除，
+   顶部会提示「N 天历史打卡未关联任务」，可一键为这些日期补发任务。 */
 function ckTasks(cls){ return cls.checkinTasks || (cls.checkinTasks = {}); }
 function ckTaskOf(cls, date){ return (cls.checkinTasks && cls.checkinTasks[date]) || null; }
 function ckTaskMode(cls){ return !!(cls.checkinTasks && Object.keys(cls.checkinTasks).length); }
@@ -7356,9 +7496,20 @@ function ckDayHasRec(cls, date){
   const st = cls.checkins && cls.checkins[date];
   return !!(st && Object.keys(st).length);
 }
+/* 有打卡记录但没有任务的日期（历史遗留，数据仍在，只是不展示/不统计） */
+function ckOrphanDates(cls){
+  if (!ckTaskMode(cls)) return [];
+  const out = [];
+  Object.keys(cls.checkins || {}).forEach(d => {
+    if (ckTaskOf(cls, d)) return;
+    const st = cls.checkins[d];
+    if (st && Object.keys(st).length) out.push(d);
+  });
+  return out.sort();
+}
 function ckState(cls, sid, date){
   if (cls.checkinOff && cls.checkinOff[date]) return 'off';
-  if (ckTaskMode(cls) && !ckTaskOf(cls, date) && !ckDayHasRec(cls, date)) return 'none';  // 未发布任务
+  if (ckTaskMode(cls) && !ckTaskOf(cls, date)) return 'rest';   // 未发布任务 → 统一按休息日
   if (cls.checkinStart && date < cls.checkinStart) return 'na';
   const r = ckRec(cls, sid, date);
   if (r && r.st === 'done') return 'done';
@@ -7383,14 +7534,41 @@ function ckMark(sid, date, st, at){
 }
 function ckToggle(sid, date){
   const c = activeClass(); if (!c) return;
-  if (ckState(c, sid, date) === 'none') return ckNoTaskGuide(date);
+  if (ckState(c, sid, date) === 'rest') return ckNoTaskGuide(date);
   ckMark(sid, date, ckState(c, sid, date) === 'done' ? 'miss' : 'done');
 }
 /* 未发布任务时的引导：不做静默处理，任何点击都给明确反馈与下一步入口 */
+/* 历史打卡未关联任务：一键补发任务（沿用该日第一条任务的标题，无则「打卡」） */
+function ckOrphanFill(){
+  const c = activeClass(); if (!c) return;
+  const ds = ckOrphanDates(c);
+  if (!ds.length) return toast('没有需要补发的历史记录');
+  const ref = Object.keys(c.checkinTasks || {}).map(k => c.checkinTasks[k]).sort((a, b) => (a.at || '').localeCompare(b.at || ''))[0];
+  const title = (ref && ref.title) || '打卡';
+  const note = (ref && ref.note) || '';
+  askConfirm(`将为 <b>${ds.length}</b> 天历史打卡记录补发任务「${esc(title)}」。<br><br>
+    补发后这些日期会<b>重新进入月历并完成率统计</b>。<br><span class="muted">${ds.slice(0, 10).join('、')}${ds.length > 10 ? ' …' : ''}</span>`, () => {
+    ds.forEach(d => { c.checkinTasks[d] = { id: uid(), title, note, at: todayStr() }; });
+    save(); renderMain();
+    toast(`已为 ${ds.length} 天补发任务 ✅`);
+  }, { title: '📢 补发历史任务', width: 480, danger: false });
+}
+/* 历史打卡未关联任务：彻底清除这些记录 */
+function ckOrphanClear(){
+  const c = activeClass(); if (!c) return;
+  const ds = ckOrphanDates(c);
+  if (!ds.length) return toast('没有需要清除的历史记录');
+  askConfirm(`将<b>永久删除</b>这 <b>${ds.length}</b> 天的打卡记录（学生打卡状态、备注、附件都会被清除）。<br><br>
+    <span class="muted">如果你只是想让这些日期不参与统计，保持现状即可，无需删除。</span>`, () => {
+    ds.forEach(d => { delete c.checkins[d]; });
+    save(); renderMain();
+    toast(`已清除 ${ds.length} 天的历史打卡记录`);
+  }, { title: '🗑 清除历史打卡记录', width: 460, danger: 1 });
+}
 function ckNoTaskGuide(date){
   openModal('📭 该日还没有打卡任务', `
-    <div class="ck-cur"><b>${fmtDateCN(date)}</b> 尚未发布打卡任务，所以学生无需打卡，也不会被记「未完成」。</div>
-    <div class="hint">发布任务后，这一天才会进入月历统计。适合「不是每天都有任务」的班级节奏：哪天布置了练习，就发布哪天的任务。</div>`,
+    <div class="ck-cur"><b>${fmtDateCN(date)}</b> 尚未发布打卡任务，因此<b>按休息日处理</b>：不打卡、不记录、不计入完成率。</div>
+    <div class="hint">只有你发布过任务的日期才会记录打卡。发布任务后，这一天就会进入月历统计并可登记。</div>`,
     `<button class="btn" onclick="closeModal()">知道了</button>
      <button class="btn" onclick="closeModal();openCkTaskList()">📋 任务管理</button>
      <button class="btn primary" onclick="closeModal();openCkTask('${date}')">📢 发布这天任务</button>`, 480);
@@ -7627,6 +7805,10 @@ function attCalBodyHtml(){
         <button class="btn primary sm" onclick="attCalSyncToCourses()">🔄 同步到学生课时</button>
       </div>
       <div class="att-sync-tip">课时数量＝该段起止日期内<b>本日历的上课日天数</b>；上课时间＝这些上课日对应的<b>星期</b>（沿用原上课时间）。还没排课的同学可点下方「📚 批量排课」统一补排（选学生 → 填日期 → 点「📅 按考勤日历填入」）。</div>
+      <div class="att-sync-row" style="margin-top:8px">
+        <span class="att-sync-info">⚡ <b>已上节数</b>：在「日常反馈表」登记出勤/迟到会自动销 1 节${attPendingAll() ? ` —— 目前有 <b style="color:var(--yellow)">${attPendingAll()}</b> 天已出勤但还没销课` : '（已全部同步）'}</span>
+        <button class="btn sm" onclick="courseRecalcAll()">⚡ 全班按考勤重算</button>
+      </div>
     </div>
     <div class="att-cal-grid">
       ${dows.map((d, i) => `<div class="att-cal-dow ${i >= 5 ? 'we' : ''}">${d}</div>`).join('')}
@@ -7856,6 +8038,7 @@ function applyAttGlobal(scope){
 function ckAllDone(date){
   const c = activeClass(); if (!c || !c.students.length) return;
   if (ckTaskMode(c) && !ckTaskOf(c, date)) return ckNoTaskGuide(date);
+  if (c.checkinOff && c.checkinOff[date]) return toast(`${date} 是免打卡日，无需打卡`);
   const st = ckStore(date);
   let n = 0;
   c.students.forEach(s => { const id = String(s.id); if (!st[id]) { st[id] = { st:'done' }; n++; } });
@@ -7876,7 +8059,7 @@ function ckStats(cls, sid, month){
   let need = 0, done = 0, makeup = 0, miss = 0;
   ckDays(month).forEach(d => {
     const s = ckState(cls, sid, d);
-    if (s === 'off' || s === 'na' || s === 'future' || s === 'none') return;   // 未发布任务的日子不计入
+    if (s === 'off' || s === 'na' || s === 'future' || s === 'rest') return;   // 未发布任务＝休息日，不计入
     need++;
     if (s === 'done') done++;
     else if (s === 'makeup') { done++; makeup++; }
@@ -7888,9 +8071,9 @@ function openCkCell(sid, date, noAnim){
   const c = activeClass(); if (!c) return;
   const s = c.students.find(x => String(x.id) === String(sid)); if (!s) return;
   const cur = ckState(c, sid, date), r = ckRec(c, sid, date) || {};
-  if (cur === 'none') return ckNoTaskGuide(date);
+  if (cur === 'rest') return ckNoTaskGuide(date);
   const label = { done:'✅ 已打卡', makeup:'🕘 补卡', miss:'❌ 未完成', off:'☕ 免打卡日', na:'— 打卡开始日之前',
-                  future:'· 日期未到', none:'📭 无打卡任务' }[cur];
+                  future:'· 日期未到', rest:'📭 无打卡任务（休息日）' }[cur];
   const isOff = !!(c.checkinOff && c.checkinOff[date]);
   const m = r.m || '';
   const mBtns = [['master','🟢 掌握','m-green'],['partial','🟡 部分掌握','m-yellow'],['unknown','🔴 未掌握','m-red']]
@@ -8248,6 +8431,15 @@ function renderCheckin(){
 
   const tkMode = ckTaskMode(cls);
   const tkN = tkMode ? Object.keys(cls.checkinTasks).length : 0;
+  /* 历史遗留：有打卡记录但没发过任务的日期 —— 数据保留，只是按休息日展示 */
+  const orphans = ckOrphanDates(cls);
+  const orphanTip = orphans.length ? `
+    <div class="ck-orphan">
+      <span>🗂 有 <b>${orphans.length}</b> 天的历史打卡记录未关联任务（${orphans.slice(0, 3).map(x => +x.slice(5).replace('-', '/')).join('、')}${orphans.length > 3 ? '…' : ''}），
+      现按<b>休息日</b>展示，数据未删除。</span>
+      <button class="btn sm primary" onclick="ckOrphanFill()">📢 为这 ${orphans.length} 天补发任务</button>
+      <button class="btn sm" onclick="ckOrphanClear()">🗑 清除这些记录</button>
+    </div>` : '';
   const bar = `
     <div class="card ck-bar">
       <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
@@ -8270,11 +8462,12 @@ function renderCheckin(){
       <div class="ck-legend">
         <span><i class="lg done"></i>已打卡</span><span><i class="lg makeup"></i>补卡</span>
         <span><i class="lg miss"></i>未完成</span><span><i class="lg off"></i>免打卡日</span>
-        ${tkMode ? '<span><i class="lg none"></i>未发布任务（无需打卡）</span>' : '<span><i class="lg na"></i>未开始 / 未到</span>'}
+        ${tkMode ? '<span><i class="lg rest"></i>未发布任务（＝休息日）</span>' : '<span><i class="lg na"></i>未开始 / 未到</span>'}
         <span class="muted" style="margin-left:auto">${tkMode
-          ? '当前为「<b>按任务打卡</b>」模式：只有发布过任务的日期才统计'
+          ? '当前为「<b>按任务打卡</b>」模式：<b>只有发布过任务的日期才记录</b>，其余一律按休息日'
           : '当前为「每天打卡」模式 —— 点「📢 发布任务」即可改为按任务打卡'}</span>
       </div>
+      ${orphanTip}
     </div>`;
 
   const doneN = cls.students.filter(s => ['done','makeup'].includes(ckState(cls, s.id, d))).length;
@@ -8299,7 +8492,7 @@ function renderCheckin(){
   const task = ckTaskOf(cls, d);
   const noTask = tkMode && !task;
   const taskBlock = noTask
-    ? `<div class="ck-no-task">📭 ${fmtDateCN(d)} <b>未发布打卡任务</b> —— 学生无需打卡，也不计入完成率。
+    ? `<div class="ck-no-task">☕ ${fmtDateCN(d)} <b>未发布打卡任务</b> —— 按<b>休息日</b>处理：不打卡、不记录、不计入完成率。
         <button class="btn primary sm" style="margin-left:auto" onclick="openCkTask('${d}')">📢 发布今日任务</button></div>`
     : (task ? `<div class="ck-task-card">
         <span class="ck-tk-ico">📢</span>
@@ -8328,7 +8521,7 @@ function renderCheckin(){
         ${cls.students.map(s => {
           const st = ckState(cls, s.id, d), r = ckRec(cls, s.id, d);
           const txt = st === 'done' ? '已打卡' : st === 'makeup' ? `补卡 ${r && r.at ? r.at.slice(5) : ''}`
-                    : st === 'off' ? '免打卡' : st === 'na' ? '未开始' : st === 'none' ? '无任务' : '未完成';
+                    : st === 'off' ? '免打卡' : st === 'na' ? '未开始' : st === 'rest' ? '休息日' : '未完成';
           return `<button class="ck-chip ck-${st}" onclick="ckToggle('${s.id}','${d}')"
             oncontextmenu="event.preventDefault();openCkCell('${s.id}','${d}')"
             title="左键切换 已打卡/未完成 · 右键更多操作（补卡等）">
@@ -8344,23 +8537,24 @@ function renderCheckin(){
     const tk = ckTaskOf(cls, dd);
     const noTk = tkMode && !tk;
     const wd = ['日','一','二','三','四','五','六'][new Date(dd + 'T00:00:00').getDay()];
-    const title = `${dd} · ${off ? '免打卡日（点击恢复）' : tk ? '已发布任务：' + (tk.title || '打卡') + '（点击设为免打卡日）' : '点击设为免打卡日'}`;
+    const title = noTk ? `${dd} · 未发布任务（按休息日，不打卡）`
+                       : `${dd} · ${off ? '免打卡日（点击恢复）' : tk ? '已发布任务：' + (tk.title || '打卡') + '（点击设为免打卡日）' : '点击设为免打卡日'}`;
     return `<th class="ck-th ${off ? 'off' : ''} ${dd === today ? 'today' : ''} ${noTk ? 'ck-no-task-th' : ''}"
-      onclick="ckToggleOff('${dd}')" title="${esc(title)}">
+      onclick="${noTk ? `openCkTask('${dd}')` : `ckToggleOff('${dd}')`}" title="${esc(title)}">
       ${tk ? '<i class="ck-tk-dot" title="已发布打卡任务"></i>' : ''}
-      <div class="ck-dd">${+dd.slice(8)}</div><div class="ck-wd">${off ? '休' : wd}</div></th>`;
+      <div class="ck-dd">${+dd.slice(8)}</div><div class="ck-wd">${off || noTk ? '休' : wd}</div></th>`;
   }).join('');
 
   const rows = cls.students.map(s => {
     const st = ckStats(cls, s.id, month);
     const tds = days.map(dd => {
       const k = ckState(cls, s.id, dd), r = ckRec(cls, s.id, dd);
-      const sym = { done:'✓', makeup:'补', miss:'✕', off:'·', na:'–', future:'', none:'·' }[k];
+      const sym = { done:'✓', makeup:'补', miss:'✕', off:'·', na:'–', future:'', rest:'·' }[k];
       const mBadge = r && r.m ? `<i class="ck-m-badge m-${r.m}" title="${r.m === 'master' ? '掌握' : r.m === 'partial' ? '部分掌握' : '未掌握'}"></i>` : '';
       const mTxt = r && r.m ? ` · ${r.m === 'master' ? '掌握' : r.m === 'partial' ? '部分掌握' : '未掌握'}` : '';
       const tip = k === 'makeup' && r && r.at ? `${dd} 未按时打卡，补卡于 ${r.at}${mTxt}`
                 : k === 'miss' ? `${dd} 未完成` : k === 'done' ? `${dd} 已打卡${mTxt}`
-                : k === 'off' ? `${dd} 免打卡日` : k === 'none' ? `${dd} 未发布打卡任务（点击可发布）` : dd;
+                : k === 'off' ? `${dd} 免打卡日` : k === 'rest' ? `${dd} 未发布任务（按休息日，点击可发布）` : dd;
       return `<td class="ck-td ck-${k}" onclick="openCkCell('${s.id}','${dd}')" title="${esc(tip)}">
         <span class="ck-sym">${sym}</span>${k === 'makeup' && r && r.at ? `<i class="ck-at">${r.at.slice(5).replace('-', '/')}</i>` : ''}${mBadge}</td>`;
     }).join('');
@@ -9784,12 +9978,17 @@ function renderSchedule(){
     </div>
     <div class="row" style="gap:8px">
       <button class="btn primary sm" onclick="openBatchCourse()" title="一次给多名学生添加同一段课时安排">📚 批量排课</button>
+      <button class="btn sm" onclick="courseRecalcAll()" title="按历史考勤重算全班「已上节数」，补齐过去出勤但漏销的课时">⚡ 按考勤重算</button>
       <div class="seg-toggle"><button class="seg-btn ${view==='week'?'on':''}" onclick="setScheduleView('week')">📅 周视图</button><button class="seg-btn ${view==='month'?'on':''}" onclick="setScheduleView('month')">🗓️ 月历</button></div>
     </div>
   </div>`;
   const inner = (view === 'month') ? scheduleMonth(items, cursor) : scheduleWeek(items, cursor);
+  const pend = attPendingAll();
+  const pendBar = pend ? `<div class="sc-cs-warn" style="margin-bottom:10px">⚠️ 有 <b>${pend}</b> 天学生已出勤但还没销课时（历史数据补录）
+    <button class="btn sm primary" style="margin-left:auto" onclick="courseRecalcAll()">⚡ 现在按考勤重算</button></div>` : '';
   return `${nav}
     <div class="muted" style="margin-bottom:10px">共 <b>${items.length}</b> 节已排课程 · 数据自动汇总自各学生档案的「课时安排」</div>
+    ${pendBar}
     ${inner}`;
 }
 function setScheduleView(v){ ui.scheduleView = v; renderMain(); }
