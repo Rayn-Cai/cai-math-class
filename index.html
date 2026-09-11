@@ -10227,7 +10227,7 @@ function scheduleWeek(items, cursor){
         <div class="sch-meta">${esc(x.clsName)} · ${esc(x.name)}</div>
       </div>`).join('') : '<div class="sch-none">—</div>';
     return `<div class="sch-col">
-      <div class="sch-col-h">${DOW_NAME[i]}<div class="sch-col-d">${date.slice(5)}</div></div>
+      <div class="sch-col-h">${DOW_NAME[(i + 1) % 7]}<div class="sch-col-d">${date.slice(5)}</div></div>
       <div class="sch-col-b">${cards}</div>
     </div>`;
   }).join('');
