@@ -328,20 +328,22 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .qo-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .qo-chip{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;background:var(--input-bg);border:1px solid var(--border);border-radius:999px;padding:3px 10px 3px 10px}
 .qo-chip b{font-size:13px}
-.qo-chip.s-g{background:#eafaf1;border-color:#bfe9d3;color:#0f9d58}
-.qo-chip.s-g b{color:#0f9d58}
-.qo-chip.s-r{background:#fff0f0;border-color:#f3b9b9;color:var(--red)}
-.qo-chip.s-r b{color:var(--red)}
-.qo-chip.s-y{background:#fff8e6;border-color:#f3dfa2;color:#b8860b}
-.qo-chip.s-y b{color:#b8860b}
+.qo-chip.q-exc{background:#eafaf1;border-color:#bfe9d3;color:#0f9d58}
+.qo-chip.q-exc b{color:#0f9d58}
+.qo-chip.q-good{background:#eef5ff;border-color:#c4d8f5;color:#1a73e8}
+.qo-chip.q-good b{color:#1a73e8}
+.qo-chip.q-pass{background:#fff8e6;border-color:#f3dfa2;color:#b8860b}
+.qo-chip.q-pass b{color:#b8860b}
+.qo-chip.q-poor{background:#fff0f0;border-color:#f3b9b9;color:#d23b3b}
+.qo-chip.q-poor b{color:#d23b3b}
 .qo-levels{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
 .qo-lv{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:64px;padding:8px 6px;border-radius:10px;font-size:13px;font-weight:800}
 .qo-lv b{font-size:24px;line-height:1.1;margin-top:2px}
 .qo-lv i{font-style:normal;font-size:11px;font-weight:600;opacity:.8}
-.qo-lv.lv-excellent{background:#eafaf1;border:1px solid #bfe9d3;color:#0f9d58}
-.qo-lv.lv-good{background:#eef5ff;border:1px solid #c4d8f5;color:#0f6e56}
-.qo-lv.lv-pass{background:#fff8e6;border:1px solid #f3dfa2;color:#b8860b}
-.qo-lv.lv-poor{background:#fff0f0;border:1px solid #f3b9b9;color:var(--red)}
+.qo-lv.q-exc{background:#eafaf1;border:1px solid #bfe9d3;color:#0f9d58}
+.qo-lv.q-good{background:#eef5ff;border:1px solid #c4d8f5;color:#1a73e8}
+.qo-lv.q-pass{background:#fff8e6;border:1px solid #f3dfa2;color:#b8860b}
+.qo-lv.q-poor{background:#fff0f0;border:1px solid #f3b9b9;color:#d23b3b}
 .ep-suggest-title{font-size:12px;font-weight:800;color:var(--accent-deep,#07392d);margin-bottom:7px}
 .ep-chips{display:flex;flex-wrap:wrap;gap:7px}
 .ep-chip{border:1px solid var(--accent,#0f6e56);background:#fff;color:var(--accent-deep,#07392d);border-radius:999px;
@@ -676,6 +678,10 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .score-in.s-g{background:var(--green-light);border-color:#a7e0b8;color:var(--green)}
 .score-in.s-y{background:var(--yellow-light);border-color:#e8d98a;color:var(--yellow)}
 .score-in.s-r{background:var(--red-light);border-color:#f0b6b6;color:var(--red)}
+.score-in.q-exc{background:#eafaf1;border-color:#bfe9d3;color:#0f9d58}
+.score-in.q-good{background:#eef5ff;border-color:#c4d8f5;color:#1a73e8}
+.score-in.q-pass{background:#fff8e6;border-color:#f3dfa2;color:#b8860b}
+.score-in.q-poor{background:#fff0f0;border-color:#f3b9b9;color:#d23b3b}
 .hw-done-group{display:inline-flex;gap:4px}
 .hw-score-wrap{display:inline-flex;align-items:center;gap:2px}
 .hw-full{font-size:13.5px;color:var(--accent-dark);font-weight:800}
@@ -2324,12 +2330,20 @@ function num(v){
 }
 function fmt1(n){ return (Math.round(n * 10) / 10).toFixed(1); }
 function scoreClass(v){ if (v === null) return ''; return v >= 8 ? 's-g' : v >= 6 ? 's-y' : 's-r'; }
-/* 进门小测着色：按「满分 quizScale」换算百分比，与等级线阈值一致（≥良 绿 / ≥中 黄 / 其余 红） */
-function quizRatio(v){ const s = state.quizScale || 100; return (v === null || v === undefined) ? null : v / s; }
-function quizScoreClass(v){
-  const r = quizRatio(v); if (r === null) return '';
-  const t = state.quizThresholds || { excellent:90, good:70, pass:60 }, s = state.quizScale || 100;
-  return r >= t.good / s ? 's-g' : r >= t.pass / s ? 's-y' : 's-r';
+/* 进门小测「满分 / 等级阈值」按班级独立（c.quizScale / c.quizThresholds）；未设置则回退全局 state，再回退默认值 */
+function quizScaleOf(c){ c = c || activeClass(); if (c && typeof c.quizScale === 'number' && c.quizScale > 0) return c.quizScale; return state.quizScale ? state.quizScale : 100; }
+function quizThresholdsOf(c){ c = c || activeClass(); if (c && c.quizThresholds && typeof c.quizThresholds === 'object') return c.quizThresholds; return state.quizThresholds || { excellent:90, good:70, pass:60 }; }
+/* 达标线（用于预警 / 及格率）：取该班级「中」阈值，无则按满分的 60% */
+function quizPassLine(c){ const t = quizThresholdsOf(c), s = quizScaleOf(c); return (t && t.pass) || s * 0.6; }
+/* 进门小测着色：按「满分 quizScale」换算百分比，与等级线阈值一致，返回 4 档独立配色类（优绿/良蓝/中琥珀/差红） */
+function quizRatio(v, c){ const s = quizScaleOf(c); return (v === null || v === undefined) ? null : v / s; }
+function quizScoreClass(v, c){
+  const r = quizRatio(v, c); if (r === null) return '';
+  const t = quizThresholdsOf(c), s = quizScaleOf(c);
+  if (r >= t.excellent / s) return 'q-exc';
+  if (r >= t.good / s) return 'q-good';
+  if (r >= t.pass / s) return 'q-pass';
+  return 'q-poor';
 }
 /* 取作业有效分值：分数模式直接取 r.homework；完成模式将 hwDone 转为满分/0 */
 function hwEffective(r){
@@ -2456,6 +2470,9 @@ function normalizeState(){
     c.checkinOff = {};
   }
     if (!c.checkinStart) c.checkinStart = todayStr(); // 打卡开始日期，早于此日期不计入统计
+    /* 进门小测「满分 / 等级阈值」按班级独立：缺失时从全局默认值继承一次（之后可在该班级单独修改，互不影响） */
+    if (typeof c.quizScale !== 'number' || c.quizScale <= 0) c.quizScale = state.quizScale ? state.quizScale : 100;
+    if (!c.quizThresholds || typeof c.quizThresholds !== 'object') c.quizThresholds = Object.assign({ excellent:90, good:70, pass:60 }, state.quizThresholds || {});
     c.students.forEach(s => {
       s.records = s.records || {};
       s.mistakes = s.mistakes || [];
@@ -3157,7 +3174,8 @@ function saveClassModal(id){
   const name = (el.value || '').trim();
   if (!name) { el.focus(); return toast('请输入班级名称'); }
   if (id == null) {
-    const nc = { id: uid(), name, color: _clsEditColor, students: [], lessons:{}, profiles:{}, examScores:{} };
+    const nc = { id: uid(), name, color: _clsEditColor, students: [], lessons:{}, profiles:{}, examScores:{},
+      quizScale: state.quizScale ? state.quizScale : 100, quizThresholds: Object.assign({ excellent:90, good:70, pass:60 }, state.quizThresholds || {}) };
     state.classes.push(nc);
     state.activeClassId = nc.id;
     state.mistakeStudentId = null; state.trendStudentId = null;
@@ -3401,7 +3419,7 @@ function renderMain(){
 /* 分值 → 百分比：小测按 quizScale，作业按本次满分（日期级 → 个别 → 全局基准）。区别于 scorePct(s,date,subj)（趋势分析用） */
 function pctOf(v, field, r, d){
   if (v === null || v === undefined) return null;
-  if (field === 'quiz') return v / (state.quizScale || 100) * 100;
+  if (field === 'quiz') return v / quizScaleOf() * 100;
   return v / hwFullFor(d, r) * 100;
 }
 /* 学生某时间窗口内的有效成绩百分比均分（小测+作业取平均，休息日跳过；无有效数据返回 null） */
@@ -3439,7 +3457,7 @@ function buildProgressRanking(cls, days){
   return { up, down };
 }
 function buildWarnings(cls){
-  const pass = (state.quizThresholds && state.quizThresholds.pass) || (state.quizScale || 100) * 0.6;
+  const pass = quizPassLine(cls);
   const WR = WARNRULES();
   const lowStreakN = Math.max(1, +WR.lowStreak || 2);
   const absentN = Math.max(1, +WR.absentCnt || 2);
@@ -3574,7 +3592,7 @@ function classTrendData(cls, days){
         if (eff !== null) { const f = hwFullFor(dd, r); if (f > 0) { hSum += eff / f * 100; hN++; } }
       }
     });
-    const qPct = qN ? qSum / qN / (state.quizScale || 100) * 100 : null;
+    const qPct = qN ? qSum / qN / (quizScaleOf()) * 100 : null;
     const hPct = state.hwMode === 'done' ? (hTotal ? hDone / hTotal * 100 : null) : (hN ? hSum / hN : null);
     out.push({ d: dd, quiz: qPct, hw: hPct, quizN: qN, hwN: hN });
   }
@@ -3753,7 +3771,7 @@ function buildReportText(cls, days){
     else if (a === 'leave') leave++; else if (a === 'absent') absent++;
   }));
   /* 小测：均分 / 最高 / 及格率（以达标线 pass 为及格） */
-  const pass = (state.quizThresholds && state.quizThresholds.pass) || (state.quizScale || 100) * 0.6;
+  const pass = quizPassLine(cls);
   const qVals = [];
   cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => {
     if (dd < fromD || dd > d) return;
@@ -3783,7 +3801,7 @@ function buildReportText(cls, days){
   L.push(`📋 ${cls.name}${days >= 30 ? ' 月度' : ' 周度'}学习简报（${daysStr}）`);
   L.push('');
   L.push(`👥 出勤：上课 ${attDays.length} 天｜出勤 ${present} 人次、迟到 ${late}、请假 ${leave}、缺勤 ${absent}`);
-  L.push(`📊 小测：${qVals.length} 人次｜均分 ${qAvg != null ? fmt1(qAvg) + ' / ' + (state.quizScale || 100) : '—'}｜最高 ${qMax != null ? qMax : '—'}｜达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}`);
+  L.push(`📊 小测：${qVals.length} 人次｜均分 ${qAvg != null ? fmt1(qAvg) + ' / ' + (quizScaleOf()) : '—'}｜最高 ${qMax != null ? qMax : '—'}｜达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}`);
   if (hwRate !== null) L.push(`📚 作业：完成率 ${hwRate}%`);
   L.push('');
   if (pg.up.length) L.push('🚀 进步最快：' + pg.up.map(x => `${x.s.name}（▲${Math.abs(x.delta).toFixed(1)}）`).join('、'));
@@ -3799,7 +3817,7 @@ function buildReportText(cls, days){
   L.push('—— 由「班级自主管理工作台」自动生成');
   L2.push(`📋 ${cls.name}${days >= 30 ? ' 月度' : ' 周度'}学习简报（${daysStr}）`);
   L2.push(`👥 出勤：上课 ${attDays.length} 天，出勤 ${present} 人次、迟到 ${late}、请假 ${leave}、缺勤 ${absent}。`);
-  L2.push(`📊 小测（满分 ${state.quizScale || 100}）：共 ${qVals.length} 人次，均分 ${qAvg != null ? fmt1(qAvg) : '—'}，最高 ${qMax != null ? qMax : '—'}，达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}。`);
+  L2.push(`📊 小测（满分 ${quizScaleOf()}）：共 ${qVals.length} 人次，均分 ${qAvg != null ? fmt1(qAvg) : '—'}，最高 ${qMax != null ? qMax : '—'}，达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}。`);
   if (hwRate !== null) L2.push(`📚 作业完成率：${hwRate}%。`);
   if (pg.up.length) L2.push(`🚀 进步明显：${pg.up.map(x => x.s.name).join('、')}。`);
   if (pg.down.length) L2.push(`📉 近期需加油：${pg.down.map(x => x.s.name).join('、')}。`);
@@ -4096,22 +4114,25 @@ function openExtraPractice(){
   openModal('🔥 编辑加练名单', body, `<button class="btn" onclick="closeModal()">完成</button>`, 620);
 }
 
-/* 进门小测等级判定（按满分 quizScale 换算百分比后与阈值比较），返回 {key, cls} */
-function quizLevelOf(score){
-  const r = quizRatio(score);
-  const t = state.quizThresholds || { excellent:90, good:70, pass:60 }, s = state.quizScale || 100;
+/* 进门小测等级判定（按满分 quizScale 换算百分比后与阈值比较），返回 {key, cls}；按班级独立取阈值 */
+function quizLevelOf(score, c){
+  const r = quizRatio(score, c);
+  const t = quizThresholdsOf(c), s = quizScaleOf(c);
   if (r === null) return { key:'—', cls:'' };
-  if (r >= t.excellent / s) return { key:'优', cls:'lv-excellent' };
-  if (r >= t.good / s)      return { key:'良', cls:'lv-good' };
-  if (r >= t.pass / s)      return { key:'中', cls:'lv-pass' };
-  return { key:'差', cls:'lv-poor' };
+  if (r >= t.excellent / s) return { key:'优', cls:'q-exc' };
+  if (r >= t.good / s)      return { key:'良', cls:'q-good' };
+  if (r >= t.pass / s)      return { key:'中', cls:'q-pass' };
+  return { key:'差', cls:'q-poor' };
 }
 function setQuizView(v){ ui.quizView = v; const sr = document.getElementById('statRow'); if (sr) sr.innerHTML = statRowHtml(activeClass(), state.activeDate); }
-function openQuizLevels(){
-  const t = state.quizThresholds || { excellent:90, good:70, pass:60 };
-  const scale = state.quizScale || 100;
-  openModal('小测满分与等级线设置', `
-    <div class="hint">先设定小测「满分」，录入与着色都按此满分换算；再自定义各等级最低分。依次判定 优 → 良 → 中 → 差（低于「中」归为「差」）。修改满分时等级线会按比例自动折算。</div>
+let _quizTarget = null;
+/* 按班级独立设置「小测满分与等级线」：传入班级 id，写入该班级自己的 c.quizScale / c.quizThresholds，不影响其他班级 */
+function openQuizLevels(clsId){
+  const cls = (state.classes || []).find(c => String(c.id) === String(clsId)) || activeClass();
+  _quizTarget = cls;
+  const t = quizThresholdsOf(cls), scale = quizScaleOf(cls);
+  openModal('小测满分与等级线设置（' + (cls ? esc(cls.name) : '当前班级') + '）', `
+    <div class="hint">先设定小测「满分」，录入与着色都按此满分换算；再自定义各等级最低分。依次判定 优 → 良 → 中 → 差（低于「中」归为「差」）。修改满分时等级线会按比例自动折算。<b>该设置仅对「${cls ? esc(cls.name) : '当前'}」班级生效，其他班级互不影响。</b></div>
     <div class="form-row"><label>小测满分</label><input class="inp" id="qlvScale" type="number" min="1" max="200" step="1" value="${scale}" onchange="qlvRescale(this.value);qlvAutosave()"></div>
     <div class="form-row"><label>优 ≥</label><input class="inp" id="qlvE" type="number" min="0" max="${scale}" step="0.5" value="${t.excellent}" onchange="qlvAutosave()"></div>
     <div class="form-row"><label>良 ≥</label><input class="inp" id="qlvG" type="number" min="0" max="${scale}" step="0.5" value="${t.good}" onchange="qlvAutosave()"></div>
@@ -4121,7 +4142,7 @@ function openQuizLevels(){
 }
 /* 修改满分时，按比例折算当前等级线，保持等级比例不变 */
 function qlvRescale(newScale){
-  const old = state.quizScale || 100;
+  const old = quizScaleOf(_quizTarget);
   const ns = parseFloat(newScale) || old;
   if (ns === old) return;
   const k = ns / old;
@@ -4131,6 +4152,8 @@ function qlvRescale(newScale){
   });
 }
 function saveQuizLevels(){
+  const tgt = _quizTarget || activeClass();
+  if (!tgt) return toast('未找到目标班级');
   const newScale = parseFloat(document.getElementById('qlvScale').value);
   if (isNaN(newScale) || newScale <= 0) return toast('请输入有效的满分');
   const e = parseFloat(document.getElementById('qlvE').value);
@@ -4139,12 +4162,14 @@ function saveQuizLevels(){
   if (isNaN(e) || isNaN(g) || isNaN(p)) return toast('请输入有效数字');
   if (!(e >= g && g >= p)) return toast('阈值需满足：优 ≥ 良 ≥ 中');
   if (e > newScale || g > newScale || p > newScale) return toast('等级阈值不能大于满分');
-  state.quizScale = newScale;
-  state.quizThresholds = { excellent:e, good:g, pass:p };
-  save(); closeModal(); renderMain(); toast('满分与等级线已保存');
+  tgt.quizScale = newScale;
+  tgt.quizThresholds = { excellent:e, good:g, pass:p };
+  save(); closeModal(); renderMain(); toast('「' + (tgt.name || '当前班级') + '」满分与等级线已保存');
 }
 /* 字段失焦即静默保存：即使弹窗意外关闭，最新设置也已落盘，刷新不会丢失 */
 function qlvAutosave(){
+  const tgt = _quizTarget || activeClass();
+  if (!tgt) return;
   const sc = parseFloat((document.getElementById('qlvScale') || {}).value);
   const e = parseFloat((document.getElementById('qlvE') || {}).value);
   const g = parseFloat((document.getElementById('qlvG') || {}).value);
@@ -4152,8 +4177,8 @@ function qlvAutosave(){
   if ([sc,e,g,p].some(v => isNaN(v)) || sc <= 0) return;       // 编辑中不完整，暂存
   if (!(e >= g && g >= p)) return;                            // 顺序非法，暂存
   if (e > sc || g > sc || p > sc) return;                    // 阈值超满分，暂存
-  state.quizScale = sc;
-  state.quizThresholds = { excellent:e, good:g, pass:p };
+  tgt.quizScale = sc;
+  tgt.quizThresholds = { excellent:e, good:g, pass:p };
   save();
   updateSaveStatus('saved');
 }
@@ -4164,20 +4189,20 @@ function statRowHtml(cls, d){
       <button class="${view === 'range' ? 'on' : ''}" onclick="setQuizView('range')">成绩范围</button>
       <button class="${view === 'level' ? 'on' : ''}" onclick="setQuizView('level')">等级</button>
     </span>
-    <button class="qo-gear" onclick="openQuizLevels()" title="自定义等级阈值">⚙</button>`;
+    <button class="qo-gear" onclick="openQuizLevels('${cls.id}')" title="自定义本班等级阈值">⚙</button>`;
   let body;
   if (!recs.length) {
     body = `<div class="qo-range">今日暂无${esc(LBL('quiz'))}记录</div>`;
   } else if (view === 'range') {
     const vals = recs.map(x => x.v);
     const min = Math.min(...vals), max = Math.max(...vals);
-    body = `<div class="qo-range">分数 ${fmt1(min)} ~ ${fmt1(max)} 分（满分 ${state.quizScale || 100}） · 共 ${recs.length} 人有记录</div>
-      <div class="qo-chips">${recs.map(x => `<span class="qo-chip ${quizScoreClass(x.v)}">${esc(x.s.name)}<b>${x.v}</b></span>`).join('')}</div>`;
+    body = `<div class="qo-range">分数 ${fmt1(min)} ~ ${fmt1(max)} 分（满分 ${quizScaleOf(cls)}） · 共 ${recs.length} 人有记录</div>
+      <div class="qo-chips">${recs.map(x => `<span class="qo-chip ${quizScoreClass(x.v, cls)}">${esc(x.s.name)}<b>${x.v}</b></span>`).join('')}</div>`;
   } else {
     const dist = { '优':0, '良':0, '中':0, '差':0 };
-    recs.forEach(x => { dist[quizLevelOf(x.v).key]++; });
+    recs.forEach(x => { dist[quizLevelOf(x.v, cls).key]++; });
     body = `<div class="qo-levels">
-      ${[['优','lv-excellent'],['良','lv-good'],['中','lv-pass'],['差','lv-poor']].map(([k, c]) =>
+      ${[['优','q-exc'],['良','q-good'],['中','q-pass'],['差','q-poor']].map(([k, c]) =>
         `<div class="qo-lv ${c}">${k}<b>${dist[k]}</b><i>人</i></div>`).join('')}
     </div>`;
   }
@@ -4281,8 +4306,8 @@ function renderRoster(){
              onclick="setAttendance(${s.id},'${o.key}')">${o.label}</button>`).join('')}
         </span>`}
       </td>
-      <td class="c"><input class="score-in ${quizScoreClass(q)}" id="in-quiz-${s.id}" value="${esc(r.quiz)}"
-          inputmode="decimal" max="${state.quizScale || 100}" placeholder="-"
+      <td class="c"><input class="score-in ${quizScoreClass(q, activeClass())}" id="in-quiz-${s.id}" value="${esc(r.quiz)}"
+          inputmode="decimal" max="${quizScaleOf(activeClass())}" placeholder="-"
           oninput="setScore(${s.id},'quiz',this.value)" onchange="renderMain()" onkeydown="rosterKeyNav(event)"></td>
       <td class="c">${renderHwCell(s, r, h)}</td>
       <td>${multiBtnHtml(s, d, 'behavior')}</td>
@@ -4477,7 +4502,7 @@ function renderBatchTable(cls, d){
     return `<tr>
       <td class="bnm"><button class="stu-link" onclick="openStudentCard(${s.id})">${esc(s.name)}</button></td>
       <td class="c">${attSel}</td>
-      <td class="c"><input class="score-in batch-inp ${quizScoreClass(q)}" value="${esc(r.quiz)}" inputmode="decimal" max="${state.quizScale || 100}"
+      <td class="c"><input class="score-in batch-inp ${quizScoreClass(q, activeClass())}" value="${esc(r.quiz)}" inputmode="decimal" max="${quizScaleOf(activeClass())}"
         oninput="setScore(${s.id},'quiz',this.value)" onchange="renderMain()" onkeydown="${BATCH_NAV}"></td>
       <td class="c">${hwInput}</td>
     </tr>`;
@@ -4597,7 +4622,7 @@ function buildGrowthFeed(s, cls){
     const att = r.attendance;
     if (att && att !== 'present') chips.push({ ico:'🚩', cls:'gf-att', txt: ({ late:'迟到', leave:'请假', absent:'缺勤', makeup:'补课' }[att] || att) });
     const q = num(r.quiz);
-    if (q !== null) chips.push({ ico:'📝', cls: quizScoreClass(q), txt: LBL('quiz') + ' ' + q + ' 分' });
+    if (q !== null) chips.push({ ico:'📝', cls: quizScoreClass(q, activeClass()), txt: LBL('quiz') + ' ' + q + ' 分' });
     if (state.hwMode === 'done') {
       if (r.hwDone === true) chips.push({ ico:'📚', cls:'gf-ok', txt:'作业完成 ✓' });
       else if (r.hwDone === false) chips.push({ ico:'📚', cls:'gf-bad', txt:'作业未完成 ✕' });
@@ -4777,7 +4802,7 @@ function openStudentCard(sid, readOnly){
   const hAvg = hN ? hSum / hN : null;
   const radarM = {
     attend: rate,
-    quiz: qAvg != null ? Math.round(qAvg / (state.quizScale || 100) * 100) : 0,
+    quiz: qAvg != null ? Math.round(qAvg / (quizScaleOf()) * 100) : 0,
     homework: hAvg != null ? Math.round(hAvg / (state.hwScale || 10) * 100) : 0,
     checkin: ckRate,
   };
@@ -4790,7 +4815,7 @@ function openStudentCard(sid, readOnly){
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
         ${studentRadar(radarM)}
         <div class="sc-radar-metrics">
-          <div><span>📊 小测均分</span><b>${qAvg != null ? fmt1(qAvg) + ' / ' + (state.quizScale || 100) : '—'}</b>${qRank ? `<span class="sc-rank">班内第 ${qRank.rank} 名 · 超 ${qRank.pct}% 同学</span>` : ''}</div>
+          <div><span>📊 小测均分</span><b>${qAvg != null ? fmt1(qAvg) + ' / ' + (quizScaleOf()) : '—'}</b>${qRank ? `<span class="sc-rank">班内第 ${qRank.rank} 名 · 超 ${qRank.pct}% 同学</span>` : ''}</div>
           <div><span>📚 作业均分</span><b>${hAvg != null ? fmt1(hAvg) + ' / ' + (state.hwScale || 10) : '—'}</b>${hRank ? `<span class="sc-rank">班内第 ${hRank.rank} 名 · 超 ${hRank.pct}% 同学</span>` : ''}</div>
           <div><span>📈 出勤率</span><b>${rate}%</b></div>
           <div><span>✅ 打卡率</span><b>${ckRate}%</b></div>
@@ -4833,7 +4858,7 @@ function openStudentCard(sid, readOnly){
     return `
     <tr${rest ? ' class="sc-rest"' : ''}>
       <td class="c">${mdShort(d)}${rest ? ' <span class="sc-rest-tag">休</span>' : ''}</td>
-      <td class="c ${quizScoreClass(num(r.quiz))}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
+      <td class="c ${quizScoreClass(num(r.quiz), activeClass())}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
       <td class="c ${state.hwMode === 'done' ? (r.hwDone ? 'v-g' : (r.hwDone === false ? 'v-r' : '')) : scoreClass(num(r.homework))}">${state.hwMode === 'done' ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '—')) : (() => { const f = hwFullFor(d, r); return `${num(r.homework) != null ? num(r.homework) : '—'}<span class="hw-full">/${f}</span>`; })()}</td>
       <td class="c muted">${rest ? '不计入' : dayPoints(r)}</td>
     </tr>`;
@@ -4910,7 +4935,7 @@ function openStudentCard(sid, readOnly){
           return `<tr${rest ? ' class="sc-rest"' : ''}>
             <td class="c">${mdShort(d)}${rest ? ' <span class="sc-rest-tag">休</span>' : ''}</td>
             <td class="c">${att}</td>
-            <td class="c ${quizScoreClass(num(r.quiz))}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
+            <td class="c ${quizScoreClass(num(r.quiz), activeClass())}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
             <td class="c ${state.hwMode === 'done' ? (r.hwDone ? 'v-g' : (r.hwDone === false ? 'v-r' : '')) : scoreClass(num(r.homework))}">${esc(hv)}</td>
           </tr>`;
         }).join('')}</tbody></table></div></div>` : ''}
@@ -5747,7 +5772,7 @@ function openReportCard(sid){
   const rowsHtml = sorted.length ? sorted.map(({ d, r }) => {
     const att = r.attendance === 'present' ? '出勤' : r.attendance === 'late' ? '迟到' : r.attendance === 'leave' ? '请假' : r.attendance === 'absent' ? '缺勤' : '出勤';
     const q = num(r.quiz);
-    const qTxt = q !== null ? q + ' / ' + (state.quizScale || 100) : '—';
+    const qTxt = q !== null ? q + ' / ' + (quizScaleOf()) : '—';
     const hTxt = state.hwMode === 'done'
       ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '—'))
       : (() => { const h = num(r.homework); return h !== null ? h + ' / ' + hwFullFor(d, r) : '—'; })();
@@ -5773,7 +5798,7 @@ function openReportCard(sid){
       </div>
       <div class="rc-stats">
         <div class="rc-stat"><i>📈</i><b>${rate}%</b><span>出勤率</span></div>
-        <div class="rc-stat"><i>📊</i><b>${qAvg != null ? fmt1(qAvg) : '—'}</b><span>小测均分 / ${state.quizScale || 100}</span></div>
+        <div class="rc-stat"><i>📊</i><b>${qAvg != null ? fmt1(qAvg) : '—'}</b><span>小测均分 / ${quizScaleOf()}</span></div>
         <div class="rc-stat"><i>📚</i><b>${hAvg != null ? fmt1(hAvg) : '—'}</b><span>作业均分 / ${state.hwScale || 10}</span></div>
         <div class="rc-stat"><i>✅</i><b>${qN}</b><span>小测次数</span></div>
       </div>
@@ -5965,7 +5990,7 @@ function buildTermReportHtml(sid, scopeDays){
   /* 亮点与待改进 */
   const highlights = [], improve = [];
   if (qAvg != null) {
-    const qPct = qAvg / (state.quizScale || 100) * 100;
+    const qPct = qAvg / (quizScaleOf()) * 100;
     if (qPct >= 85) highlights.push(`${LBL('quiz')}均分 ${fmt1(qAvg)}（得分率 ${Math.round(qPct)}%），成绩优异`);
     else if (qPct < 60) improve.push(`${LBL('quiz')}均分 ${fmt1(qAvg)}（得分率 ${Math.round(qPct)}%），需加强基础`);
   }
@@ -6001,7 +6026,7 @@ function buildTermReportHtml(sid, scopeDays){
         <thead><tr><th class="c">出勤率</th><th class="c">${esc(LBL('quiz'))}均分</th><th class="c">${esc(LBL('homework'))}均分</th><th class="c">考试科目</th></tr></thead>
         <tbody><tr>
           <td class="c">${rate}%</td>
-          <td class="c">${qAvg != null ? fmt1(qAvg) + ' / ' + (state.quizScale || 100) : '—'}</td>
+          <td class="c">${qAvg != null ? fmt1(qAvg) + ' / ' + (quizScaleOf()) : '—'}</td>
           <td class="c">${hAvg != null ? fmt1(hAvg) + ' / ' + (state.hwScale || 10) : '—'}</td>
           <td class="c">${examRows.length} 次</td>
         </tr></tbody>
@@ -6023,7 +6048,7 @@ function buildTermReportText(name, clsName, school, rate, qAvg, hAvg, scopeTxt, 
   L.push(`📄 ${name} 学习报告`);
   L.push(`班级：${clsName || '—'} ｜ 学校：${school || '—'} ｜ 范围：${scopeTxt}`);
   L.push('');
-  L.push(`📊 学习概况：出勤率 ${rate}% ｜ ${LBL('quiz')}均分 ${qAvg != null ? fmt1(qAvg) + ' / ' + (state.quizScale || 100) : '—'} ｜ ${LBL('homework')}均分 ${hAvg != null ? fmt1(hAvg) + ' / ' + (state.hwScale || 10) : '—'}`);
+  L.push(`📊 学习概况：出勤率 ${rate}% ｜ ${LBL('quiz')}均分 ${qAvg != null ? fmt1(qAvg) + ' / ' + (quizScaleOf()) : '—'} ｜ ${LBL('homework')}均分 ${hAvg != null ? fmt1(hAvg) + ' / ' + (state.hwScale || 10) : '—'}`);
   if (examRows.length) L.push(`🎓 考试成绩：${examRows.map(e => `${e.pp} 数学${e.m ? e.m + '分' : '—'}${e.tot ? '，总分' + e.tot : ''}`).join('；')}`);
   if (cmp) L.push(`📈 进步趋势：近 7 天均分 ${fmt1(cmp.cur)}（前 7 天 ${fmt1(cmp.prev)}），${cmp.delta >= 0 ? '进步 ▲' : '退步 ▼'} ${Math.abs(cmp.delta).toFixed(1)}`);
   L.push('');
@@ -6120,12 +6145,12 @@ function setAttendance(id, key){
 function setScore(id, field, val){
   const f = findStudentById(id); if (!f) return;
   let v = String(val).replace(/[^0-9.]/g, '');
-  const MAX = field === 'quiz' ? (state.quizScale || 100) : curHwFull();
+  const MAX = field === 'quiz' ? (quizScaleOf()) : curHwFull();
   if (v !== '' && parseFloat(v) > MAX) v = String(MAX);
   const r = rec(f.s, state.activeDate);
   r[field] = v;
   const el = document.getElementById(`in-${field}-${id}`);
-  if (el) { el.value = v; el.className = 'score-in ' + (field === 'quiz' ? quizScoreClass(num(v)) : scoreClass(num(v))); }
+  if (el) { el.value = v; el.className = 'score-in ' + (field === 'quiz' ? quizScoreClass(num(v), activeClass()) : scoreClass(num(v))); }
   const sr = document.getElementById('statRow');
   if (sr) sr.innerHTML = statRowHtml(activeClass(), state.activeDate);
   save();
@@ -7214,7 +7239,7 @@ function setTrendScale(v){ const n = parseFloat(v); if (isNaN(n) || n <= 0) retu
 /* 作业有效得分与满分：优先用每次详情里的「本次满分」，其次记录级 hwFull，最后退回全局 hwScale */
 function hwScore(r){ return num(r.homework); }
 function hwFullOf(r){ return (r.hwDetail && r.hwDetail.full) ? +r.hwDetail.full : (r.hwFull ? +r.hwFull : (state.hwScale || 10)); }
-function fullOf(key, r){ return key === 'quiz' ? (state.quizScale || 100) : hwFullOf(r); }
+function fullOf(key, r){ return key === 'quiz' ? (quizScaleOf()) : hwFullOf(r); }
 /* 折线图纵坐标：按各序列自身满分折算成「满分基准 trendScale」坐标（满分→顶点，与百分制一致，但基准可自定义） */
 function plotVal(key, r){
   const v = key === 'homework' ? hwScore(r) : num(r[key]);
@@ -7244,7 +7269,7 @@ function scorePct(s, date, subj){
   if (!r) return null;
   if (subj === 'quiz'){
     const v = num(r.quiz); if (v === null) return null;
-    const f = state.quizScale || 100; if (!f) return null;
+    const f = quizScaleOf(); if (!f) return null;
     return { pct: v / f * 100, raw: v, full: f };
   } else {
     const v = hwScore(r); if (v === null) return null;
@@ -7323,7 +7348,7 @@ function renderRank(){
     if (!ps.length) return null;
     const pct = ps.reduce((a, b) => a + b.pct, 0) / ps.length;
     const rawAvg = ps.reduce((a, b) => a + b.raw, 0) / ps.length;
-    return { id:s.id, name:s.name, cls:c.name, pct, raw:rawAvg, full:state.quizScale||100, cnt:ps.length };
+    return { id:s.id, name:s.name, cls:c.name, pct, raw:rawAvg, full:quizScaleOf(), cnt:ps.length };
   }).filter(Boolean);
 
   if (!rows.length) return controlCard + '<div class="empty"><span class="ico">📊</span>所选范围暂无成绩记录</div>';
@@ -7367,7 +7392,7 @@ function renderRank(){
       <div class="rs"><div class="rs-l">参与人数</div><div class="rs-v">${rows.length}<small>人</small></div></div>
     </div>`;
 
-  const hint = `<div class="hint">得分率 = 实际得分 ÷ 满分 ×100；小测满分 ${state.quizScale||100}，家庭作业按每次记录的实际满分折算。排名范围：${esc(scopeLabel)} · ${mode==='date'?'单次测试 '+(state.rankDate||''):'平均得分'}</div>`;
+  const hint = `<div class="hint">得分率 = 实际得分 ÷ 满分 ×100；小测满分 ${quizScaleOf()}，家庭作业按每次记录的实际满分折算。排名范围：${esc(scopeLabel)} · ${mode==='date'?'单次测试 '+(state.rankDate||''):'平均得分'}</div>`;
 
   return controlCard + summary + `<div class="card"><ul class="rank-list">${list}</ul></div>` + hint;
 }
@@ -7401,7 +7426,7 @@ function renderDist(){
       let pct = null;
       if (subj === 'quiz') {
         const q = num(r.quiz);
-        if (q !== null) { const f = state.quizScale || 100; pct = f > 0 ? q / f * 100 : null; }
+        if (q !== null) { const f = quizScaleOf(); pct = f > 0 ? q / f * 100 : null; }
       } else {
         const h = hwScore(r); const f = hwFullOf(r);
         if (h !== null && f > 0) pct = h / f * 100;
@@ -7524,7 +7549,7 @@ function renderTrend(){
   const pass = Math.max(0, Math.min(base, +state.trendPass || 60));
   const scope = state.trendScope || 'both';
   const allSeries = [
-    { key:'quiz', color:'#0f6e56', label:LBL('quiz') + '（满分 ' + (state.quizScale || 100) + '）' },
+    { key:'quiz', color:'#0f6e56', label:LBL('quiz') + '（满分 ' + (quizScaleOf()) + '）' },
     { key:'homework', color:'#16a34a', label:LBL('homework') + '（满分 ' + (state.hwScale || 10) + '，或每次实际满分）' },
   ];
   const series = allSeries.filter(se => scope === 'both' || scope === se.key);
@@ -12525,7 +12550,7 @@ function weeklySummaryText(cls, days){
   const attDays = Array.from(daySet).sort();
   let present = 0, late = 0, leave = 0, absent = 0;
   attDays.forEach(dd => cls.students.forEach(s => { const a = (s.records && s.records[dd] && s.records[dd].attendance) || 'present'; if (a === 'present') present++; else if (a === 'late') late++; else if (a === 'leave') leave++; else if (a === 'absent') absent++; }));
-  const pass = (state.quizThresholds && state.quizThresholds.pass) || (state.quizScale || 100) * 0.6;
+  const pass = quizPassLine(cls);
   const qVals = [];
   cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => { if (dd < fromD || dd > d) return; if (attIsRest(cls, dd)) return; const q = num(s.records[dd] && s.records[dd].quiz); if (q !== null) qVals.push(q); }));
   const qAvg = qVals.length ? qVals.reduce((a, b) => a + b, 0) / qVals.length : null;
@@ -12538,7 +12563,7 @@ function weeklySummaryText(cls, days){
   const warns = buildWarnings(cls);
   let txt = '班级：' + cls.name + '\n统计区间：' + fromD + ' ~ ' + d + '（共 ' + days + ' 天）\n';
   txt += '上课天数：' + attDays.length + ' 天\n出勤：出勤 ' + present + ' / 迟到 ' + late + ' / 请假 ' + leave + ' / 缺勤 ' + absent + ' 人次\n';
-  txt += '小测：共 ' + qVals.length + ' 人次，均分 ' + (qAvg != null ? fmt1(qAvg) : '—') + '（满分 ' + (state.quizScale || 100) + '），最高 ' + (qMax != null ? qMax : '—') + '，达标率 ' + (qPass != null ? fmt1(qPass) + '%' : '—') + '\n';
+  txt += '小测：共 ' + qVals.length + ' 人次，均分 ' + (qAvg != null ? fmt1(qAvg) : '—') + '（满分 ' + (quizScaleOf()) + '），最高 ' + (qMax != null ? qMax : '—') + '，达标率 ' + (qPass != null ? fmt1(qPass) + '%' : '—') + '\n';
   if (hwRate !== null) txt += '作业完成率：' + hwRate + '%\n';
   if (pg.up.length) txt += '进步最快：' + pg.up.map(x => x.s.name + '（▲' + Math.abs(x.delta).toFixed(1) + '）').join('、') + '\n';
   if (pg.down.length) txt += '退步明显：' + pg.down.map(x => x.s.name + '（▼' + Math.abs(x.delta).toFixed(1) + '）').join('、') + '\n';
@@ -12592,7 +12617,7 @@ function genTermSummaryByAI(sid, cb){
   let txt = '学生姓名：' + name + '\n';
   if (inClass) {
     txt += '出勤率：' + rate + '%（出勤' + present + ' / 迟到' + late + ' / 请假' + leave + ' / 补课' + makeup + '，共' + days + '天）\n';
-    txt += '小测均分：' + (qAvg != null ? fmt1(qAvg) + '（满分' + (state.quizScale || 100) + '）' : '数据不足') + '\n';
+    txt += '小测均分：' + (qAvg != null ? fmt1(qAvg) + '（满分' + (quizScaleOf()) + '）' : '数据不足') + '\n';
     txt += '作业均分：' + (hAvg != null ? fmt1(hAvg) + '（满分' + (state.hwScale || 10) + '）' : '数据不足') + '\n';
     txt += '未完成作业次数：' + hwMiss + '\n';
   } else { txt += '（该生未编入班级，仅档案信息）\n'; }
@@ -12618,7 +12643,7 @@ function genAnalysisByAI(sid, cb){
   const p = profileOf(sid); if (!p) { cb(null, new Error('未找到档案')); return; }
   const id = String(sid);
   const issues = []; let firstName = null;
-  const pass = (state.quizThresholds && state.quizThresholds.pass) || (state.quizScale || 100) * 0.6;
+  const pass = quizPassLine(activeClass());
   state.classes.forEach(c => {
     const s = c.students.find(x => String(x.id) === id); if (!s) return;
     if (firstName === null) firstName = s.name;
@@ -12783,7 +12808,7 @@ function genDiagByAI(sid, cb){
   const qVals = [];
   recent.forEach(d => { const q = num(s.records[d] && s.records[d].quiz); if (q != null) qVals.push(q); });
   const qAvgV = qVals.length ? (qVals.reduce((a, b) => a + b, 0) / qVals.length) : null;
-  const pass = (state.quizThresholds && state.quizThresholds.pass) || (state.quizScale || 100) * 0.6;
+  const pass = quizPassLine(cls);
   const lowQ = recent.filter(d => { const q = num(s.records[d] && s.records[d].quiz); return q != null && q < pass; }).length;
   const exam = cls.examScores[s.id] || {};
   const examTxt = Object.keys(exam).filter(k => k !== 'zhongkao').map(k => k + ':' + (exam[k].mathScore || exam[k].math || '?')).join('、') || '无';
@@ -12791,7 +12816,7 @@ function genDiagByAI(sid, cb){
   let hwMiss = 0;
   recent.forEach(d => { const r = s.records[d]; if (!r) return; if (state.hwMode === 'done') { if (r.hwDone === false) hwMiss++; } else { const h = hwEffective(r); if (h === null || ((state.hwScale || 10) > 0 && h / (state.hwScale || 10) < 0.6)) hwMiss++; } });
   let txt = '学生姓名：' + (p.name || s.name) + '\n';
-  txt += '近14天小测均分：' + (qAvgV != null ? fmt1(qAvgV) + '（满分' + (state.quizScale || 100) + '，低于达标线' + fmt1(pass) + ' 的有 ' + lowQ + ' 次）' : '数据不足') + '\n';
+  txt += '近14天小测均分：' + (qAvgV != null ? fmt1(qAvgV) + '（满分' + (quizScaleOf()) + '，低于达标线' + fmt1(pass) + ' 的有 ' + lowQ + ' 次）' : '数据不足') + '\n';
   txt += '考试成绩：' + examTxt + (zk ? '；' + zk : '') + '\n';
   txt += '近14天作业偏低/未完成次数：' + hwMiss + '\n';
   // 错题知识点快捷标签（老师在录入小测/作业时点选标注，累积越久 AI 诊断越精准）
@@ -12910,9 +12935,9 @@ function genQuizByAI(){
   const cls = activeClass();
   if (cls && basis === 'class') {
     const ds = smartDates(cls), recent = ds.slice(-14);
-    let sum = 0, cnt = 0, low = 0; const pass = (state.quizThresholds && state.quizThresholds.pass) || (state.quizScale || 100) * 0.6;
+    let sum = 0, cnt = 0, low = 0; const pass = quizPassLine(cls);
     cls.students.forEach(s => recent.forEach(d => { const q = num(s.records[d] && s.records[d].quiz); if (q != null) { sum += q; cnt++; if (q < pass) low++; } }));
-    scope = '本班近期小测：均分 ' + (cnt ? fmt1(sum / cnt) : '—') + '（满分' + (state.quizScale || 100) + '），' + low + ' 人次低于达标线，请针对班级整体薄弱方向出题';
+    scope = '本班近期小测：均分 ' + (cnt ? fmt1(sum / cnt) : '—') + '（满分' + (quizScaleOf()) + '），' + low + ' 人次低于达标线，请针对班级整体薄弱方向出题';
   } else if (basis === 'student') {
     const sid = (document.getElementById('qgSid') || {}).value; const f = sid ? findStudentById(sid) : null;
     if (f) scope = '学生「' + f.s.name + '」的薄弱点（可结合其近期小测/作业表现推断）';
