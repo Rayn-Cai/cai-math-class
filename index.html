@@ -2775,7 +2775,7 @@ function clearToast(){ const el = document.getElementById('toast'); if (el) el.c
 function openModal(title, bodyHtml, footHtml, maxWidth, noAnim){
   ui._modalTs = Date.now();
   document.getElementById('modalRoot').innerHTML =
-    `<div class="overlay" onclick="if(event.target===this)maybeCloseModal()">
+    `<div class="overlay">
       <div class="modal ${noAnim ? 'no-anim' : ''}" style="max-width:${maxWidth || 520}px">
         <div class="modal-head"><h3>${title}</h3><button class="close-x" onclick="closeModal()">×</button></div>
         <div class="modal-body">${bodyHtml}</div>
@@ -3973,13 +3973,13 @@ function epAdd(sid, goal){
   const id = String(sid);
   epStore(state.activeDate)[id] = goal || '';
   delete epExcl(state.activeDate)[id];
-  save(); openExtraPractice();
+  save(); renderMain(); openExtraPractice();
 }
 function epRemove(sid){
   const id = String(sid);
   delete epStore(state.activeDate)[id];
   epExcl(state.activeDate)[id] = true;   // 记住「已移出」，规则不会再把他自动加回来
-  save(); openExtraPractice();
+  save(); renderMain(); openExtraPractice();
 }
 function epSetGoal(sid, goal){
   epStore(state.activeDate)[String(sid)] = goal;   // 自动项一旦写目标即固化为手动项
@@ -4002,7 +4002,7 @@ function epApplyRules(){
   if (!hits.length) { toast('当前规则没有命中任何学生'); return; }
   const st = epStore(d), ex = epExcl(d);
   hits.forEach(h => { const id = String(h.s.id); if (st[id] === undefined) st[id] = h.reasons.join('、'); delete ex[id]; });
-  save(); openExtraPractice(); toast(`已按规则纳入 ${hits.length} 人`);
+  save(); renderMain(); openExtraPractice(); toast(`已按规则纳入 ${hits.length} 人`);
 }
 function epClearDay(){
   const c = activeClass(); if (!c) return;
@@ -4010,24 +4010,24 @@ function epClearDay(){
   if (!confirm(`确定清空 ${d} 的加练名单吗？`)) return;
   c.extraPractice[d] = {};
   epRuleHits(d).forEach(h => { epExcl(d)[String(h.s.id)] = true; }); // 清空后不被规则自动加回
-  save(); openExtraPractice(); toast('已清空当日加练名单');
+  save(); renderMain(); openExtraPractice(); toast('已清空当日加练名单');
 }
 /* -------- 加练规则设置面板 -------- */
-function epRuleSet(k, v){ state.epRules[k] = v; save(); openEpRules(); }
+function epRuleSet(k, v){ state.epRules[k] = v; save(); renderMain(); openEpRules(); }
 function epRuleSub(field, k, v){
   const R = state.epRules;
   R[field][k] = (k === 'lt') ? (num(v) === null ? 0 : num(v)) : v;
   if (k === 'lt') R[field].on = true;
-  save(); openEpRules();
+  save(); renderMain(); openEpRules();
 }
 function epRuleKey(field, key){
   const arr = state.epRules[field].keys;
   const i = arr.indexOf(key);
   if (i >= 0) arr.splice(i, 1); else arr.push(key);
   if (arr.length) state.epRules[field].on = true;
-  save(); openEpRules();
+  save(); renderMain(); openEpRules();
 }
-function epRulesReset(){ state.epRules = defaultEpRules(); save(); openEpRules(); toast('已恢复默认加练规则'); }
+function epRulesReset(){ state.epRules = defaultEpRules(); save(); renderMain(); openEpRules(); toast('已恢复默认加练规则'); }
 function openEpRules(){
   const R = EPR();
   const chips = (list, field) => list.map(o =>
@@ -4181,6 +4181,7 @@ function qlvAutosave(){
   tgt.quizThresholds = { excellent:e, good:g, pass:p };
   save();
   updateSaveStatus('saved');
+  renderMain();   // 失焦即保存的同时刷新主界面：分数范围/等级分布/加练预览/颜色标记实时更新，无需刷新页面
 }
 function statRowHtml(cls, d){
   const view = ui.quizView || 'range';
