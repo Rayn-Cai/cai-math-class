@@ -12692,13 +12692,11 @@ function trGenAI(){
 
 /* 总课时批量设置 */
 function openBatchHours(){
-  openModal('<div class="modal sm-modal"><div class="modal-t">⏱️ 批量设置课时</div>'
-    + '<div class="modal-b">'
-    + '<label class="ff"><span>操作方式</span><select id="bhMode" class="inp"><option value="setTotal">设为总课时</option><option value="addTotal">增加总课时</option><option value="addUsed">增加已用课时</option></select></label>'
-    + '<label class="ff"><span>课时数值</span><input id="bhVal" class="inp" type="number" min="0" value="10"></label>'
-    + '<label class="ff"><span>应用到</span><select id="bhScope" class="inp"><option value="all">全班学生</option><option value="empty">仅未登记（总课时为0）的学生</option></select></label>'
-    + '<div class="modal-actions"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="applyBatchHours()">应用</button></div>'
-    + '</div></div>');
+  const body = ''
+    + '<div class="form-row"><label>操作方式</label><select id="bhMode" class="inp"><option value="setTotal">设为总课时</option><option value="addTotal">增加总课时</option><option value="addUsed">增加已用课时</option></select></div>'
+    + '<div class="form-row"><label>课时数值</label><input id="bhVal" class="inp" type="number" min="0" value="10"></div>'
+    + '<div class="form-row"><label>应用到</label><select id="bhScope" class="inp"><option value="all">全班学生</option><option value="empty">仅未登记（总课时为0）的学生</option></select></div>';
+  openModal('⏱️ 批量设置课时', body, `<button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="applyBatchHours()">应用</button>`, 420);
 }
 function applyBatchHours(mode, val, scope){
   if (mode == null) mode = (document.getElementById('bhMode')||{}).value || 'setTotal';
@@ -12727,28 +12725,29 @@ function applyBatchHours(mode, val, scope){
 function openAISettings(){
   const p = state.ai.provider, a = aiCfg();
   const opts = Object.keys(AI_PROVIDERS).map(k => '<option value="'+k+'" '+(k===p?'selected':'')+'>'+AI_PROVIDERS[k].name+'</option>').join('');
-  openModal('<div class="modal sm-modal ai-set-modal"><div class="modal-t">🤖 AI 大模型设置</div>'
-    + '<div class="modal-b">'
-    + '<div class="ai-set-sec"><label class="ff"><span>模型厂商</span><select id="aiProv" class="inp" onchange="aiProvChange()">'+opts+'</select></label>'
-    + '<div class="ff-note" id="aiNote">'+(AI_PROVIDERS[p]||AI_PROVIDERS.deepseek).note+'</div></div>'
-    + '<div class="ai-set-sec"><label class="ff"><span>API Key</span><input id="aiKey" class="inp" type="password" placeholder="sk-..." value="'+esc(a.key)+'"></label>'
-    + '<label class="ff"><span>接口地址</span><input id="aiBase" class="inp" placeholder="选厂商后自动填充" value="'+esc(a.base)+'"></label>'
-    + '<label class="ff"><span>模型名</span><input id="aiModel" class="inp" placeholder="选厂商后自动填充" value="'+esc(a.model)+'"></label></div>'
-    + '<div class="ai-set-sec"><label class="ff ff-row"><span>启用 AI 生成</span><label class="toggle-sw"><input id="aiOn" type="checkbox" '+(state.ai.enabled?'checked':'')+'><span class="toggle-sl"></span></label></label>'
-    + '<button class="btn ghost ai-test-btn" onclick="testAIConn()" id="aiTestBtn">🔗 测试连接</button>'
-    + '<div id="aiTestRes" class="ai-test-res"></div></div>'
-    + '<div class="ff-note">密钥仅存储在本机浏览器 localStorage，直接从你的浏览器请求厂商接口；请妥善保管，勿在公共电脑勾选启用。</div>'
-    + '<div class="modal-actions"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveAISettings()">保存并关闭</button></div>'
-    + '</div></div>');
-  /* 确保字段值与当前选中厂商同步（修复：切换厂商后地址未更新的 bug） */
+  const body = ''
+    + '<div class="form-row"><label>模型厂商</label><select id="aiProv" class="inp" onchange="aiProvChange()">'+opts+'</select></div>'
+    + '<div class="hint" id="aiNote">'+(AI_PROVIDERS[p]||AI_PROVIDERS.deepseek).note+'</div>'
+    + '<div class="form-row"><label>API Key</label><input id="aiKey" class="inp" type="password" placeholder="sk-..." value="'+esc(a.key)+'"></div>'
+    + '<div class="form-row"><label>接口地址</label><input id="aiBase" class="inp" placeholder="选厂商后自动填充" value="'+esc(a.base)+'"></div>'
+    + '<div class="form-row"><label>模型名</label><input id="aiModel" class="inp" placeholder="选厂商后自动填充" value="'+esc(a.model)+'"></div>'
+    + '<div class="form-row"><label>启用 AI 生成</label><label class="toggle-sw"><input id="aiOn" type="checkbox" '+(state.ai.enabled?'checked':'')+'><span class="toggle-sl"></span></label></div>'
+    + '<button class="btn ghost" type="button" onclick="testAIConn()" id="aiTestBtn">🔗 测试连接</button>'
+    + '<div id="aiTestRes" class="ai-test-res"></div>'
+    + '<div class="hint">密钥仅存储在本机浏览器 localStorage，直接从你的浏览器请求厂商接口；请妥善保管，勿在公共电脑勾选启用。</div>';
+  openModal('🤖 AI 大模型设置', body, `<button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveAISettings()">保存并关闭</button>`, 460);
+  ui._aiPrevProv = p;   // 记录打开时的厂商，避免打开时覆盖已保存的自定义地址/模型
   requestAnimationFrame(function(){ aiProvChange(); });
 }
 function aiProvChange(){
   const k = (document.getElementById('aiProv')||{}).value || 'deepseek';
   const prov = AI_PROVIDERS[k] || AI_PROVIDERS.deepseek;
   const el = document.getElementById('aiNote'); if (el) el.textContent = prov.note;
-  const baseEl = document.getElementById('aiBase'); if (baseEl) baseEl.value = prov.base || '';
-  const modelEl = document.getElementById('aiModel'); if (modelEl) modelEl.value = prov.model || '';
+  if (k !== (ui._aiPrevProv || state.ai.provider)) {   // 仅在「切换厂商」时自动填充默认值；打开弹窗时不覆盖已保存的自定义地址/模型
+    const baseEl = document.getElementById('aiBase'); if (baseEl) baseEl.value = prov.base || '';
+    const modelEl = document.getElementById('aiModel'); if (modelEl) modelEl.value = prov.model || '';
+  }
+  ui._aiPrevProv = k;
 }
 function saveAISettings(){
   const k = (document.getElementById('aiProv')||{}).value || 'deepseek';
