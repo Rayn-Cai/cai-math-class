@@ -1966,6 +1966,12 @@ th.atc-d.we-sun small{color:var(--red)}
 .ai-test-run{color:var(--text-secondary);font-style:italic}
 .ai-test-ok{color:var(--green-dark);font-weight:600}
 .ai-test-err{color:var(--red-dark);word-break:break-all;line-height:1.5}
+.ai-test-extra{margin-top:8px}
+.ai-mig-tip{background:var(--yellow-light);border-left:3px solid var(--yellow);padding:8px 10px;border-radius:6px;margin-bottom:10px;line-height:1.6}
+.ai-model-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;max-height:132px;overflow-y:auto}
+.ai-chip{font:inherit;font-size:12px;line-height:1.5;padding:3px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text-secondary);cursor:pointer;transition:all .15s}
+.ai-chip:hover{border-color:var(--primary);color:var(--primary)}
+.ai-chip.on{background:var(--primary-light);border-color:var(--primary);color:var(--primary);font-weight:600}
 </style>
 </head>
 <body>
@@ -2197,18 +2203,27 @@ const ui = {
 
 /* ===== AI 大模型配置常量（必须在 aiCfg/aiReady/renderSmart 之前声明，避免 TDZ） ===== */
 const AI_PROVIDERS = {
-  deepseek: { name:'DeepSeek 深度求索', base:'https://api.deepseek.com/v1', model:'deepseek-chat',
-    note:'中文能力强、价格极低，推荐首选；注册 deepseek.com 获取 API Key。' },
+  deepseek: { name:'DeepSeek 深度求索', base:'https://api.deepseek.com/v1', model:'deepseek-v4-flash',
+    note:'⭐ 性价比首选，中文强、极便宜。⚠️ 旧名 deepseek-chat / deepseek-reasoner 已于 2026-07-24 下线，填旧名会报错；更强推理可换 deepseek-v4-pro。' },
   qwen: { name:'通义千问 Qwen（阿里）', base:'https://dashscope.aliyuncs.com/compatible-mode/v1', model:'qwen-plus',
-    note:'阿里云，中文优秀，有免费额度；DashScope 控制台获取 Key。' },
-  glm: { name:'智谱 GLM（清华）', base:'https://open.bigmodel.cn/api/paas/v4', model:'glm-4-flash',
-    note:'智谱开放平台，OpenAI 兼容，有免费模型。' },
-  kimi: { name:'Kimi（月之暗面）', base:'https://api.moonshot.cn/v1', model:'moonshot-v1-8k',
-    note:'超长上下文，适合喂入较长学生档案；Moonshot 控制台获取 Key。' },
+    note:'阿里云百炼，中文优秀；DashScope 控制台获取 Key。' },
+  glm: { name:'智谱 GLM（清华）', base:'https://open.bigmodel.cn/api/paas/v4', model:'glm-4.7-flash',
+    note:'⭐ 可长期免费：glm-4.7-flash（200K 上下文，免费档限 1 并发，本工作台调用量绰绰有余）。旧名 glm-4-flash / glm-4.5-flash 已下线。' },
+  kimi: { name:'Kimi（月之暗面）', base:'https://api.moonshot.cn/v1', model:'kimi-k3',
+    note:'⭐ 长上下文（100 万 token），适合喂入较长学生档案。⚠️ 旧名 moonshot-v1-8k 全系列已于 2026-08-31 下线，填旧名必报「模型不存在」；想省钱可换 kimi-k2.6。' },
   hunyuan: { name:'腾讯混元', base:'https://api.hunyuan.cloud.tencent.com/v1', model:'hunyuan-lite',
-    note:'腾讯云大模型，按量计费；腾讯云控制台开通。' },
+    note:'腾讯云大模型，lite 版长期免费（256K 上下文）；腾讯云控制台开通。' },
   custom: { name:'自定义 OpenAI 兼容', base:'', model:'',
-    note:'填写任意兼容 /v1/chat/completions 的地址与模型名。' }
+    note:'填写任意兼容 /v1/chat/completions 的地址与模型名；填好后可点下方「拉取可用模型」自动获取该接口支持的模型名。' }
+};
+/* 已下线模型 → 现役模型 的自动迁移表：老配置打开即自动改名，避免"模型不存在(404)"报错 */
+const AI_RETIRED_MODELS = {
+  'deepseek-chat':'deepseek-v4-flash', 'deepseek-reasoner':'deepseek-v4-flash',
+  'moonshot-v1-8k':'kimi-k3', 'moonshot-v1-32k':'kimi-k3', 'moonshot-v1-128k':'kimi-k3', 'moonshot-v1-auto':'kimi-k3',
+  'moonshot-v1-8k-vision-preview':'kimi-k3', 'moonshot-v1-32k-vision-preview':'kimi-k3', 'moonshot-v1-128k-vision-preview':'kimi-k3',
+  'kimi-latest':'kimi-k3', 'kimi-k2-0711-preview':'kimi-k3', 'kimi-k2-0905-preview':'kimi-k3', 'kimi-k2-turbo-preview':'kimi-k3',
+  'kimi-k2-thinking':'kimi-k3', 'kimi-k2-thinking-turbo':'kimi-k3', 'kimi-thinking-preview':'kimi-k3', 'kimi-k2.5':'kimi-k3',
+  'glm-4-flash':'glm-4.7-flash', 'glm-4.5-flash':'glm-4.7-flash'
 };
 const AI_SCENES = {
   weekly: '本周学情反馈',
@@ -2551,6 +2566,13 @@ function normalizeState(){
   if (!state.ai.model) state.ai.model = '';
   if (!state.ai.baseUrl) state.ai.baseUrl = '';
   if (!state.ai.scene) state.ai.scene = 'weekly';
+  /* 老配置里的模型可能已被厂商下线（如 moonshot-v1-8k / deepseek-chat），自动迁移到现役模型并留提示 */
+  if (state.ai.model && AI_RETIRED_MODELS[state.ai.model]) {
+    const _old = state.ai.model, _new = AI_RETIRED_MODELS[_old];
+    state.ai.model = _new;
+    state.ai.migratedFrom = _old;
+    state.ai.migratedTo = _new;
+  }
   /* 主题配色：默认翡翠绿，缺省或非法值时回退 */
   if (!state.theme || !THEMES[state.theme]) state.theme = 'emerald';
   /* 旧版积分规则为扁平结构（att/quizFull/...），迁移到模块化结构 */
@@ -12490,24 +12512,68 @@ function aiCfg(){
 }
 function aiReady(){ const c = aiCfg(); return !!(c.key && c.base && c.model); }
 function aiProviderCount(){ return Object.keys(AI_PROVIDERS).length; }
+/* 把厂商返回的原始错误翻译成老师能看懂、能照做的中文提示 */
+function aiErrMsg(status, raw){
+  const t = String(raw || '');
+  let m = '';
+  try { const j = JSON.parse(t); m = (j && j.error && (j.error.message || j.error.type)) || (j && j.message) || ''; } catch (e) { m = t; }
+  m = String(m || '').replace(/\s+/g, ' ').trim();
+  if (status === 404 || /not found the model|model not found|resource_not_found|模型不存在|无此模型/i.test(t))
+    return '模型名不存在或无权访问（' + (m || 'HTTP 404') + '）→ 请在「模型名」改用厂商当前模型，或点「📥 拉取可用模型」自动获取。';
+  if (status === 401 || /invalid.*api.*key|unauthorized|authentication|incorrect api key/i.test(t))
+    return 'API Key 无效或区域不匹配（' + (m || 'HTTP 401') + '）→ 请重新复制 Key；国外站与国内站的 Key 不通用（Kimi 国内站用 api.moonshot.cn）。';
+  if (status === 403)
+    return '无权限（' + (m || 'HTTP 403') + '）→ 该 Key 未开通此模型，或账户余额/额度不足，请到厂商控制台确认。';
+  if (status === 429)
+    return '请求过于频繁或额度用尽（' + (m || 'HTTP 429') + '）→ 稍后再试，或到厂商控制台查看剩余额度。';
+  if (status === 400 && /temperature|top_p|penalty|thinking|max_tokens|invalid_request/i.test(t))
+    return '该模型不接受当前参数（' + (m || 'HTTP 400') + '）→ 通常是推理型模型的限制，可换用普通对话模型。';
+  return 'HTTP ' + status + (m ? '：' + m : (t ? '：' + t.slice(0, 160) : ''));
+}
+/* 判定：该 400 是否属于"模型不接受采样参数"（推理型模型常见），是则去掉参数重试 */
+function aiShouldRetryBare(status, text){
+  return status === 400 && /temperature|top_p|presence_penalty|frequency_penalty|invalid_request/i.test(String(text || ''));
+}
+/* 统一的 OpenAI 兼容请求：部分推理模型（如 Kimi K2/K3 思考模式）不接受 temperature/top_p，
+   命中此类 400 时自动去掉采样参数重试一次，避免"模型名对了但参数被拒"而用不了 */
+function aiRequest(cfg, body, allowRetry){
+  const key = cfg.key || '', base = (cfg.base || '').replace(/\/+$/, '');
+  return fetch(base + '/chat/completions', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + key },
+    body: JSON.stringify(body)
+  }).then(r => {
+    if (r.ok) return r.json();
+    return r.text().then(t => {
+      if (allowRetry && aiShouldRetryBare(r.status, t)) {
+        const bare = { model: body.model, messages: body.messages };
+        if (body.max_tokens != null) bare.max_tokens = body.max_tokens;
+        return aiRequest(cfg, bare, false);
+      }
+      throw new Error(aiErrMsg(r.status, t));
+    });
+  });
+}
+/* 从一次 chat 响应里取出正文（兼容只填 reasoning_content 的思考型模型） */
+function aiPickText(j){
+  const msg = j && j.choices && j.choices[0] && j.choices[0].message;
+  if (!msg) return '';
+  const t = msg.content || msg.reasoning_content || '';
+  return String(t).trim();
+}
 function aiChat(systemText, userText, opt){
   const c = aiCfg();
   if (!c.key || !c.base || !c.model) throw new Error('AI 未配置');
   const o = opt || {};
-  const body = { model: c.model, messages: [
-    { role:'system', content: systemText },
-    { role:'user', content: userText }
-  ], temperature: (o.temperature != null ? o.temperature : 0.7), max_tokens: (o.maxTokens != null ? o.maxTokens : 600) };
-  return fetch(c.base + '/chat/completions', {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + c.key },
-    body: JSON.stringify(body)
-  }).then(r => { if (!r.ok) return r.text().then(t => { throw new Error('HTTP ' + r.status + (t ? ': ' + t.slice(0, 200) : '')); }); return r.json(); })
-    .then(j => {
-      const t = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-      if (!t) throw new Error('AI 返回空内容，请检查模型名是否正确');
-      return t.trim();
-    });
+  const msgs = [ { role:'system', content: systemText }, { role:'user', content: userText } ];
+  const body = { model: c.model, messages: msgs,
+    temperature: (o.temperature != null ? o.temperature : 0.7),
+    max_tokens: (o.maxTokens != null ? o.maxTokens : 600) };
+  return aiRequest(c, body, true).then(j => {
+    const t = aiPickText(j);
+    if (!t) throw new Error('AI 返回空内容，请检查模型名是否正确');
+    return t;
+  });
 }
 function aiCommentPrompt(sid, scene){
   const f = findStudentById(sid); if (!f) return null;
@@ -12725,19 +12791,67 @@ function applyBatchHours(mode, val, scope){
 function openAISettings(){
   const p = state.ai.provider, a = aiCfg();
   const opts = Object.keys(AI_PROVIDERS).map(k => '<option value="'+k+'" '+(k===p?'selected':'')+'>'+AI_PROVIDERS[k].name+'</option>').join('');
+  const mig = (state.ai.migratedFrom && state.ai.migratedTo)
+    ? '<div class="hint ai-mig-tip">🔧 你之前用的模型 <b>' + esc(state.ai.migratedFrom) + '</b> 已被厂商下线，已自动改用 <b>' + esc(state.ai.migratedTo) + '</b>。点「保存并关闭」即可生效。</div>'
+    : '';
   const body = ''
+    + mig
     + '<div class="form-row"><label>模型厂商</label><select id="aiProv" class="inp" onchange="aiProvChange()">'+opts+'</select></div>'
     + '<div class="hint" id="aiNote">'+(AI_PROVIDERS[p]||AI_PROVIDERS.deepseek).note+'</div>'
     + '<div class="form-row"><label>API Key</label><input id="aiKey" class="inp" type="password" placeholder="sk-..." value="'+esc(a.key)+'"></div>'
     + '<div class="form-row"><label>接口地址</label><input id="aiBase" class="inp" placeholder="选厂商后自动填充" value="'+esc(a.base)+'"></div>'
     + '<div class="form-row"><label>模型名</label><input id="aiModel" class="inp" placeholder="选厂商后自动填充" value="'+esc(a.model)+'"></div>'
+    + '<button class="btn ghost" type="button" onclick="fetchAIModels()" id="aiModelBtn">📥 拉取可用模型</button>'
+    + '<div id="aiModelList" class="ai-test-res"></div>'
     + '<div class="form-row"><label>启用 AI 生成</label><label class="toggle-sw"><input id="aiOn" type="checkbox" '+(state.ai.enabled?'checked':'')+'><span class="toggle-sl"></span></label></div>'
     + '<button class="btn ghost" type="button" onclick="testAIConn()" id="aiTestBtn">🔗 测试连接</button>'
     + '<div id="aiTestRes" class="ai-test-res"></div>'
-    + '<div class="hint">密钥仅存储在本机浏览器 localStorage，直接从你的浏览器请求厂商接口；请妥善保管，勿在公共电脑勾选启用。</div>';
+    + '<div class="hint">密钥仅存储在本机浏览器 localStorage，直接从你的浏览器请求厂商接口；请妥善保管，勿在公共电脑勾选启用。模型会随厂商迭代改名，若报「模型不存在」，点上面的「拉取可用模型」重新选一个即可。</div>';
   openModal('🤖 AI 大模型设置', body, `<button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveAISettings()">保存并关闭</button>`, 460);
   ui._aiPrevProv = p;   // 记录打开时的厂商，避免打开时覆盖已保存的自定义地址/模型
+  ui._aiModelIds = [];
   requestAnimationFrame(function(){ aiProvChange(); });
+}
+/* 拉取该接口当前真正可用的模型列表（GET /v1/models），免去手动查文档、也免受模型改名影响 */
+function fetchAIModels(){
+  var btn = document.getElementById('aiModelBtn'), box = document.getElementById('aiModelList');
+  if (!box) return;
+  var provKey = (document.getElementById('aiProv')||{}).value || 'deepseek';
+  var prov = AI_PROVIDERS[provKey] || AI_PROVIDERS.deepseek;
+  var tBase = ((document.getElementById('aiBase')||{}).value || prov.base || '').replace(/\/+$/,'');
+  var tKey = (document.getElementById('aiKey')||{}).value || '';
+  if (!tBase) { box.innerHTML = '<span class="ai-test-err">❌ 请先填写接口地址</span>'; return; }
+  if (!tKey) { box.innerHTML = '<span class="ai-test-err">❌ 请先填写 API Key</span>'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 获取中…'; }
+  box.innerHTML = '<span class="ai-test-run">正在从 ' + esc(tBase) + ' 获取模型列表…</span>';
+  fetch(tBase + '/models', { headers:{ 'Authorization':'Bearer ' + tKey } })
+    .then(function(r){
+      if (!r.ok) return r.text().then(function(t){ throw new Error(aiErrMsg(r.status, t)); });
+      return r.json();
+    })
+    .then(function(j){
+      var ids = ((j && j.data) || []).map(function(m){ return m && m.id; }).filter(Boolean);
+      ids = ids.filter(function(v, i){ return ids.indexOf(v) === i; }).sort();
+      if (!ids.length) throw new Error('该接口未返回模型列表（可能不支持 /models），请手动填写模型名');
+      ui._aiModelIds = ids;
+      var cur = (document.getElementById('aiModel')||{}).value || '';
+      box.innerHTML = '<div class="hint">共 ' + ids.length + ' 个可用模型，点击填入：</div><div class="ai-model-chips">'
+        + ids.map(function(id, i){ return '<button type="button" class="ai-chip' + (id === cur ? ' on' : '') + '" onclick="pickAIModelByIdx(' + i + ')">' + esc(id) + '</button>'; }).join('')
+        + '</div>';
+      if (btn) { btn.disabled = false; btn.textContent = '📥 拉取可用模型'; }
+    })
+    .catch(function(err){
+      box.innerHTML = '<span class="ai-test-err">❌ 获取失败：' + esc((err && err.message) || '网络错误') + '</span>';
+      if (btn) { btn.disabled = false; btn.textContent = '📥 拉取可用模型'; }
+    });
+}
+function pickAIModelByIdx(i){
+  var id = (ui._aiModelIds || [])[i];
+  if (!id) return;
+  var el = document.getElementById('aiModel'); if (el) el.value = id;
+  var chips = document.querySelectorAll('#aiModelList .ai-chip');
+  for (var k = 0; k < chips.length; k++) chips[k].className = 'ai-chip' + (k === i ? ' on' : '');
+  toast('已选择模型：' + id + '（记得点「测试连接」验证）');
 }
 function aiProvChange(){
   const k = (document.getElementById('aiProv')||{}).value || 'deepseek';
@@ -12752,47 +12866,50 @@ function aiProvChange(){
 function saveAISettings(){
   const k = (document.getElementById('aiProv')||{}).value || 'deepseek';
   const prov = AI_PROVIDERS[k] || AI_PROVIDERS.deepseek;
+  let model = ((document.getElementById('aiModel')||{}).value || '').trim();
+  let fixed = '';
+  if (model && AI_RETIRED_MODELS[model]) { fixed = model; model = AI_RETIRED_MODELS[model]; }   // 手填了已下线模型名 → 自动纠正
   state.ai.provider = k;
   state.ai.apiKey = (document.getElementById('aiKey')||{}).value || '';
   state.ai.baseUrl = (document.getElementById('aiBase')||{}).value || '';
-  state.ai.model = (document.getElementById('aiModel')||{}).value || '';
+  state.ai.model = model;
   state.ai.enabled = !!(document.getElementById('aiOn')||{}).checked;
+  delete state.ai.migratedFrom; delete state.ai.migratedTo;   // 已保存即无需再提示
   save(); closeModal(); renderMain();
+  if (fixed) return toast('⚠️ ' + fixed + ' 已下线，已自动改用 ' + model);
   toast(state.ai.enabled ? '✅ AI 已启用（' + (prov.name || 'AI') + '）' : 'AI 设置已保存（未启用）');
 }
-/* 测试 AI 连接 */
+/* 测试 AI 连接（直接用弹窗里当前填写的值，不读 state） */
 function testAIConn(){
   var btn = document.getElementById('aiTestBtn');
   var res = document.getElementById('aiTestRes');
   if (!btn || !res) return;
-  btn.disabled = true; btn.textContent = '⏳ 测试中…';
-  res.innerHTML = '<span class="ai-test-run">正在连接 ' + ((document.getElementById('aiProv')||{}).value || '') + ' …</span>';
-  /* 临时读取当前表单值（不保存到 state） */
   var provKey = (document.getElementById('aiProv')||{}).value || 'deepseek';
   var prov = AI_PROVIDERS[provKey] || AI_PROVIDERS.deepseek;
   var tBase = ((document.getElementById('aiBase')||{}).value || prov.base || '').replace(/\/+$/,'');
-  var tModel = (document.getElementById('aiModel')||{}).value || prov.model || '';
+  var tModel = ((document.getElementById('aiModel')||{}).value || '').trim();
   var tKey = (document.getElementById('aiKey')||{}).value || '';
-  if (!tKey) { res.innerHTML = '<span class="ai-test-err">❌ 请先填写 API Key</span>'; btn.disabled = false; btn.textContent = '🔗 测试连接'; return; }
-  if (!tBase || !tModel) { res.innerHTML = '<span class="ai-test-err">❌ 接口地址和模型名不能为空</span>'; btn.disabled = false; btn.textContent = '🔗 测试连接'; return; }
-  fetch(tBase + '/chat/completions', {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + tKey },
-    body: JSON.stringify({ model: tModel, messages:[{role:'user',content:'hi'}], max_tokens:5 })
-  }).then(function(r){
-    if (!r.ok) return r.text().then(function(t){ throw new Error('HTTP ' + r.status + ': ' + t.slice(0, 200)); });
-    return r.json();
-  }).then(function(j){
-    var name = (j.model || tModel);
-    res.innerHTML = '<span class="ai-test-ok">✅ 连接成功！模型 <b>' + esc(name) + '</b> 可用</span>';
-    btn.disabled = false; btn.textContent = '🔗 测试连接';
-  }).catch(function(err){
-    var msg = (err && err.message) ? err.message : String(err || '网络错误');
-    /* 截断过长的错误信息 */
-    if (msg.length > 120) msg = msg.slice(0, 120) + '…';
-    res.innerHTML = '<span class="ai-test-err">❌ 连接失败：' + esc(msg) + '</span>';
-    btn.disabled = false; btn.textContent = '🔗 测试连接';
-  });
+  function restore(){ btn.disabled = false; btn.textContent = '🔗 测试连接'; }
+  if (!tKey) { res.innerHTML = '<span class="ai-test-err">❌ 请先填写 API Key</span>'; return; }
+  if (!tBase || !tModel) { res.innerHTML = '<span class="ai-test-err">❌ 接口地址和模型名不能为空</span>'; return; }
+  btn.disabled = true; btn.textContent = '⏳ 测试中…';
+  res.innerHTML = '<span class="ai-test-run">正在连接 ' + esc(tModel) + ' …</span>';
+  aiRequest({ base:tBase, key:tKey, model:tModel },
+            { model:tModel, messages:[{ role:'user', content:'你好，请只回复 ok' }], max_tokens:64 }, true)
+    .then(function(j){
+      if (!aiPickText(j)) throw new Error('接口已连通，但模型返回了空内容，建议换一个模型名再测');
+      var name = (j && j.model) || tModel;
+      res.innerHTML = '<span class="ai-test-ok">✅ 连接成功！模型 <b>' + esc(name) + '</b> 可用；勾选「启用 AI 生成」并保存即可使用。</span>';
+      restore();
+    })
+    .catch(function(err){
+      var msg = (err && err.message) || '网络错误';
+      var extra = /模型名不存在|无权访问/.test(msg)
+        ? '<div class="ai-test-extra"><button type="button" class="btn ghost" onclick="fetchAIModels()">📥 拉取可用模型</button></div>'
+        : '';
+      res.innerHTML = '<span class="ai-test-err">❌ 连接失败：' + esc(msg) + '</span>' + extra;
+      restore();
+    });
 }
 
 /* ===== 新增 AI 能力：测试分析诊断 / AI 评语 / 预警家长信 / 智能出题 ===== */
