@@ -2360,14 +2360,17 @@ function quizScoreClass(v, c){
   if (r >= t.pass / s) return 'q-pass';
   return 'q-poor';
 }
-/* 取作业有效分值：分数模式直接取 r.homework；完成模式将 hwDone 转为满分/0 */
+/* 取作业有效分值：直接取 r.homework 的数值（非数字返回 null，统计自动跳过） */
 function hwEffective(r){
-  if (state.hwMode === 'done') {
-    if (r.hwDone === true) { const P = (state.points || defaultPoints()).roster; return P.hwFull; }
-    if (r.hwDone === false) return 0;
-    return null; // 未标记 → 无数据
-  }
   return num(r.homework);
+}
+/* 作业单元格显示（自由文本/数值皆可）：数值显示分值+满分后缀并着色，文本原样显示 */
+function hwCellView(r, d){
+  const raw = String(r.homework || '').trim();
+  if (!raw) return { cls:'', html:'—' };
+  const n = num(r.homework);
+  if (n !== null) return { cls: scoreClass(n), html: `${n}<span class="hw-full">/${hwFullFor(d, r)}</span>` };
+  return { cls:'', html: esc(raw) };
 }
 function valClass(v){ if (v === null) return ''; return v >= 8 ? 'v-g' : v >= 6 ? 'v-y' : 'v-r'; }
 function bigValClass(v){ if (v === null) return ''; return v >= 90 ? 'v-g' : v >= 70 ? 'v-y' : 'v-r'; }
@@ -2623,8 +2626,20 @@ function normalizeState(){
   ['quiz','homework','behavior','absorption'].forEach(k => {
     state.epRules[k] = Object.assign(defaultEpRules()[k], state.epRules[k] || {});
   });
-  /* 家庭作业输入模式：'score'=分数模式（默认）, 'done'=完成模式（✓完成/✕未完成） */
-  if (!state.hwMode) state.hwMode = 'score';
+  /* 家庭作业输入模式：统一为「可填任意字符的填空」（分数 / 文字均可）。旧的『完成模式』✓/✕ 已于 2026-09-22 移除 */
+  state.hwMode = 'score';
+  /* 迁移：旧『完成模式』的 hwDone 布尔 → 文本作业（完成 / 未完成），避免历史数据丢失（仅执行一次） */
+  if (state._hwDoneMigrated !== true) {
+    (state.classes || []).forEach(c => (c.students || []).forEach(s => {
+      Object.values(s.records || {}).forEach(r => {
+        if (r.hwDone !== undefined && r.hwDone !== null) {
+          if (!r.homework || String(r.homework).trim() === '') r.homework = (r.hwDone === true ? '完成' : '未完成');
+          delete r.hwDone;
+        }
+      });
+    }));
+    state._hwDoneMigrated = true;
+  }
   if (!state.labels || typeof state.labels !== 'object') state.labels = {};
   if (!state.labels.quiz) state.labels.quiz = '小测';
   if (!state.labels.homework) state.labels.homework = '家庭作业';
@@ -3691,7 +3706,7 @@ function renderOverview(){
   const qs = statsOf(cls, d, 'quiz');
   const hs = statsOf(cls, d, 'homework');
   const quizTodo = cls.students.filter(s => { const r = rec(s, d); return (num(r.quiz) === null); }).length;
-  const hwTodo = cls.students.filter(s => { const r = rec(s, d); return (state.hwMode === 'done' ? (r.hwDone === undefined || r.hwDone === null) : hwEffective(r) === null); }).length;
+  const hwTodo = cls.students.filter(s => { const r = rec(s, d); return (String(r.homework || '').trim() === ''); }).length;
   const warns = buildWarnings(cls);
   const pg = buildProgressRanking(cls, 7);
   const card = (ico, v, l, cls2) => `<div class="ov-card ${cls2 || ''}"><div class="ov-ico">${ico}</div><div class="ov-v">${v}</div><div class="ov-l">${l}</div></div>`;
@@ -4266,26 +4281,23 @@ function multiBtnHtml(s, d, field){
     onclick="openMulti(event,${s.id},'${field}')">${tagCellInner(r, field)}</button>`;
 }
 
-/* 家庭作业单元格：分数输入/完成模式 + 📝 详情按钮 + 完成情况徽标 */
+/* 家庭作业单元格：可填任意字符的填空（分数 / 文字均可）+ 📝 详情按钮 + 状态徽标 */
 function renderHwCell(s, r, h){
   const d = hwDetailOf(r);
-  const hasScore = String(r.homework || '').trim() !== '';
+  const raw = String(r.homework || '').trim();
+  const hasVal = raw !== '';
   const correctBadge = (d && (d.status === 'none' || d.status === 'partial') && d.correct === 'pending')
     ? `<span class="hw-det-badge hw-correct" title="作业未完成且未订正">待订正</span>` : '';
-  const pendingBadge = !hasScore
-    ? `<span class="hw-det-badge hw-pending" title="点击 📝 录入得分与完成情况">待录入</span>` : '';
+  const pendingBadge = !hasVal
+    ? `<span class="hw-det-badge hw-pending" title="点击 📝 录入作业情况">待录入</span>` : '';
   const badge = pendingBadge + correctBadge;
   const detBtn = `<button class="hw-det-btn ${d ? 'on' : ''}" title="作业详情（得分/本次满分/完成情况/订正）" onclick="openHwDetail(${s.id})">📝</button>`;
-  if (state.hwMode === 'done') {
-    return `<span class="hw-done-group">
-        <button class="hw-btn ${r.hwDone ? 'on' : ''}" onclick="setHwDone(${s.id},true)" title="标记完成">✓</button>
-        <button class="hw-btn ${r.hwDone === false ? 'on-miss' : ''}" onclick="setHwDone(${s.id},false)" title="标记未完成">✕</button>
-      </span>${detBtn}${badge}`;
-  }
   const fv = hwFullFor(state.activeDate, r);
-  const fullTxt = `<button class="hw-full-btn" title="本次作业满分 ${fv} 分 · 点击修改（全班同步）" onclick="editHwFull()">/<b>${fv}</b></button>`;
-  return `<span class="hw-score-wrap"><input class="score-in ${scoreClass(h)}" id="in-homework-${s.id}" value="${esc(r.homework)}"
-        inputmode="decimal" max="${fv}" placeholder="-"
+  const isNum = num(r.homework) !== null;
+  const fullTxt = isNum
+    ? `<button class="hw-full-btn" title="本次作业满分 ${fv} 分 · 点击修改（全班同步）" onclick="editHwFull()">/<b>${fv}</b></button>` : '';
+  return `<span class="hw-score-wrap"><input class="score-in ${scoreClass(num(r.homework))}" id="in-homework-${s.id}" value="${esc(r.homework)}"
+        placeholder="可填分数或文字"
         oninput="setScore(${s.id},'homework',this.value)" onchange="renderMain()" onkeydown="rosterKeyNav(event)">${fullTxt}</span>${detBtn}${badge}`;
 }
 
@@ -4402,9 +4414,8 @@ function renderRoster(){
         <th class="c" style="width:150px">出勤</th>
         <th class="c" style="width:80px"><span class="th-label" onclick="openLabelEditor('quiz')" title="点击修改列名">📝 ${esc(LBL('quiz'))}</span></th>
         <th class="c" style="width:120px"><span class="th-label" onclick="openLabelEditor('homework')" title="点击修改列名">📚 ${esc(LBL('homework'))}</span>
-          <button class="th-gear" onclick="toggleHwMode()" title="切换输入模式（分数/完成）" id="hwModeBtn">${state.hwMode === 'done' ? '✓完成' : '🔢分数'}</button>
-          ${state.hwMode === 'done' ? '' : `<button class="th-gear hw-full-gear" onclick="editHwFull()" title="设置本次作业满分（全班同步）">满分${curHwFull()}</button>`}
-          <button class="th-gear" onclick="copyUnfinishedHw()" title="复制今日未完成作业名单">📋</button>
+          <button class="th-gear hw-full-gear" onclick="editHwFull()" title="设置本次作业满分（全班同步，仅对数字分值生效）">满分${curHwFull()}</button>
+          <button class="th-gear" onclick="copyUnfinishedHw()" title="复制今日未交作业名单">📋</button>
         </th>
         <th style="min-width:180px">🐱 课堂表现 <button class="th-gear" title="管理表现标语" onclick="openTagEditor('behavior')">⚙</button></th>
         <th style="min-width:180px">💡 课堂吸收 <button class="th-gear" title="管理吸收标语" onclick="openTagEditor('absorption')">⚙</button></th>
@@ -4515,13 +4526,8 @@ function renderBatchTable(cls, d){
     const r = rec(s, d); const q = num(r.quiz); const h = hwEffective(r);
     const attSel = `<select class="inp batch-inp" onchange="setAttendance(${s.id},this.value)" onkeydown="${BATCH_NAV}">${ATTENDANCE_OPTS.map(o =>
       `<option value="${o.key}" ${r.attendance === o.key ? 'selected' : ''}>${o.label}</option>`).join('')}</select>`;
-    const hwInput = state.hwMode === 'done'
-      ? `<select class="inp batch-inp" onchange="setHwDone(${s.id}, this.value==='true'?true:(this.value==='false'?false:undefined))" onkeydown="${BATCH_NAV}">
-           <option value="" ${r.hwDone === undefined || r.hwDone === null ? 'selected' : ''}>—</option>
-           <option value="true" ${r.hwDone === true ? 'selected' : ''}>✓完成</option>
-           <option value="false" ${r.hwDone === false ? 'selected' : ''}>✕未完成</option></select>`
-      : `<input class="score-in batch-inp ${scoreClass(h)}" value="${esc(r.homework)}" inputmode="decimal" max="${curHwFull()}"
-           oninput="setScore(${s.id},'homework',this.value)" onchange="renderMain()" onkeydown="${BATCH_NAV}">`;
+    const hwInput = `<input class="score-in batch-inp ${scoreClass(num(r.homework))}" value="${esc(r.homework)}" placeholder="可填分数或文字"
+         oninput="setScore(${s.id},'homework',this.value)" onchange="renderMain()" onkeydown="${BATCH_NAV}">`;
     return `<tr>
       <td class="bnm"><button class="stu-link" onclick="openStudentCard(${s.id})">${esc(s.name)}</button></td>
       <td class="c">${attSel}</td>
@@ -4646,12 +4652,11 @@ function buildGrowthFeed(s, cls){
     if (att && att !== 'present') chips.push({ ico:'🚩', cls:'gf-att', txt: ({ late:'迟到', leave:'请假', absent:'缺勤', makeup:'补课' }[att] || att) });
     const q = num(r.quiz);
     if (q !== null) chips.push({ ico:'📝', cls: quizScoreClass(q, activeClass()), txt: LBL('quiz') + ' ' + q + ' 分' });
-    if (state.hwMode === 'done') {
-      if (r.hwDone === true) chips.push({ ico:'📚', cls:'gf-ok', txt:'作业完成 ✓' });
-      else if (r.hwDone === false) chips.push({ ico:'📚', cls:'gf-bad', txt:'作业未完成 ✕' });
-    } else {
+    {
       const h = hwEffective(r);
-      if (h !== null) chips.push({ ico:'📚', cls: scoreClass(h), txt:'作业 ' + h + ' 分' });
+      const raw = String(r.homework || '').trim();
+      if (raw !== '') chips.push({ ico:'📚', cls: (h !== null ? scoreClass(h) : 'gf-txt'),
+        txt: (h !== null ? '作业 ' + h + ' 分' : '作业：' + raw) });
     }
     const d2 = r.hwDetail;
     if (d2 && (d2.status === 'none' || d2.status === 'partial') && d2.correct === 'pending') chips.push({ ico:'✏️', cls:'gf-bad', txt:'待订正' });
@@ -4882,7 +4887,7 @@ function openStudentCard(sid, readOnly){
     <tr${rest ? ' class="sc-rest"' : ''}>
       <td class="c">${mdShort(d)}${rest ? ' <span class="sc-rest-tag">休</span>' : ''}</td>
       <td class="c ${quizScoreClass(num(r.quiz), activeClass())}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
-      <td class="c ${state.hwMode === 'done' ? (r.hwDone ? 'v-g' : (r.hwDone === false ? 'v-r' : '')) : scoreClass(num(r.homework))}">${state.hwMode === 'done' ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '—')) : (() => { const f = hwFullFor(d, r); return `${num(r.homework) != null ? num(r.homework) : '—'}<span class="hw-full">/${f}</span>`; })()}</td>
+      <td class="c ${hwCellView(r, d).cls}">${hwCellView(r, d).html}</td>
       <td class="c muted">${rest ? '不计入' : dayPoints(r)}</td>
     </tr>`;
   }).join('') : '<tr><td colspan="3" class="empty" style="padding:14px">暂无小测/作业记录</td></tr>';
@@ -4954,12 +4959,13 @@ function openStudentCard(sid, readOnly){
         <tbody>${timeline.slice().sort((a, b) => a[0].localeCompare(b[0])).map(([d, r]) => {
           const rest = restSet.has(d);
           const att = r.attendance === 'present' ? '出勤' : r.attendance === 'late' ? '迟到' : r.attendance === 'leave' ? '请假' : r.attendance === 'absent' ? '缺勤' : '出勤';
-          const hv = state.hwMode === 'done' ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '—')) : (num(r.homework) != null ? num(r.homework) : '—');
+          const hv = String(r.homework || '').trim() || '—';
+          const hCls = num(r.homework) !== null ? scoreClass(num(r.homework)) : '';
           return `<tr${rest ? ' class="sc-rest"' : ''}>
             <td class="c">${mdShort(d)}${rest ? ' <span class="sc-rest-tag">休</span>' : ''}</td>
             <td class="c">${att}</td>
             <td class="c ${quizScoreClass(num(r.quiz), activeClass())}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
-            <td class="c ${state.hwMode === 'done' ? (r.hwDone ? 'v-g' : (r.hwDone === false ? 'v-r' : '')) : scoreClass(num(r.homework))}">${esc(hv)}</td>
+            <td class="c ${hCls}">${esc(hv)}</td>
           </tr>`;
         }).join('')}</tbody></table></div></div>` : ''}
     ${examHtml ? `<div class="sc-sec"><div class="sc-sec-t">🎓 考试成绩</div>${examHtml}${zkHtml}</div>` : ''}
@@ -6167,33 +6173,34 @@ function setAttendance(id, key){
 }
 function setScore(id, field, val){
   const f = findStudentById(id); if (!f) return;
-  let v = String(val).replace(/[^0-9.]/g, '');
-  const MAX = field === 'quiz' ? (quizScaleOf()) : curHwFull();
-  if (v !== '' && parseFloat(v) > MAX) v = String(MAX);
   const r = rec(f.s, state.activeDate);
+  let v;
+  if (field === 'quiz') {
+    v = String(val).replace(/[^0-9.]/g, '');
+    const MAX = quizScaleOf();
+    if (v !== '' && parseFloat(v) > MAX) v = String(MAX);
+  } else {
+    /* 家庭作业：可填写任意字符（分数 / 文字均可），原样保存 */
+    v = String(val);
+  }
   r[field] = v;
   const el = document.getElementById(`in-${field}-${id}`);
-  if (el) { el.value = v; el.className = 'score-in ' + (field === 'quiz' ? quizScoreClass(num(v), activeClass()) : scoreClass(num(v))); }
+  if (el) {
+    el.value = v;
+    if (field === 'quiz') el.className = 'score-in ' + quizScoreClass(num(v), activeClass());
+    else el.className = 'score-in ' + scoreClass(num(v));
+  }
   const sr = document.getElementById('statRow');
   if (sr) sr.innerHTML = statRowHtml(activeClass(), state.activeDate);
   save();
 }
 /* 家庭作业「完成模式」：✓完成 / ✕未完成 切换 */
-function setHwDone(id, val){
-  const f = findStudentById(id); if (!f) return;
-  const r = rec(f.s, state.activeDate);
-  r.hwDone = val;
-  save(); renderMain();
-}
-/* 今日未完成作业名单：done 模式 hwDone===false；分数模式 hwDetail.status==='none'/'partial'。返回学生名数组 */
+/* 今日未完成作业名单：作业详情 status 为 none/partial 视为未完成。返回学生名数组 */
 function hwUnfinishedList(cls, d){
   const out = [];
   cls.students.forEach(s => {
     const r = recRaw(s, d); if (!r) return;
-    let none = false;
-    if (state.hwMode === 'done') none = r.hwDone === false;
-    else if (r.hwDetail && (r.hwDetail.status === 'none' || r.hwDetail.status === 'partial')) none = true;
-    if (none) out.push(s.name);
+    if (r.hwDetail && (r.hwDetail.status === 'none' || r.hwDetail.status === 'partial')) out.push(s.name);
   });
   return out;
 }
@@ -6226,14 +6233,6 @@ function bulkAttendance(key){
   toast('已设置全班' + label);
 }
 /* 一键作业全完成 / 全未完成（仅完成模式生效） */
-function bulkHwDone(val){
-  const cls = activeClass(); if (!cls) return;
-  if (state.hwMode !== 'done') return toast('请先在作业表头把输入模式切换为「✓完成」');
-  const label = val ? '完成' : '未完成';
-  if (!confirm(`确定将全班 ${cls.students.length} 名学生的今日作业统一标记为「${label}」吗？`)) return;
-  bulkSet(r => { r.hwDone = val; });
-  toast('已标记全班作业' + label);
-}
 /* 全班同分：弹窗选小测/作业 + 统一分值 */
 function bulkSameScore(){
   const cls = activeClass(); if (!cls) return;
@@ -6287,17 +6286,10 @@ function quickBarHtml(cls, d){
   const dayRest = !!(attIsRest(cls, d));
   return `<div class="quickbar">
     <button class="btn sm" onclick="bulkAttendance('present')" title="全班今日出勤统一设为「出勤」">👥 一键全勤</button>
-    <button class="btn sm" onclick="bulkHwDone(true)" title="全班今日作业标记完成（需完成模式）">✅ 作业全完成</button>
-    <button class="btn sm" onclick="bulkHwDone(false)" title="全班今日作业标记未完成（需完成模式）">❌ 作业全未完成</button>
     <button class="btn sm" onclick="bulkSameScore()" title="为全班填写同一小测/作业分值">🎯 全班同分</button>
     <button class="btn sm qb-danger" onclick="clearDayRecords()" title="清空今日全部日常记录（可撤销）">🧹 清空今日</button>
     ${dayRest ? '<span class="muted" style="font-size:12px">今日休息日，批量操作已停用</span>' : ''}
   </div>`;
-}
-/* 切换家庭作业输入模式（分数 ↔ 完成） */
-function toggleHwMode(){
-  state.hwMode = state.hwMode === 'score' ? 'done' : 'score';
-  save(); renderMain();
 }
 /* ===== 本次作业满分（班级统一、全班同步显示）：优先日期级满分，其次该生个别满分，最后全局基准 ===== */
 function hwFullFor(d, r){
@@ -10206,10 +10198,11 @@ function summaryDailySection(cls){
         ${dDates.map(d => {
           const r = (s.records || {})[d] || {};
           const q = num(r.quiz), h = hwEffective(r);
-          const hTxt = state.hwMode === 'done' ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '—')) : (h !== null ? h : '—');
-          const hCls = state.hwMode === 'done' ? (r.hwDone ? 'v-g' : (r.hwDone === false ? 'v-r' : '')) : valClass(h);
+          const hRaw = String(r.homework || '').trim();
+          const hTxt = hRaw !== '' ? hRaw : '—';
+          const hCls = h !== null ? valClass(h) : '';
           return `<td class="c ${valClass(q)}" style="border-left:2px solid var(--border);font-weight:700">${q !== null ? q : '—'}</td>
-                  <td class="c ${hCls}" style="font-weight:700">${hTxt}</td>`;
+                  <td class="c ${hCls}" style="font-weight:700">${esc(hTxt)}</td>`;
         }).join('')}
       </tr>`).join('')}</tbody>
     </table></div>`;
