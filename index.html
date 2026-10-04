@@ -299,6 +299,27 @@ input[type=date].dpick{border:1px solid var(--border);background:var(--surface-a
 .qo-lv.q-good{background:#eef5ff;border:1px solid #c4d8f5;color:#1a73e8}
 .qo-lv.q-pass{background:#fff8e6;border:1px solid #f3dfa2;color:#b8860b}
 .qo-lv.q-poor{background:#fff0f0;border:1px solid #f3b9b9;color:#d23b3b}
+/* 小测等级线：按满分 × 百分比 自动核算出的分数线预览 */
+.qlv-prev{margin:2px 0 8px;padding:10px 12px;border:1px dashed var(--border);border-radius:10px;background:var(--input-bg)}
+.qlv-prev-t{font-size:12.5px;color:var(--text-muted);margin-bottom:8px}
+.qlv-prev-t b{color:var(--accent-deep,#07392d);font-size:14px}
+.qlv-pvs{display:flex;flex-wrap:wrap;gap:8px}
+.qlv-pv{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:78px;flex:1;
+  padding:7px 8px;border-radius:9px;background:#fff;border:1px solid var(--border)}
+.qlv-pv-k{font-size:11.5px;font-weight:800;opacity:.85}
+.qlv-pv-v{font-size:19px;font-weight:800;line-height:1.2;margin-top:2px}
+.qlv-pv-v i{font-style:normal;font-size:11px;font-weight:700;margin-left:2px;opacity:.75}
+.qlv-pv-p{font-size:11px;font-weight:600;opacity:.7;margin-top:1px}
+.qlv-pv.q-exc{background:#eafaf1;border-color:#bfe9d3;color:#0f9d58}
+.qlv-pv.q-good{background:#eef5ff;border-color:#c4d8f5;color:#1a73e8}
+.qlv-pv.q-pass{background:#fff8e6;border-color:#f3dfa2;color:#b8860b}
+.qlv-bar{position:relative;height:8px;margin:10px 2px 4px;border-radius:999px;
+  background:linear-gradient(90deg,#fff0f0 0%,#fff8e6 50%,#eef5ff 78%,#eafaf1 100%)}
+.qlv-mk{position:absolute;top:-4px;width:3px;height:16px;border-radius:2px;transform:translateX(-50%)}
+.qlv-mk.q-pass{background:#b8860b}
+.qlv-mk.q-good{background:#1a73e8}
+.qlv-mk.q-exc{background:#0f9d58}
+.qlv-prev-f{font-size:11px;color:var(--text-muted);margin-top:2px}
 .ep-suggest-title{font-size:12px;font-weight:800;color:var(--accent-deep,#07392d);margin-bottom:7px}
 .ep-chips{display:flex;flex-wrap:wrap;gap:7px}
 .ep-chip{border:1px solid var(--accent,#0f6e56);background:#fff;color:var(--accent-deep,#07392d);border-radius:999px;
@@ -4147,13 +4168,65 @@ function openQuizLevels(clsId){
   _quizTarget = cls;
   const t = quizThresholdsOf(cls), scale = quizScaleOf(cls);
   openModal('小测满分与等级线设置（' + (cls ? esc(cls.name) : '当前班级') + '）', `
-    <div class="hint">先设定小测「满分」，录入与着色都按此满分换算；等级线按<b>占满分的百分比</b>设置（默认 优≥80%、良≥60%、中≥50%），改满分时等级线自动跟随、无需手改。依次判定 优 → 良 → 中 → 差（低于「中」归为「差」）。<b>该设置仅对「${cls ? esc(cls.name) : '当前'}」班级生效，其他班级互不影响。</b></div>
-    <div class="form-row"><label>小测满分</label><input class="inp" id="qlvScale" type="number" min="1" max="200" step="1" value="${scale}" onchange="qlvAutosave()"></div>
-    <div class="form-row"><label>优 ≥ (%)</label><input class="inp" id="qlvE" type="number" min="0" max="100" step="1" value="${t.excellent}" onchange="qlvAutosave()"></div>
-    <div class="form-row"><label>良 ≥ (%)</label><input class="inp" id="qlvG" type="number" min="0" max="100" step="1" value="${t.good}" onchange="qlvAutosave()"></div>
-    <div class="form-row"><label>中 ≥ (%)</label><input class="inp" id="qlvP" type="number" min="0" max="100" step="1" value="${t.pass}" onchange="qlvAutosave()"></div>`,
+    <div class="hint">先设定小测「满分」，录入与着色都按此满分换算；等级线按<b>占满分的百分比</b>设置（默认 优≥80%、良≥60%、中≥50%）。<b>填好满分后，下方会自动按百分比核算出优 / 良 / 中的具体分数</b>，改满分或改百分比都会实时重算。依次判定 优 → 良 → 中 → 差（低于「中」归为「差」）。<b>该设置仅对「${cls ? esc(cls.name) : '当前'}」班级生效，其他班级互不影响。</b></div>
+    <div class="form-row"><label>小测满分</label><input class="inp" id="qlvScale" type="number" min="1" max="200" step="1" value="${scale}" oninput="qlvPreview()" onchange="qlvAutosave()"></div>
+    <div class="form-row"><label>优 ≥ (%)</label><input class="inp" id="qlvE" type="number" min="0" max="100" step="1" value="${t.excellent}" oninput="qlvPreview()" onchange="qlvAutosave()"></div>
+    <div class="form-row"><label>良 ≥ (%)</label><input class="inp" id="qlvG" type="number" min="0" max="100" step="1" value="${t.good}" oninput="qlvPreview()" onchange="qlvAutosave()"></div>
+    <div class="form-row"><label>中 ≥ (%)</label><input class="inp" id="qlvP" type="number" min="0" max="100" step="1" value="${t.pass}" oninput="qlvPreview()" onchange="qlvAutosave()"></div>
+    <div id="qlvPreview">${qlvPreviewHtml(scale, t.excellent, t.good, t.pass)}</div>`,
     `<button class="btn" onclick="closeModal()">取消</button>
      <button class="btn primary" onclick="saveQuizLevels()">保存</button>`);
+}
+/* ===== 等级分数线自动核算：满分 × 百分比 → 优/良/中的具体分数（实时预览，无需手算） ===== */
+function qlvRound(v){ const n = +v; return isFinite(n) ? Math.round(n * 10) / 10 : null; }
+/* 百分比 → 分数：满分 16、优 80% → 12.8 分；无效输入返回 null */
+function qlvScoreOf(pct, scale){
+  const p = +pct, s = +scale;
+  if (!isFinite(p) || !isFinite(s) || s <= 0 || p <= 0) return null;
+  return qlvRound(s * p / 100);
+}
+/* 纯函数：给出满分与三个百分比，输出核算预览 HTML（stub DOM 下可直接单测） */
+function qlvPreviewHtml(scale, e, g, p){
+  const s = +scale;
+  if (!isFinite(s) || s <= 0)
+    return '<div class="qlv-prev"><div class="qlv-prev-t">📐 先填写有效的「小测满分」，这里会自动核算各等级的分数线</div></div>';
+  const defs = [['优', e, 'q-exc'], ['良', g, 'q-good'], ['中', p, 'q-pass']];
+  const items = defs.map(([k, pct, cls]) => {
+    const v = qlvScoreOf(pct, s), pv = (pct === '' || pct === null || pct === undefined || !isFinite(+pct)) ? '—' : qlvRound(pct);
+    return `<div class="qlv-pv ${cls}">
+      <span class="qlv-pv-k">${k}</span>
+      <span class="qlv-pv-v">${v === null ? '—' : v}<i>分</i></span>
+      <span class="qlv-pv-p">≥ ${pv}%</span>
+    </div>`;
+  }).join('');
+  const marks = defs.map(([k, pct, cls]) => {
+    const pv = +pct;
+    if (!isFinite(pv) || pv <= 0 || pv > 100) return '';
+    const v = qlvScoreOf(pct, s);
+    return `<i class="qlv-mk ${cls}" style="left:${pv}%" title="${k} ≥ ${v} 分"></i>`;
+  }).join('');
+  return `<div class="qlv-prev">
+    <div class="qlv-prev-t">📐 满分 <b>${qlvRound(s)}</b> 分 → 自动核算的分数线</div>
+    <div class="qlv-pvs">${items}</div>
+    <div class="qlv-bar">${marks}</div>
+    <div class="qlv-prev-f">低于「中」的分数线即判为「差」；改满分或改百分比都会实时重算。</div>
+  </div>`;
+}
+/* 读取弹窗输入并刷新预览；oninput 触发，边输边算 */
+function qlvPreview(){
+  const el = document.getElementById('qlvPreview');
+  if (!el) return;
+  const val = id => { const x = document.getElementById(id); return x ? x.value : ''; };
+  el.innerHTML = qlvPreviewHtml(val('qlvScale'), val('qlvE'), val('qlvG'), val('qlvP'));
+}
+/* 当天满分弹窗：同样按班级百分比实时核算分数线 */
+function quizFullPreview(){
+  const el = document.getElementById('quizFullPreview');
+  if (!el) return;
+  const v = (document.getElementById('quizFullInput') || {}).value;
+  const t = quizThresholdsOf();
+  const cur = (v === '' || v === undefined || v === null || isNaN(+v) || +v <= 0) ? quizScaleOf() : +v;
+  el.innerHTML = qlvPreviewHtml(cur, t.excellent, t.good, t.pass);
 }
 /* 修改满分时，按比例折算当前等级线，保持等级比例不变 */
 function qlvRescale(newScale){
@@ -4217,10 +4290,17 @@ function statRowHtml(cls, d){
   } else {
     const dist = { '优':0, '良':0, '中':0, '差':0 };
     recs.forEach(x => { dist[quizLevelOf(x.v, cls).key]++; });
+    const _t = quizThresholdsOf(cls), _s = quizScaleOf(cls);
+    const _lineOf = k => {
+      if (k === '差') return '低于 ' + qlvScoreOf(_t.pass, _s) + ' 分';
+      const p = k === '优' ? _t.excellent : (k === '良' ? _t.good : _t.pass);
+      return '≥ ' + qlvScoreOf(p, _s) + ' 分（' + p + '%）';
+    };
     body = `<div class="qo-levels">
       ${[['优','q-exc'],['良','q-good'],['中','q-pass'],['差','q-poor']].map(([k, c]) =>
-        `<div class="qo-lv ${c}">${k}<b>${dist[k]}</b><i>人</i></div>`).join('')}
-    </div>`;
+        `<div class="qo-lv ${c}" title="${k}：${_lineOf(k)}（满分 ${_s}）">${k}<b>${dist[k]}</b><i>人</i></div>`).join('')}
+    </div>
+    <div class="muted" style="font-size:11.5px;margin-top:6px">分数线（满分 ${_s}）：优 ≥ ${qlvScoreOf(_t.excellent, _s)} · 良 ≥ ${qlvScoreOf(_t.good, _s)} · 中 ≥ ${qlvScoreOf(_t.pass, _s)}</div>`;
   }
   const ep = epList(d);
   const epHtml = ep.length
@@ -6323,7 +6403,8 @@ function editQuizFull(){
   const body = `
     <div class="hint">设置 <b>${state.activeDate}</b> 进门小测的全班满分（如 16 / 20 / 100）。当天成绩按此满分着色、评级并折算到趋势图；<b>留空则沿用班级默认满分 ${quizScaleOf()}</b>。</div>
     <div class="form-row"><label>当天满分</label>
-      <input class="inp" id="quizFullInput" type="number" min="1" step="0.5" value="${cur}" placeholder="如 16 / 20 / 100"></div>
+      <input class="inp" id="quizFullInput" type="number" min="1" step="0.5" value="${cur}" placeholder="如 16 / 20 / 100" oninput="quizFullPreview()"></div>
+    <div id="quizFullPreview">${qlvPreviewHtml(cur, quizThresholdsOf().excellent, quizThresholdsOf().good, quizThresholdsOf().pass)}</div>
     <div class="muted" style="font-size:12.5px;margin-top:4px">清空输入可恢复班级默认满分（${quizScaleOf()} 分）。</div>`;
   openModal('📐 当天小测满分 · ' + state.activeDate, body,
     `<button class="btn" onclick="closeModal()">取消</button>
