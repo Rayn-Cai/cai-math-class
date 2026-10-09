@@ -6844,7 +6844,7 @@ function openMulti(ev, sid, field){
       <div class="mp-remark-t">💬 当日评语
         <span class="muted" style="font-size:11px">点下方短语直接添加</span>
         <button class="btn sm" style="margin-left:auto" onclick="openPhraseBank()" title="管理常用评语库">✏️ 管理</button>
-        <button class="btn sm ai" onclick="aiRemarkFill(${sid},this)" title="AI 生成当日评语短语">🤖 AI 评语</button>
+        <button class="btn sm ai" onclick="aiRemarkFill(${sid},this)" title="按该生数据生成一段可直接复制粘贴的评语（约 60-110 字）">🤖 AI 评语</button>
       </div>
       <div id="remark-${sid}" class="mp-remark-c">${remarkChips(f.s)}</div>
       <div class="mp-phrases">${PHRASES().map(ph => `<button class="ph-chip" onclick="addRemark(${sid},this)">${esc(ph)}</button>`).join('')}</div>
@@ -13026,6 +13026,71 @@ function aiRequest(cfg, body, allowRetry){
     });
   });
 }
+/* ===== AI 输出清洗：去掉提示词残留 / 套话 / 重复句，保证结果可直接复制粘贴 ===== */
+const AI_OUT_RULE = '【输出铁律】只输出可直接复制使用的正文；不要输出任何说明、开场白、标题套话（如「以下是」「好的」「根据数据」）；不要复述上面提示里的任何要求或规则；不要出现重复的句子或段落；不要使用 Markdown 标记。';
+/* 给用户输入统一追加输出铁律（opt.raw 时原样透传，用于需要保留原始格式的场景） */
+function aiUserWithRule(userText, raw){
+  return String(userText == null ? '' : userText) + (raw ? '' : ('\n\n' + AI_OUT_RULE));
+}
+const AI_META_HEAD = /^\s*(好的|明白|收到|以下是|以下为|如下[:：]?|根据您|根据你|根据提供|根据上面的|根据以下|按照您|已为您|为您生成|生成结果|输出结果|希望以上|希望这|温馨提示|说明[:：]|注[:：]|备注[:：]|提示词|prompt|system|要求[:：]|规则[:：]|格式[:：]|注意[:：]|（注|（提示|AI[:：]|学生姓名[:：]|姓名[:：]|近期概况[:：])/i;
+const AI_META_ANY = /(只输出|不要(输出|使用|出现|包含|添加|写|带)|禁止(输出|出现|复述)|提示词|prompt|system\s*(提示|角色)|根据(上面|以下|您|你)提供的|不得(编造|虚构)|不超过\s*\d+\s*字|约\s*\d+\s*[-~—]\s*\d+\s*字|请严格使用|可直接使用|便于直接复制)/i;
+function aiLineIsMeta(line){
+  const L = String(line || '').trim();
+  if (!L) return false;
+  if (AI_META_HEAD.test(L)) return true;
+  if (L.length <= 40 && AI_META_ANY.test(L)) return true;   // 短行且含规则措辞 → 判为提示词残留
+  return false;
+}
+/* 按句切分（兼容不支持 lookbehind 的旧 Safari） */
+function aiSentences(t){
+  const m = String(t || '').match(/[^。！？!?；;\n]+[。！？!?；;]?/g);
+  return (m || []).map(x => String(x).trim()).filter(Boolean);
+}
+function aiNormKey(s){
+  return String(s || '').replace(/[\s，。、！？!?；;：:、"'`“”‘’（）()【】\[\]《》🌟✅📈📉💡🎯🌈📚✏️📝\d]/g, '');
+}
+/* 段落内去重复句：整句相同或前 10 字相同即视为重复，只保留首次出现 */
+function aiDedupSentences(t){
+  const arr = aiSentences(t);
+  const seen = [], out = [];
+  arr.forEach(s => {
+    const k = aiNormKey(s);
+    if (!k) return;
+    if (k.length <= 80) {
+      if (seen.indexOf(k) >= 0) return;
+      if (seen.some(x => x.slice(0, 10) === k.slice(0, 10))) return;
+      seen.push(k);
+    }
+    out.push(s);
+  });
+  return out.join('');
+}
+function aiTextClean(t){
+  let txt = String(t == null ? '' : t);
+  if (!txt.trim()) return '';
+  txt = txt.replace(/```/g, '').replace(/\*\*/g, '').replace(/^#{1,6}\s*/gm, '');
+  const kept = [], seenLine = [];
+  txt.split('\n').forEach(raw => {
+    const L = raw.trim();
+    if (!L) { if (kept.length) kept.push(''); return; }
+    if (aiLineIsMeta(L)) return;
+    if (!/[。！？!?；;，,、]/.test(L)) {                 // 短语行 / 标题行：整行去重
+      if (seenLine.indexOf(L) >= 0) return;
+      seenLine.push(L);
+    }
+    kept.push(L);
+  });
+  txt = kept.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  txt = txt.split(/\n{2,}/).map(seg => aiDedupSentences(seg)).join('\n\n');
+  txt = txt.replace(/^[\s"'“‘]+/, '').replace(/[\s"'”’]+$/, '');
+  return txt.trim();
+}
+/* 取评语首句（≤18 字），用于填入「当日评语」短短语 */
+function remarkShortOf(t){
+  const s = aiSentences(String(t || ''))[0] || String(t || '');
+  const x = s.replace(/[。！？!?；;，,、]/g, '').trim();
+  return x.length > 18 ? x.slice(0, 18) : x;
+}
 /* 从一次 chat 响应里取出正文（兼容只填 reasoning_content 的思考型模型） */
 function aiPickText(j){
   const msg = j && j.choices && j.choices[0] && j.choices[0].message;
@@ -13037,14 +13102,15 @@ function aiChat(systemText, userText, opt){
   const c = aiCfg();
   if (!c.key || !c.base || !c.model) throw new Error('AI 未配置');
   const o = opt || {};
-  const msgs = [ { role:'system', content: systemText }, { role:'user', content: userText } ];
+  const msgs = [ { role:'system', content: systemText },
+                 { role:'user', content: aiUserWithRule(userText, o.raw) } ];
   const body = { model: c.model, messages: msgs,
     temperature: (o.temperature != null ? o.temperature : 0.7),
     max_tokens: (o.maxTokens != null ? o.maxTokens : 600) };
   return aiRequest(c, body, true).then(j => {
-    const t = aiPickText(j);
-    if (!t) throw new Error('AI 返回空内容，请检查模型名是否正确');
-    return t;
+    const raw = aiPickText(j);
+    if (!raw) throw new Error('AI 返回空内容，请检查模型名是否正确');
+    return o.raw ? raw : aiTextClean(raw);   // 统一清洗：去提示词残留 / 套话 / 重复句
   });
 }
 function aiCommentPrompt(sid, scene){
@@ -13457,8 +13523,44 @@ function genRemarkByAI(sid, cb){
   if (absTxt) txt += '；课堂吸收：' + absTxt;
   const todayErr = Array.isArray(last.errors) && last.errors.length ? last.errors.join('、') : '';
   if (todayErr) txt += '；今日错题知识点：' + todayErr;
-  const sys = '你是初中数学老师。请基于以下学生近期数据，生成【一条不超过18字】的课堂评语短语，简洁、具体、有鼓励性，可直接作为当日评语。评语必须与数据一致，不得与数据矛盾：若数据中小测均分低或作业完成差，不得使用「优秀」「进步大」「表现好」等与实际不符的褒义表述，应先肯定真实亮点（如出勤全勤、课堂表现好），再客观指出可改进点；若提供了「今日错题知识点」，评语应点出其中最需要巩固的方向。只输出短语本身，不要引号、不要解释。';
-  aiChat(sys, txt).then(t => cb((t || '').trim().slice(0, 24), null)).catch(e => cb(null, e));
+  const sys = '你是初中数学老师。请基于以下学生近期数据，写一段 60-110 字的课堂评语，老师可直接复制粘贴发给家长或写进成绩单。'
+    + '要求：第一句是不超过 18 字的核心短评；其后补 1-2 句具体表现（用数据说话，如出勤、小测、作业、课堂表现）；最后给一条可操作建议。'
+    + '评语必须与数据一致：若小测均分低或作业完成差，不得使用「优秀」「进步大」「表现很好」等与数据矛盾的褒义表述，应先肯定真实亮点，再客观指出可改进点；'
+    + '若提供了「今日错题知识点」，应点出其中最需要巩固的方向。只输出评语正文，不要标题、不要引号、不要编号、不要重复句子。';
+  aiChat(sys, txt).then(t => cb((t || '').trim(), null)).catch(e => cb(null, e));
+}
+/* AI 评语弹窗：全文可直接复制，也可只把首句填入当日评语 */
+function aiRemarkModal(sid, t){
+  const f = findStudentById(sid);
+  const name = f ? (f.s.name || '?') : '?';
+  const body = '<pre class="ai-summary-pre" id="aiRmkTxt">' + esc(t) + '</pre>'
+    + '<div class="hint" style="margin-top:8px">已按学生数据生成，<b>可直接复制粘贴</b>；文中不含任何提示词与说明，重复句已自动去除。</div>';
+  const acts = '<button class="btn ghost" onclick="closeModal()">关闭</button>'
+    + '<button class="btn" onclick="aiRemarkAgain(' + sid + ',this)">🔄 重新生成</button>'
+    + '<button class="btn" onclick="copyText(document.getElementById(\'aiRmkTxt\').innerText)">📋 复制全文</button>'
+    + '<button class="btn primary" onclick="aiRemarkApply(' + sid + ')">✅ 首句填入当日评语</button>';
+  openModal('🤖 AI 评语 · ' + esc(name), body, acts, 540);
+}
+function aiRemarkAgain(sid, el){
+  if (el) { el.disabled = true; el.textContent = '⏳ 生成中…'; }
+  genRemarkByAI(sid, function(t, err){
+    if (el) { el.disabled = false; el.textContent = '🔄 重新生成'; }
+    if (err || !t) { toast('AI 评语生成失败：' + (err && err.message ? err.message : '请检查配置')); return; }
+    const box = document.getElementById('aiRmkTxt'); if (box) box.textContent = t;
+  });
+}
+function aiRemarkApply(sid){
+  const box = document.getElementById('aiRmkTxt');
+  const t = box ? box.innerText : '';
+  if (!t.trim()) return toast('没有可填入的评语');
+  const f = findStudentById(sid); if (!f) return;
+  const short = remarkShortOf(t);
+  rec(f.s, state.activeDate).remark = short;
+  save();
+  const rb = document.getElementById('remark-' + sid); if (rb) rb.innerHTML = remarkChips(f.s);
+  refreshMultiBtn(f.s, 'behavior'); refreshMultiBtn(f.s, 'absorption');
+  closeModal();
+  toast('✅ 已填入当日评语：' + short);
 }
 function aiRemarkFill(sid, el){
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
@@ -13466,12 +13568,7 @@ function aiRemarkFill(sid, el){
   genRemarkByAI(sid, function(t, err){
     if (el) { el.disabled = false; el.textContent = '🤖 AI 评语'; }
     if (err || !t) { toast('AI 评语生成失败：' + (err && err.message ? err.message : '请检查配置')); return; }
-    const f = findStudentById(sid); if (!f) return;
-    rec(f.s, state.activeDate).remark = t;
-    save();
-    const box = document.getElementById('remark-' + sid); if (box) box.innerHTML = remarkChips(f.s);
-    refreshMultiBtn(f.s, 'behavior'); refreshMultiBtn(f.s, 'absorption');
-    toast('✅ AI 评语已填入：' + t);
+    aiRemarkModal(sid, t);
   });
 }
 /* 评语库 AI 推荐短语（追加到库） */
