@@ -3422,7 +3422,42 @@ function resetTabOrder(){ state.tabOrder = TABS.map(t => t.key); save(); renderT
 function switchTab(key){ state.activeTab = key; save(); renderMain(); }
 function setDate(v){ if (!v) return; state.activeDate = v; save(); renderMain(); }
 
+/* ---- 搜索框输入保持焦点：整页重渲染后把光标还给原来的输入框 ---- */
+function captureFocus(){
+  try {
+    const ae = document.activeElement;
+    if (!ae || !ae.getAttribute) return null;
+    const fk = ae.getAttribute('data-fk');
+    if (!fk) return null;
+    let start = null, end = null;
+    try { start = ae.selectionStart; end = ae.selectionEnd; } catch(e){}
+    const c = document.getElementById('content');
+    return { fk, start, end, scroll: c ? c.scrollTop : 0 };
+  } catch(e){ return null; }
+}
+function restoreFocus(f){
+  if (!f) return;
+  try {
+    const el = document.querySelector('[data-fk="' + f.fk + '"]');
+    if (!el) return;
+    el.focus();
+    try { if (f.start != null) el.setSelectionRange(f.start, f.end == null ? f.start : f.end); } catch(e){}
+    const c = document.getElementById('content');
+    if (c && f.scroll) c.scrollTop = f.scroll;
+  } catch(e){}
+}
+/* 搜索框输入：写 ui 值 + 防抖重渲染（避免每敲一个字就重建整页、丢焦点/卡顿） */
+let _liveTimer = null;
+function liveSearch(key, val){
+  ui[key] = val;
+  if (_liveTimer) clearTimeout(_liveTimer);
+  _liveTimer = setTimeout(() => { _liveTimer = null; renderMain(); }, 180);
+}
 function renderMain(){
+  const _fk = captureFocus();
+  try { renderMainInner(); } finally { restoreFocus(_fk); }
+}
+function renderMainInner(){
   closeMulti();
   document.title = (state.teacherName || TEACHER_NAME) ? (state.teacherName || TEACHER_NAME) + ' · 课堂记录工作台' : '课堂记录工作台';
   renderTopbar();
@@ -9368,7 +9403,7 @@ function renderProfile(){
   return `<div class="row" style="margin-bottom:10px;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn primary" onclick="addProfile()">＋ 新增学生档案</button>
       <button class="btn" onclick="openProfileDedup()" title="按姓名查找重复档案，核对后合并删除">🔍 除重</button>
-      <input class="inp pf-search" placeholder="🔍 搜索姓名 / 班级 / 学校 / 标签…" value="${esc(ui.profileSearch || '')}" oninput="ui.profileSearch=this.value;renderProfile()">
+      <input class="inp pf-search" id="profileSearch" data-fk="profileSearch" placeholder="🔍 搜索姓名 / 班级 / 学校 / 标签…" value="${esc(ui.profileSearch || '')}" oninput="liveSearch('profileSearch',this.value)">
       <span class="muted" style="font-size:12.5px">档案独立于班级：班级新增学生自动进入档案；删除班级学生，档案保留。点姓名即可填写 / 编辑基础信息（支持<b>照片、标签、自定义字段</b>）。</span>
     </div>
     ${selN ? `<div class="sel-bar" id="pfSelBar">
@@ -9939,8 +9974,8 @@ function renderGradeline(){
   const list = state.gradeLines.filter(g => !kw || g.title.toLowerCase().includes(kw.toLowerCase()));
   return `
   <div class="card"><div class="row" style="justify-content:space-between">
-    <input class="lesson-input" style="max-width:300px" placeholder="🔍 搜索标题…" value="${esc(ui.glSearch)}"
-      oninput="ui.glSearch=this.value;renderMain()">
+    <input class="lesson-input" id="glSearch" data-fk="glSearch" style="max-width:300px" placeholder="🔍 搜索标题…" value="${esc(ui.glSearch)}"
+      oninput="liveSearch('glSearch',this.value)">
     <span class="row">
       <span class="muted">共 ${state.gradeLines.length} 条记录</span>
       <button class="btn primary" onclick="openUploadGl()">⬆️ 上传等级线</button>
@@ -10010,8 +10045,8 @@ function renderPaper(){
   const list = state.examPapers.filter(p => !kw || p.title.toLowerCase().includes(kw.toLowerCase()));
   return `
   <div class="card"><div class="row" style="justify-content:space-between">
-    <input class="lesson-input" style="max-width:300px" placeholder="🔍 搜索试卷标题…" value="${esc(ui.paperSearch)}"
-      oninput="ui.paperSearch=this.value;renderMain()">
+    <input class="lesson-input" id="paperSearch" data-fk="paperSearch" style="max-width:300px" placeholder="🔍 搜索试卷标题…" value="${esc(ui.paperSearch)}"
+      oninput="liveSearch('paperSearch',this.value)">
     <span class="row">
       <span class="muted">共 ${state.examPapers.length} 份试卷</span>
       <button class="btn primary" onclick="openUploadPaper()">⬆️ 上传试卷</button>
@@ -10099,8 +10134,8 @@ function renderFiles(){
   }).join('');
   return `
   <div class="card"><div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center">
-    <input class="lesson-input" style="max-width:280px" placeholder="🔍 搜索标题…" value="${esc(ui.fileSearch || '')}"
-      oninput="ui.fileSearch=this.value;renderMain()">
+    <input class="lesson-input" id="fileSearch" data-fk="fileSearch" style="max-width:280px" placeholder="🔍 搜索标题…" value="${esc(ui.fileSearch || '')}"
+      oninput="liveSearch('fileSearch',this.value)">
     <span class="row" style="gap:10px;align-items:center">
       ${seg}
       <button class="btn primary" onclick="openUploadFile()">⬆️ 上传文件</button>
@@ -10185,8 +10220,8 @@ function renderWeekly(){
       <input type="date" class="sel" value="${esc(fFrom)}" title="开始日期" onchange="ui.weeklyFrom=this.value;renderMain()">
       <span class="muted">~</span>
       <input type="date" class="sel" value="${esc(fTo)}" title="结束日期" onchange="ui.weeklyTo=this.value;renderMain()">
-      <input class="lesson-input" style="max-width:210px" placeholder="🔍 姓名 / 考试内容"
-        value="${esc(ui.weeklySearch)}" oninput="ui.weeklySearch=this.value;renderMain()">
+      <input class="lesson-input" id="weeklySearch" data-fk="weeklySearch" style="max-width:210px" placeholder="🔍 姓名 / 考试内容"
+        value="${esc(ui.weeklySearch)}" oninput="liveSearch('weeklySearch',this.value)">
       <button class="btn ghost sm" onclick="ui.weeklyFilterClass='';ui.weeklyFilterSchool='';ui.weeklyFrom='';ui.weeklyTo='';ui.weeklySearch='';renderMain()">重置筛选</button>
     </div>
     <div class="row" style="justify-content:space-between;margin-top:10px">
