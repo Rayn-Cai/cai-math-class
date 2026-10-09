@@ -12748,8 +12748,8 @@ function renderSmart(){
     + '</div>'
     + statusTxt
     /* 操作按钮 */
-    + '<div class="sc-actions"><button class="btn ai" onclick="genCommentByAI()">🤖 AI 生成评语</button>'
-    + '<div class="sc-actions-sub"><button class="btn ghost" onclick="copyWechat()">📱 微信格式</button><button class="btn ghost" onclick="aiWechatBtn(this)" title="AI 生成可直接发送的微信文案">🤖 AI 微信</button><button class="btn ghost" onclick="copyComment()">📋 复制评语</button></div></div>'
+    + '<div class="sc-actions"><button class="btn ai" onclick="genCommentByAI()" title="24 小时内同学生同场景直接复用上次结果，不重复消耗额度">🤖 AI 生成评语</button>'
+    + '<div class="sc-actions-sub"><button class="btn ghost" onclick="genCommentByAI(true)" title="强制重新调用 AI（会消耗额度）">🔄 重新生成</button><button class="btn ghost" onclick="copyWechat()">📱 微信格式</button><button class="btn ghost" onclick="aiWechatBtn(this)" title="AI 生成可直接发送的微信文案">🤖 AI 微信</button><button class="btn ghost" onclick="copyComment()">📋 复制评语</button></div></div>'
     + '</div></div>'
 
     + '<div class="sm-card"><div class="sm-card-t"><span class="sm-dot"></span>④ 掉队自动干预<span class="sm-tip">' + (warns.length ? warns.length + ' 项待处理' : '已全部处理 🎉') + '</span></div>' + ivRows + '</div>'
@@ -12763,7 +12763,7 @@ function renderSmart(){
     + '<div class="sc-row"><div class="sc-grp"><label class="sc-lbl">🔢 题量</label><select id="qgNum" class="sm-sel"><option value="3">3 题</option><option value="5" selected>5 题</option><option value="10">10 题</option></select></div>'
     + '<div class="sc-grp"><label class="sc-lbl">📶 难度</label><select id="qgDiff" class="sm-sel"><option value="基础">基础</option><option value="中等" selected>中等</option><option value="拔高">拔高</option></select></div></div>'
     + '<div class="sc-row"><div class="sc-grp"><label class="sc-lbl">📝 含解析</label><label class="toggle-sw"><input type="checkbox" id="qgAna" checked><span class="toggle-sl"></span></label></label>'
-    + '<button class="btn ai" style="margin-left:auto" onclick="genQuizByAI()">🤖 生成题目</button></div>'
+    + '<button class="btn ai" style="margin-left:auto" onclick="genQuizByAI(this)" title="生成中按钮会锁定，避免连点重复消耗额度">🤖 生成题目</button></div>'
     + '<div id="qgOut"></div>'
     + '</div>'
 
@@ -12943,19 +12943,21 @@ function sendToParent(sid){
 }
 function aiParentMsg(sid, el){
   if (!aiReady() || !state.ai.enabled){ openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
-  if (el){ el.disabled = true; el.textContent = '🤖 生成中…'; }
-  aiWechatAI(sid, state.ai.scene, function(t, err){
-    if (el){ el.disabled = false; el.textContent = '🤖 AI 生成'; }
+  const gen = function(_sid, cb){ aiWechatAI(_sid, state.ai.scene, function(t, e){ cb(t, e); }); };
+  const hit = aiCached(sid, 'wechat:' + (state.ai.scene || ''), gen, function(t, err, cached){
+    aiBtnUnlock(el);
     if (err || !t){ toast('AI 生成失败：' + (err && err.message ? err.message : '请检查配置')); return; }
     const ta = document.getElementById('pmText'); if (ta) ta.value = t;
-    copyText(t); toast('✅ AI 文案已生成并复制');
+    copyText(t); toast(cached ? '✅ AI 文案已生成并复制（24 小时内缓存）' : '✅ AI 文案已生成并复制');
   });
+  if (!hit) aiBtnLock(el, '🤖 生成中…');
 }
-function genCommentByAI(){
+function genCommentByAI(force){
   const sid = ui.smartSid; if (!sid) return toast('请先选择学生');
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用'); }
   ui.aiStatus = 'loading'; renderMain();
-  genCommentAI(sid, state.ai.scene, function(text, err){
+  const gen = function(_sid, cb){ genCommentAI(_sid, state.ai.scene, function(t, e){ cb(t, e); }); };
+  aiCached(sid, 'comment:' + (state.ai.scene || ''), gen, function(text, err, cached){
     if (err || !text) {
       var rawMsg = null;
       try { if (err && err.message) rawMsg = err.message; else if (err) rawMsg = String(err); } catch(e) { rawMsg = null; }
@@ -12968,8 +12970,8 @@ function genCommentByAI(){
     ui.aiCache = { sid: sid, scene: state.ai.scene, text: text };
     ui.aiStatus = 'done';
     renderMain();
-    toast('✅ AI 评语已生成');
-  });
+    toast(cached ? '✅ AI 评语已生成（24 小时内缓存，不再重复消耗额度）' : '✅ AI 评语已生成');
+  }, force);
 }
 function toggleAutoHours(){ state.autoHours = !state.autoHours; save(); renderMain(); }
 function setHourWarn(v){ state.hourWarn = Math.max(1, num(v) || 4); save(); renderMain(); }
@@ -13098,20 +13100,71 @@ function aiPickText(j){
   const t = msg.content || msg.reasoning_content || '';
   return String(t).trim();
 }
+/* ===== 省 token：并发去重（同一请求进行中时共用结果，连点只发一次） ===== */
+const _aiPending = {};
+function aiPendingKey(a, b){ return String(a || '').slice(0, 120) + '||' + String(b || '').slice(0, 400); }
+/* ===== 省 token：按钮「生成中」锁（防连点重复扣费） ===== */
+function aiBtnLock(el, txt){
+  if (!el) return;
+  if (el.dataset.aiTxt === undefined) el.dataset.aiTxt = el.textContent;
+  el.disabled = true;
+  if (txt) el.textContent = txt;
+}
+function aiBtnUnlock(el){
+  if (!el) return;
+  el.disabled = false;
+  if (el.dataset.aiTxt !== undefined) el.textContent = el.dataset.aiTxt;
+}
+/* ===== 省 token：结果缓存（同学生 + 同功能 + 同一天，24 小时内复用） ===== */
+function aiCacheKey(sid, tag){ return String(sid) + ':' + tag + ':' + (state.activeDate || todayStr()); }
+function aiCacheGet(sid, tag){
+  const m = state.aiCache || {};
+  const it = m[aiCacheKey(sid, tag)];
+  if (!it) return null;
+  if (Date.now() - (it.ts || 0) > 24 * 3600 * 1000) { delete m[aiCacheKey(sid, tag)]; return null; }
+  return it.t;
+}
+function aiCacheSet(sid, tag, t){
+  if (!t) return;
+  state.aiCache = state.aiCache || {};
+  const m = state.aiCache;
+  m[aiCacheKey(sid, tag)] = { t: t, ts: Date.now() };
+  const keys = Object.keys(m);
+  if (keys.length > 200) {
+    keys.sort((a, b) => (m[a].ts || 0) - (m[b].ts || 0)).slice(0, keys.length - 200).forEach(k => delete m[k]);
+  }
+  save();
+}
+function aiCacheClear(){ state.aiCache = {}; save(); toast('✅ 已清空 AI 结果缓存'); }
+/* 带缓存的生成包装：命中缓存直接回调（cb 第三参 cached=true），否则生成并写入缓存 */
+function aiCached(sid, tag, gen, cb, force){
+  if (!force) {
+    const c = aiCacheGet(sid, tag);
+    if (c != null) { cb(c, null, true); return true; }
+  }
+  gen(sid, function(t, err){ if (!err && t) aiCacheSet(sid, tag, t); cb(t, err, false); });
+  return false;
+}
 function aiChat(systemText, userText, opt){
   const c = aiCfg();
   if (!c.key || !c.base || !c.model) throw new Error('AI 未配置');
   const o = opt || {};
+  const pk = aiPendingKey(systemText, userText);
+  if (!o.force && _aiPending[pk]) return _aiPending[pk];   // 同一请求正在进行 → 复用，不再扣一次费
   const msgs = [ { role:'system', content: systemText },
                  { role:'user', content: aiUserWithRule(userText, o.raw) } ];
   const body = { model: c.model, messages: msgs,
     temperature: (o.temperature != null ? o.temperature : 0.7),
     max_tokens: (o.maxTokens != null ? o.maxTokens : 600) };
-  return aiRequest(c, body, true).then(j => {
+  const p = aiRequest(c, body, true).then(j => {
     const raw = aiPickText(j);
     if (!raw) throw new Error('AI 返回空内容，请检查模型名是否正确');
     return o.raw ? raw : aiTextClean(raw);   // 统一清洗：去提示词残留 / 套话 / 重复句
   });
+  _aiPending[pk] = p;
+  const clear = function(){ if (_aiPending[pk] === p) delete _aiPending[pk]; };
+  p.then(clear, clear);
+  return p;
 }
 function aiCommentPrompt(sid, scene){
   const f = findStudentById(sid); if (!f) return null;
@@ -13233,18 +13286,20 @@ function genTermSummaryByAI(sid, cb){
   const sys = '你是经验丰富的初中数学老师。请基于以下学生数据，生成三部分内容：1) 学习亮点（2-3条）；2) 待改进之处（1-2条）；3) 一段面向该生的教师评语（约60-100字，温暖鼓励、具体建议）。请严格使用以下格式输出：\n【学习亮点】\n- ...\n【待改进】\n- ...\n【教师评语】\n...';
   aiChat(sys, txt).then(t => cb(t, null)).catch(e => cb(null, e));
 }
-function aiTermSummaryBtn(sid){
+function aiTermSummaryBtn(sid, force){
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
   const p = profileOf(sid); if (!p) return;
+  const acts = '<div class="modal-actions"><button class="btn ghost" onclick="copyText(document.getElementById(\'aiSumTxt\')?document.getElementById(\'aiSumTxt\').innerText:\'\')">📋 复制</button>'
+    + '<button class="btn ghost" onclick="aiTermSummaryBtn(\'' + sid + '\',true)">🔄 重新生成</button>'
+    + '<button class="btn" onclick="closeModal()">关闭</button></div>';
   openModal('🤖 AI 学期总结 · ' + esc(p.name || '?'),
-    '<div id="aiSumOut"><div class="muted">正在生成 ' + esc(p.name || '?') + ' 的学习总结…</div></div>'
-    + '<div class="modal-actions"><button class="btn ghost" onclick="copyText(document.getElementById(\'aiSumTxt\')?document.getElementById(\'aiSumTxt\').innerText:\'\')">📋 复制</button><button class="btn" onclick="closeModal()">关闭</button></div>',
-    null, 560);
-  genTermSummaryByAI(sid, function(text, err){
+    '<div id="aiSumOut"><div class="muted">正在生成 ' + esc(p.name || '?') + ' 的学习总结…</div></div>' + acts, null, 560);
+  aiCached(sid, 'term', genTermSummaryByAI, function(text, err, cached){
     const out = document.getElementById('aiSumOut'); if (!out) return;
     if (err || !text) { out.innerHTML = '<div class="err">AI 生成失败：' + (err && err.message ? esc(err.message) : '') + '</div>'; return; }
-    out.innerHTML = '<pre class="ai-summary-pre" id="aiSumTxt">' + esc(text) + '</pre>';
-  });
+    out.innerHTML = '<pre class="ai-summary-pre" id="aiSumTxt">' + esc(text) + '</pre>'
+      + (cached ? '<div class="hint" style="margin-top:8px">♻️ 24 小时内的缓存结果（不重复消耗额度），点「🔄 重新生成」可刷新。</div>' : '');
+  }, force);
 }
 function genAnalysisByAI(sid, cb){
   if (!aiReady()) { cb(null, new Error('AI 未配置')); return; }
@@ -13271,18 +13326,20 @@ function genAnalysisByAI(sid, cb){
   const sys = '你是初中数学老师。请基于以下学生近期学习问题，生成一段面向该生的针对性学情分析与辅导建议（约 120-200 字），语气鼓励、具体可操作，可直接用于一对一沟通或家长反馈。只输出正文。';
   aiChat(sys, txt).then(t => cb(t, null)).catch(e => cb(null, e));
 }
-function openAnalysisAI(sid){
+function openAnalysisAI(sid, force){
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
   const p = profileOf(sid); if (!p) return;
+  const acts = '<div class="modal-actions"><button class="btn ghost" onclick="copyText(document.getElementById(\'aiAnaTxt\')?document.getElementById(\'aiAnaTxt\').innerText:\'\')">📋 复制分析</button>'
+    + '<button class="btn ghost" onclick="openAnalysisAI(\'' + sid + '\',true)">🔄 重新生成</button>'
+    + '<button class="btn" onclick="closeModal()">关闭</button></div>';
   openModal('🤖 AI 学情分析 · ' + esc(p.name || '?'),
-    '<div id="aiAnaOut"><div class="muted">正在分析 ' + esc(p.name || '?') + ' 的近期学习情况…</div></div>'
-    + '<div class="modal-actions"><button class="btn ghost" onclick="copyText(document.getElementById(\'aiAnaTxt\')?document.getElementById(\'aiAnaTxt\').innerText:\'\')">📋 复制分析</button><button class="btn" onclick="closeModal()">关闭</button></div>',
-    null, 560);
-  genAnalysisByAI(sid, function(text, err){
+    '<div id="aiAnaOut"><div class="muted">正在分析 ' + esc(p.name || '?') + ' 的近期学习情况…</div></div>' + acts, null, 560);
+  aiCached(sid, 'analysis', genAnalysisByAI, function(text, err, cached){
     const out = document.getElementById('aiAnaOut'); if (!out) return;
     if (err || !text) { out.innerHTML = '<div class="err">AI 生成失败：' + (err && err.message ? esc(err.message) : '') + '</div>'; return; }
-    out.innerHTML = '<pre class="ai-summary-pre" id="aiAnaTxt">' + esc(text) + '</pre>';
-  });
+    out.innerHTML = '<pre class="ai-summary-pre" id="aiAnaTxt">' + esc(text) + '</pre>'
+      + (cached ? '<div class="hint" style="margin-top:8px">♻️ 24 小时内的缓存结果（不重复消耗额度），点「🔄 重新生成」可刷新。</div>' : '');
+  }, force);
 }
 function trGenAI(){
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
@@ -13347,6 +13404,8 @@ function openAISettings(){
     + '<div class="form-row"><label>启用 AI 生成</label><label class="toggle-sw"><input id="aiOn" type="checkbox" '+(state.ai.enabled?'checked':'')+'><span class="toggle-sl"></span></label></div>'
     + '<button class="btn ghost" type="button" onclick="testAIConn()" id="aiTestBtn">🔗 测试连接</button>'
     + '<div id="aiTestRes" class="ai-test-res"></div>'
+    + '<div class="row" style="margin:10px 0;gap:8px;align-items:center"><button class="btn ghost sm" type="button" onclick="aiCacheClear()">🧹 清空 AI 结果缓存</button>'
+    + '<span class="muted" style="font-size:12px">同一学生 + 同一功能，24 小时内直接复用上次结果（不再重复消耗额度）；每个生成窗口都有「🔄 重新生成」可强制刷新。</span></div>'
     + '<div class="hint">密钥仅存储在本机浏览器 localStorage，直接从你的浏览器请求厂商接口；请妥善保管，勿在公共电脑勾选启用。模型会随厂商迭代改名，若报「模型不存在」，点上面的「拉取可用模型」重新选一个即可。</div>';
   openModal('🤖 AI 大模型设置', body, `<button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveAISettings()">保存并关闭</button>`, 460);
   ui._aiPrevProv = p;   // 记录打开时的厂商，避免打开时覆盖已保存的自定义地址/模型
@@ -13489,21 +13548,25 @@ function genDiagByAI(sid, cb){
   const sys = '你是资深初中数学老师与中考教研专家。请基于以下学生数学学习数据，做一份精炼的学情诊断：1) 指出 2-3 个最薄弱的知识点方向（结合分数偏低、考试与作业表现推断；若数据中提供了「老师档案标注薄弱点/优势/备注」或「错题知识点标注」，应优先结合这些信息，使诊断更贴合该生；若数据无法支撑具体章节级知识点，请使用「基础运算/概念理解/应用题」等宽泛类别，不得虚构「统计概率」「三角形性质」等数据中未提及的具体知识点）；2) 针对每项给出具体可操作的补弱练习方向；3) 用一句话总结该生当前状态与下一步重点。请严格使用「【薄弱点】/【补弱建议】/【总结】」三段格式输出，总计约 180-260 字。';
   aiChat(sys, txt).then(t => cb(t, null)).catch(e => cb(null, e));
 }
-function openTrendDiag(){
+function openTrendDiag(force){
   const cls = activeClass(); if (!cls) return;
   const sid = state.trendStudentId || (cls.students[0] && cls.students[0].id);
   if (!sid) return toast('请先选择学生');
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
   const f = findStudentById(sid); if (!f) return;
+  const acts = '<div class="modal-actions"><button class="btn ai" onclick="genHwFromDiag(' + sid + ',this)">📝 生成个性化作业</button>'
+    + '<button class="btn ghost" onclick="copyText(document.getElementById(\'aiDiagTxt\')?document.getElementById(\'aiDiagTxt\').innerText:\'\')">📋 复制诊断</button>'
+    + '<button class="btn ghost" onclick="openTrendDiag(true)">🔄 重新生成</button>'
+    + '<button class="btn" onclick="closeModal()">关闭</button></div>';
   openModal('🤖 AI 学情诊断 · ' + esc(f.s.name || '?'),
-    '<div id="aiDiagOut"><div class="muted">正在分析 ' + esc(f.s.name || '?') + ' 的测试数据并定位薄弱点…</div></div>'
-    +     '<div class="modal-actions"><button class="btn ai" onclick="genHwFromDiag(' + sid + ')">📝 生成个性化作业</button><button class="btn ghost" onclick="copyText(document.getElementById(\'aiDiagTxt\')?document.getElementById(\'aiDiagTxt\').innerText:\'\')">📋 复制诊断</button><button class="btn" onclick="closeModal()">关闭</button></div>',
+    '<div id="aiDiagOut"><div class="muted">正在分析 ' + esc(f.s.name || '?') + ' 的测试数据并定位薄弱点…</div></div>' + acts,
     null, 560);
-  genDiagByAI(sid, function(text, err){
+  aiCached(sid, 'diag', genDiagByAI, function(text, err, cached){
     const out = document.getElementById('aiDiagOut'); if (!out) return;
     if (err || !text) { out.innerHTML = '<div class="err">AI 生成失败：' + (err && err.message ? esc(err.message) : '') + '</div>'; return; }
-    out.innerHTML = '<pre class="ai-summary-pre" id="aiDiagTxt">' + esc(text) + '</pre>';
-  });
+    out.innerHTML = '<pre class="ai-summary-pre" id="aiDiagTxt">' + esc(text) + '</pre>'
+      + (cached ? '<div class="hint" style="margin-top:8px">♻️ 24 小时内的缓存结果（不重复消耗额度），点「🔄 重新生成」可刷新。</div>' : '');
+  }, force);
 }
 /* AI 自动生成当日课堂评语（短短语）填入 r.remark */
 function genRemarkByAI(sid, cb){
@@ -13530,11 +13593,13 @@ function genRemarkByAI(sid, cb){
   aiChat(sys, txt).then(t => cb((t || '').trim(), null)).catch(e => cb(null, e));
 }
 /* AI 评语弹窗：全文可直接复制，也可只把首句填入当日评语 */
-function aiRemarkModal(sid, t){
+function aiRemarkModal(sid, t, cached){
   const f = findStudentById(sid);
   const name = f ? (f.s.name || '?') : '?';
-  const body = '<pre class="ai-summary-pre" id="aiRmkTxt">' + esc(t) + '</pre>'
-    + '<div class="hint" style="margin-top:8px">已按学生数据生成，<b>可直接复制粘贴</b>；文中不含任何提示词与说明，重复句已自动去除。</div>';
+  const tip = cached
+    ? '<div class="hint" style="margin-top:8px">♻️ 这是 <b>24 小时内的缓存结果</b>（不再重复消耗额度）；要点「🔄 重新生成」才会重新调用 AI。</div>'
+    : '<div class="hint" style="margin-top:8px">已按学生数据生成，<b>可直接复制粘贴</b>；文中不含任何提示词与说明，重复句已自动去除。</div>';
+  const body = '<pre class="ai-summary-pre" id="aiRmkTxt">' + esc(t) + '</pre>' + tip;
   const acts = '<button class="btn ghost" onclick="closeModal()">关闭</button>'
     + '<button class="btn" onclick="aiRemarkAgain(' + sid + ',this)">🔄 重新生成</button>'
     + '<button class="btn" onclick="copyText(document.getElementById(\'aiRmkTxt\').innerText)">📋 复制全文</button>'
@@ -13542,11 +13607,13 @@ function aiRemarkModal(sid, t){
   openModal('🤖 AI 评语 · ' + esc(name), body, acts, 540);
 }
 function aiRemarkAgain(sid, el){
-  if (el) { el.disabled = true; el.textContent = '⏳ 生成中…'; }
+  aiBtnLock(el, '⏳ 生成中…');
   genRemarkByAI(sid, function(t, err){
-    if (el) { el.disabled = false; el.textContent = '🔄 重新生成'; }
+    aiBtnUnlock(el);
     if (err || !t) { toast('AI 评语生成失败：' + (err && err.message ? err.message : '请检查配置')); return; }
+    aiCacheSet(sid, 'remark', t);
     const box = document.getElementById('aiRmkTxt'); if (box) box.textContent = t;
+    toast('✅ 已重新生成');
   });
 }
 function aiRemarkApply(sid){
@@ -13564,12 +13631,13 @@ function aiRemarkApply(sid){
 }
 function aiRemarkFill(sid, el){
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
-  if (el) { el.disabled = true; el.textContent = '🤖 生成中…'; }
-  genRemarkByAI(sid, function(t, err){
-    if (el) { el.disabled = false; el.textContent = '🤖 AI 评语'; }
+  const hit = aiCached(sid, 'remark', genRemarkByAI, function(t, err, cached){
+    aiBtnUnlock(el);
     if (err || !t) { toast('AI 评语生成失败：' + (err && err.message ? err.message : '请检查配置')); return; }
-    aiRemarkModal(sid, t);
+    aiRemarkModal(sid, t, cached);
   });
+  if (hit) { if (el) aiBtnUnlock(el); return; }
+  aiBtnLock(el, '🤖 生成中…');
 }
 /* 评语库 AI 推荐短语（追加到库） */
 function aiPhraseBank(){
@@ -13587,7 +13655,7 @@ function aiPhraseBank(){
   }).catch(e => { const out = document.getElementById('aipbOut'); if (out) out.innerHTML = '<div class="err">' + esc((e && e.message) || '生成失败') + '</div>'; });
 }
 /* 家长沟通主动化：针对预警原因生成家长信 */
-function aiWarnParent(sid){
+function aiWarnParent(sid, force){
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
   const f = findStudentById(sid); if (!f) return;
   const cls = f.c, ds = smartDates(cls), recent = ds.slice(-14);
@@ -13604,11 +13672,21 @@ function aiWarnParent(sid){
     + '\n近14天概况：出勤率 ' + attRate + '%，小测均分 ' + (qa != null ? fmt1(qa) : '—') + '，作业偏低/未完成 ' + hwMiss + ' 次'
     + '\n请写一段家长沟通文案。';
   const sys = '你是经验丰富的初中数学老师。请基于以下学生的预警原因与近期数据，写一段约 100-160 字的家长沟通文案（可直接微信发送）。语气温暖真诚、具体不空洞，先肯定优点，再点明问题，并给出 1-2 条可操作的家校配合建议。只输出正文，可适度使用 emoji 让表达更亲切。';
+  const acts = '<div class="modal-actions"><button class="btn ghost" onclick="copyText(document.getElementById(\'awpTxt\')?document.getElementById(\'awpTxt\').innerText:\'\')">📋 复制微信文案</button>'
+    + '<button class="btn ghost" onclick="printParentLetter()">📄 导出 PDF</button>'
+    + '<button class="btn ghost" onclick="aiWarnParent(' + sid + ',true)">🔄 重新生成</button>'
+    + '<button class="btn" onclick="closeModal()">关闭</button></div>';
   openModal('📤 AI 家长信 · ' + esc(f.s.name),
-    '<div id="awpOut"><div class="muted">正在为 ' + esc(f.s.name) + ' 生成针对性家长信…</div></div>'
-    + '<div class="modal-actions"><button class="btn ghost" onclick="copyText(document.getElementById(\'awpTxt\')?document.getElementById(\'awpTxt\').innerText:\'\')">📋 复制微信文案</button><button class="btn ghost" onclick="printParentLetter()">📄 导出 PDF</button><button class="btn" onclick="closeModal()">关闭</button></div>',
-    null, 560);
-  aiChat(sys, user).then(t => { const out = document.getElementById('awpOut'); if (out) out.innerHTML = '<pre class="ai-summary-pre" id="awpTxt">' + esc(t) + '</pre>'; }).catch(e => { const out = document.getElementById('awpOut'); if (out) out.innerHTML = '<div class="err">' + esc((e && e.message) || '生成失败') + '</div>'; });
+    '<div id="awpOut"><div class="muted">正在为 ' + esc(f.s.name) + ' 生成针对性家长信…</div></div>' + acts, null, 560);
+  const render = function(t, cached){
+    const out = document.getElementById('awpOut'); if (!out) return;
+    out.innerHTML = '<pre class="ai-summary-pre" id="awpTxt">' + esc(t) + '</pre>'
+      + (cached ? '<div class="hint" style="margin-top:8px">♻️ 24 小时内的缓存结果（不重复消耗额度），点「🔄 重新生成」可刷新。</div>' : '');
+  };
+  const hit = force ? null : aiCacheGet(sid, 'warn');
+  if (hit != null) return render(hit, true);
+  aiChat(sys, user).then(t => { aiCacheSet(sid, 'warn', t); render(t, false); })
+    .catch(e => { const out = document.getElementById('awpOut'); if (out) out.innerHTML = '<div class="err">' + esc((e && e.message) || '生成失败') + '</div>'; });
 }
 /* AI 智能出题 / 组卷 */
 function qgBasisChange(){
@@ -13616,8 +13694,10 @@ function qgBasisChange(){
   const sw = document.getElementById('qgStudentWrap'); if (sw) sw.style.display = (b === 'student') ? 'flex' : 'none';
   const cw = document.getElementById('qgCustomWrap'); if (cw) cw.style.display = (b === 'custom') ? 'flex' : 'none';
 }
-function genQuizByAI(){
+let _quizBusy = false;
+function genQuizByAI(el){
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
+  if (_quizBusy) return toast('⏳ 正在生成中，请勿重复点击（不会重复消耗额度）');
   const basis = (document.getElementById('qgBasis') || {}).value || 'class';
   const n = Math.max(1, Math.min(10, +(document.getElementById('qgNum') || {}).value || 3));
   const diff = (document.getElementById('qgDiff') || {}).value || '中等';
@@ -13642,10 +13722,13 @@ function genQuizByAI(){
   const sys = '你是资深中考数学命题与教研专家，题目严谨、表述规范、符合课标与中考命题趋势，难度梯度合理。';
   const user = '请针对以下范围出 ' + n + ' 道「' + diff + '」难度的初中数学习题' + (ana ? '，每题附答案与详细解析' : '，每题附答案') + '。\n范围：' + scope + '\n输出严格使用以下格式（不要额外说明）：\n【题目1】\n（题干）\n【答案】\n（答案）\n【解析】\n（解析）\n【题目2】\n……（依此类推，共 ' + n + ' 题）';
   const out = document.getElementById('qgOut'); if (out) out.innerHTML = '<div class="muted">🤖 正在生成 ' + n + ' 道' + diff + '题目…</div>';
+  _quizBusy = true; aiBtnLock(el, '🤖 生成中…');
+  const fin = function(){ _quizBusy = false; aiBtnUnlock(el); };
   aiChat(sys, user, { temperature: 0.8, maxTokens: 1600 }).then(t => {
+    fin();
     if (out) out.innerHTML = '<div class="ai-quiz-box"><pre class="ai-summary-pre">' + esc(t) + '</pre>'
       + '<div class="sc-actions"><button class="btn sm" onclick="copyText(this.parentElement.previousElementSibling.innerText)">📋 复制题目</button></div></div>';
-  }).catch(e => { if (out) out.innerHTML = '<div class="err">AI 出题失败：' + esc((e && e.message) || '请检查配置') + '</div>'; });
+  }).catch(e => { fin(); if (out) out.innerHTML = '<div class="err">AI 出题失败：' + esc((e && e.message) || '请检查配置') + '</div>'; });
 }
 
 /* ===== AI 深化①：诊断结果一键转「个性化作业」 ===== */
@@ -13664,24 +13747,32 @@ function genHwByAI(sid, diagText, cb){
   const sys = '你是资深初中数学老师与中考教研专家。请基于学生的学情诊断与近期数据，制定一份【个性化作业/练习计划】，帮助学生针对性补弱。请严格使用以下格式输出：\n【练习目标】\n（一句话目标）\n【分知识点练习】\n（按薄弱点列出 2-4 项，每项格式：知识点 — 建议练习方向 — 题量/时长）\n【打卡与完成方式】\n（建议如何在日常打卡/作业中落实，具体可操作）\n【巩固建议】\n（家长/学生可做的配合）\n总计约 220-320 字，具体、可操作，不空洞。';
   aiChat(sys, txt, { temperature: 0.7, maxTokens: 1000 }).then(t => cb(t, null)).catch(e => cb(null, e));
 }
-function genHwFromDiag(sid){
+function genHwFromDiag(sid, el, force){
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
   const diagEl = document.getElementById('aiDiagTxt');
   const diag = diagEl ? diagEl.innerText : '';
-  if (diag) {
-    genHwByAI(sid, diag, function(t, err){ if (err || !t) { toast('作业生成失败：' + (err && err.message ? err.message : '请检查配置')); return; } openHwPlan(sid, t); });
-  } else {
-    genDiagByAI(sid, function(d, err){
-      if (err || !d) { toast('诊断失败：' + (err && err.message ? err.message : '')); return; }
-      const out = document.getElementById('aiDiagOut'); if (out) out.innerHTML = '<pre class="ai-summary-pre" id="aiDiagTxt">' + esc(d) + '</pre>';
-      genHwByAI(sid, d, function(t, e2){ if (e2 || !t) { toast('作业生成失败：' + (e2 && e2.message ? e2.message : '')); return; } openHwPlan(sid, t); });
-    });
-  }
+  const done = function(t, err, cached){
+    aiBtnUnlock(el);
+    if (err || !t) { toast('作业生成失败：' + (err && err.message ? err.message : '请检查配置')); return; }
+    openHwPlan(sid, t, cached);
+  };
+  const run = function(diagTxt){
+    const gen = function(_sid, cb){ genHwByAI(_sid, diagTxt, function(t, e){ cb(t, e); }); };
+    const hit = aiCached(sid, 'hw', gen, done, force);
+    if (!hit) aiBtnLock(el, '⏳ 生成中…');
+  };
+  if (diag) return run(diag);
+  genDiagByAI(sid, function(d, err){
+    if (err || !d) { aiBtnUnlock(el); toast('诊断失败：' + (err && err.message ? err.message : '')); return; }
+    const out = document.getElementById('aiDiagOut'); if (out) out.innerHTML = '<pre class="ai-summary-pre" id="aiDiagTxt">' + esc(d) + '</pre>';
+    run(d);
+  });
 }
-function openHwPlan(sid, planText){
+function openHwPlan(sid, planText, cached){
   const f = findStudentById(sid);
   openModal('📝 个性化作业 · ' + (f ? esc(f.s.name) : ''),
-    '<div id="hwPlanOut"><pre class="ai-summary-pre">' + esc(planText) + '</pre></div>'
+    '<div id="hwPlanOut"><pre class="ai-summary-pre">' + esc(planText) + '</pre>'
+    + (cached ? '<div class="hint" style="margin-top:8px">♻️ 24 小时内的缓存结果（不重复消耗额度）。</div>' : '') + '</div>'
     + '<div class="modal-actions">'
     + '<button class="btn ghost" onclick="copyText(document.getElementById(\'hwPlanOut\').innerText)">📋 复制</button>'
     + '<button class="btn" onclick="saveHwPlan(' + sid + ')">💾 保存为个性化作业</button>'
