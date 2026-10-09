@@ -13080,7 +13080,7 @@ function aiRequest(cfg, body, allowRetry, opt){
   }, e => { throw new Error(aiNetErrMsg(e)); });
 }
 /* ===== AI 输出清洗：去掉提示词残留 / 套话 / 重复句，保证结果可直接复制粘贴 ===== */
-const AI_OUT_RULE = '【输出铁律】只输出可直接复制使用的正文；不要输出任何说明、开场白、标题套话（如「以下是」「好的」「根据数据」）；不要复述上面提示里的任何要求或规则；不要出现重复的句子或段落；不要使用 Markdown 标记。';
+const AI_OUT_RULE = '【输出铁律】只输出可直接复制使用的正文；不要输出你的思考过程、推理过程或任务复述（如「用户需要我…」「我需要写…」）；不要输出任何说明、开场白、标题套话（如「以下是」「好的」「根据数据」）；不要复述上面提示里的任何要求或规则；不要出现重复的句子或段落；不要使用 Markdown 标记。';
 /* 给用户输入统一追加输出铁律（opt.raw 时原样透传，用于需要保留原始格式的场景） */
 function aiUserWithRule(userText, raw){
   return String(userText == null ? '' : userText) + (raw ? '' : ('\n\n' + AI_OUT_RULE));
@@ -13146,10 +13146,18 @@ function remarkShortOf(t){
 }
 /* 从一次 chat 响应里取出正文（兼容只填 reasoning_content 的思考型模型） */
 function aiPickText(j){
-  const msg = j && j.choices && j.choices[0] && j.choices[0].message;
-  if (!msg) return '';
-  const t = msg.content || msg.reasoning_content || '';
-  return String(t).trim();
+  const m = aiPickMsg(j);
+  return m.text || m.reasoning || '';
+}
+/* 分离「正文」与「思考过程」：Kimi / DeepSeek 等思考型模型会把推理写进 reasoning_content，
+   若输出预算被思考占满，content 会是空的 —— 此时绝不能把思考过程当正文写给用户看 */
+function aiPickMsg(j){
+  const ch = j && j.choices && j.choices[0];
+  const msg = ch && ch.message;
+  if (!msg) return { text:'', reasoning:'', finish:'', reasonOnly:false };
+  const text = String(msg.content == null ? '' : msg.content).trim();
+  const reasoning = String(msg.reasoning_content == null ? '' : msg.reasoning_content).trim();
+  return { text: text, reasoning: reasoning, finish: String(ch.finish_reason || ''), reasonOnly: (!text && !!reasoning) };
 }
 /* ===== 省 token：并发去重（同一请求进行中时共用结果，连点只发一次） ===== */
 const _aiPending = {};
@@ -13204,14 +13212,23 @@ function aiChat(systemText, userText, opt){
   if (!o.force && _aiPending[pk]) return _aiPending[pk];   // 同一请求正在进行 → 复用，不再扣一次费
   const msgs = [ { role:'system', content: systemText },
                  { role:'user', content: aiUserWithRule(userText, o.raw) } ];
-  const body = { model: c.model, messages: msgs,
-    temperature: (o.temperature != null ? o.temperature : 0.7),
-    max_tokens: (o.maxTokens != null ? o.maxTokens : 600) };
-  const p = aiRequest(c, body, true).then(j => {
-    const raw = aiPickText(j);
-    if (!raw) throw new Error('AI 返回空内容，请检查模型名是否正确');
-    return (o.raw || o.noClean) ? raw : aiTextClean(raw);   // 统一清洗：去提示词残留 / 套话 / 重复句
-  });
+  const baseTok = (o.maxTokens != null ? o.maxTokens : 600);
+  function aiOnce(tokens, grew){
+    const body = { model: c.model, messages: msgs,
+      temperature: (o.temperature != null ? o.temperature : 0.7),
+      max_tokens: tokens };
+    return aiRequest(c, body, true).then(j => {
+      const m = aiPickMsg(j);
+      if (m.reasonOnly && !grew) {   // 思考型模型常见坑：预算被「思考」吃光 → 加大预算重试一次（未用到的额度不计费）
+        return aiOnce(Math.max(Math.round(baseTok * 3), 1500), true);
+      }
+      if (!m.text) throw new Error(m.reasonOnly
+        ? '模型只输出了思考过程、没给出结果（输出额度被思考占满）。请点「🔄 重新生成」，或到「⚙️ AI 设置」换用非思考型模型。'
+        : 'AI 返回空内容，请检查模型名是否正确');
+      return (o.raw || o.noClean) ? m.text : aiTextClean(m.text);   // 统一清洗：去提示词残留 / 套话 / 重复句
+    });
+  }
+  const p = aiOnce(baseTok, false);
   _aiPending[pk] = p;
   const clear = function(){ if (_aiPending[pk] === p) delete _aiPending[pk]; };
   p.then(clear, clear);
@@ -13268,6 +13285,8 @@ function aiCommentPrompt(sid, scene, extra){
 const CMT_META_LINE = /^\s*(学生姓名|姓名|场景|语气|风格|沟通场景|近\s*\d+\s*天[^：:]{0,12}|出勤率|小测(均分|平均得分率)|作业完成|可用积分|课时剩余|高频错题|错题知识点|课堂表现|课堂吸收|要求|注意|说明|备注|提示词|输出|格式|规则)\s*[:：]/i;
 const CMT_BAD_WORD = /(输出铁律|只输出正文|不要(输出|使用|出现|复述)|以下是|以下为|如上所述|根据(您|你)(提供|的)|根据(上面|以下)|提示词|prompt|system\s*(提示|角色)|AI[:：]|数据不足|请(严格|确保)|占位符|（姓名）|【姓名】|（分数）|（知识点）|(XXX|xxx))/i;
 const CMT_LIST_MARK = /(^\s*[-•·*+]\s+)|(^\s*\d+[.、)]\s+)|(^\s*#{1,6}\s)|(\*\*|__|~~)/m;
+/* 思考过程 / 任务复述特征（思考型模型把推理当正文返回时会出现，必须拦在面板之外） */
+const CMT_SELF_TALK = /((用户|家长|客户|老师)(需要|要求|想要|希望|让我|想让我|让我来))|(我(需要|要|应该|必须|来|先)(写|生成|输出|分析|看|整理|做|帮))|(需要我(写|生成|提供|输出))|(让(我|我来)(写|生成|来))|(首先(我|，?我))|(下面我|接下来我)|(作为(一名|一个)?(AI|人工智能|助手|初中数学老师|老师))|(任务(是|要求|目标))|(题目要求)|(按照(上述|以上|下面)?要求)|(这(个|是)一(个|项)(任务|要求))|(思考(一下|：|:))|(我(来|先)(分析|梳理|回顾))|(根据(上述|以上|所给)(数据|信息|要求)?(，|,)?我(来|将|需要))/;
 const CMT_EMOJI_RE = /(?:[\uD800-\uDBFF][\uDC00-\uDFFF]|\uFE0F|\u200D|[\u2190-\u2BFF\u2460-\u24FF\u2600-\u27BF])+/g;
 function cmtSplitTitle(t){
   const lines = String(t || '').split('\n').map(x => x.trim()).filter(Boolean);
@@ -13319,6 +13338,7 @@ function commentNormalize(t, opt){
               .replace(/\*\*/g, '').replace(/__/g, '').replace(/[ \t]*\|[ \t]*/g, ' ').trim();
     if (!L) return;
     if (L.length <= 30 && CMT_BAD_WORD.test(L)) return;
+    if (L.length <= 60 && CMT_SELF_TALK.test(L)) return;   // 混在正文里的思考过程/任务复述行
     if (lines.length > 1 && L.length <= 14 && !/[。！？!?，,、；;：:\d]/.test(L)) return;   // 短行无标点 → 小标题
     kept.push(L);
   });
@@ -13344,11 +13364,24 @@ function commentLooksOk(t, ctx){
   if (/#|\*\*|__|~~|`/.test(txt)) return { ok:false, why:'含 Markdown 标记' };
   if (CMT_META_LINE.test(body)) return { ok:false, why:'含「学生姓名/场景」等数据回显' };
   if (CMT_BAD_WORD.test(txt)) return { ok:false, why:'含提示词残留' };
+  if (CMT_SELF_TALK.test(body)) return { ok:false, why:'是模型的思考过程/任务复述，不是评语正文' };
   const n = txt.replace(/\s/g, '').length;      // 中文不是 \w，不能用 \W 过滤
   if (n < 20) return { ok:false, why:'内容过短（' + n + ' 字）' };
   if (n > 200) return { ok:false, why:'内容过长（' + n + ' 字）' };
+  /* 评语必须落到具体数据上：既没数字也没「全勤/满分」这类量化词，且篇幅偏短 → 判为没有依据的泛泛之谈 */
+  if (c.hasData !== false && n < 90 && !/\d/.test(txt) && !/(全勤|满分)/.test(txt)) return { ok:false, why:'没有引用任何具体数据（未按学生本人数据生成）' };
   if (c.name && c.name.length >= 2 && txt.indexOf(c.name) < 0) return { ok:false, why:'未出现所选学生姓名，疑似跑题' };
   return { ok:true, why:'' };
+}
+/* 该生数据是否足以支撑「必须引用具体数据」：全是「暂无记录」时不强求，避免空档案学生被反复判不合格 */
+function commentHasData(user){
+  const u = String(user || '');
+  if (/高频错题知识点/.test(u)) return true;
+  if (/平均得分率：\s*\d/.test(u)) return true;
+  if (/到课\s*[1-9]/.test(u)) return true;
+  if (/作业完成：\s*[1-9]/.test(u)) return true;
+  if (/课堂(表现|吸收)高频/.test(u)) return true;
+  return false;
 }
 /* 生成 + 入库前筛选：不合格自动重生成一次，仍不合格则返回 null（界面回退模板评语） */
 function commentGenerate(sid, scene, cb, opt){
@@ -13359,13 +13392,15 @@ function commentGenerate(sid, scene, cb, opt){
   function once(extra){
     const pr = aiCommentPrompt(sid, scene, extra);
     if (!pr) { cb(null, new Error('请选择学生')); return; }
+    ctx.hasData = commentHasData(pr.user);
     /* noClean：评语走自己的「入库前筛选」链路（aiTextClean 会把换行吃掉，影响排版规范化的按行清洗） */
-    aiChat(pr.system, pr.user, { maxTokens: 320, noClean: true }).then(function(raw){
+    /* 思考型模型会把输出预算花在「思考」上导致正文为空 → 预算给足（未用到的额度不计费） */
+    aiChat(pr.system, pr.user, { maxTokens: attempt === 0 ? 700 : 1200, noClean: true }).then(function(raw){
       const nm = commentNormalize(raw, { maxLen: o.maxLen || 110, emoji: o.emoji == null ? 1 : o.emoji });
       const chk = commentLooksOk(nm.text, ctx);
       if (chk.ok) { cb(nm.text, null, nm); return; }
       attempt++;
-      if (attempt < 2) { once('上次产出被判为「' + chk.why + '」已作废，请严格只输出一段 60-110 字正文，并点名 ' + ctx.name + '。'); return; }
+      if (attempt < 2) { once('上次产出被判为「' + chk.why + '」已作废。请把推理留在心里，只输出一段 60-110 字正文，点名 ' + ctx.name + '，并至少写进 2 个具体数据。'); return; }
       cb(null, new Error('AI 输出未通过可用性校验（' + chk.why + '）'));
     }).catch(function(e){ cb(null, e); });
   }
