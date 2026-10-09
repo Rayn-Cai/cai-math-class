@@ -12998,20 +12998,59 @@ function aiErrMsg(status, raw){
     return 'API Key 无效或区域不匹配（' + (m || 'HTTP 401') + '）→ 请重新复制 Key；国外站与国内站的 Key 不通用（Kimi 国内站用 api.moonshot.cn）。';
   if (status === 403)
     return '无权限（' + (m || 'HTTP 403') + '）→ 该 Key 未开通此模型，或账户余额/额度不足，请到厂商控制台确认。';
-  if (status === 429)
-    return '请求过于频繁或额度用尽（' + (m || 'HTTP 429') + '）→ 稍后再试，或到厂商控制台查看剩余额度。';
+  if (status === 429) {
+    if (aiIsQuotaError(t)) return '账户额度/余额不足（' + (m || 'HTTP 429') + '）→ 请到厂商控制台充值或换一个 Key，重试无效。';
+    if (aiIsOverload(t)) return '模型引擎繁忙（' + (m || 'HTTP 429') + '）→ 这是厂商侧临时过载，已自动重试仍未成功；请等 1-2 分钟再试，或点「📥 拉取可用模型」换一个模型。';
+    return '请求频率超限（' + (m || 'HTTP 429') + '）→ 请稍后再试，不要在短时间内连点多次。';
+  }
+  if (status >= 500 && status <= 599)
+    return '厂商接口异常（HTTP ' + status + (m ? '：' + m : (t ? '：' + t.slice(0, 160) : '')) + '）→ 已自动重试仍未成功，属服务端临时故障，请稍后再试。';
   if (status === 400 && /temperature|top_p|penalty|thinking|max_tokens|invalid_request/i.test(t))
     return '该模型不接受当前参数（' + (m || 'HTTP 400') + '）→ 通常是推理型模型的限制，可换用普通对话模型。';
   return 'HTTP ' + status + (m ? '：' + m : (t ? '：' + t.slice(0, 160) : ''));
+}
+/* 网络层失败（浏览器根本拿不到响应）：多为代理拦截 / 跨域(CORS) / 断网 */
+function aiNetErrMsg(e){
+  const t = String((e && e.message) || e || '');
+  if ((e && e.name === 'TypeError') || /failed to fetch|networkerror|load failed|net::|网络错误/i.test(t))
+    return '浏览器无法直连该接口（' + (t || 'Failed to fetch').slice(0, 80) + '）→ 常见原因：公司/校园网络或代理拦截、该接口不允许浏览器跨域(CORS)。可换网络重试，或改用支持浏览器直连的接口地址。';
+  return t || '网络错误';
+}
+/* 额度类错误：重试没用，不要自动重试 */
+function aiIsQuotaError(text){
+  const t = String(text || '');
+  return /insufficient[_ ]quota|quota.?exceed|exceed(ed)? (your )?(current )?quota|out of (balance|quota)|balance is (not enough|insufficient)|余额不足|额度(已)?用尽|no (available )?quota|billing|arrears|欠费/i.test(t);
+}
+/* 引擎过载类错误：厂商侧临时问题，退避重试通常能成功 */
+function aiIsOverload(text){
+  const t = String(text || '');
+  return /currently overloaded|engine is overloaded|overload|overloaded|服务(繁忙|过载)|引擎(繁忙|过载)|system is busy|capacity|try again later|upstream|系统繁忙/i.test(t);
+}
+/* 是否值得自动重试：被拒的请求不计 token，重试不会多扣费 */
+function aiIsRetriable(status, text){
+  if (aiIsQuotaError(text)) return false;
+  if (status === 429) return true;
+  if (status >= 500 && status <= 599) return true;
+  return status >= 400 && aiIsOverload(text);
+}
+/* 错误是否"服务端临时性"（用于测试连接时做降级探活） */
+function aiIsTempFail(msg){
+  return /引擎繁忙|接口异常|频率超限|无法直连|临时过载|overload/i.test(String(msg || ''));
 }
 /* 判定：该 400 是否属于"模型不接受采样参数"（推理型模型常见），是则去掉参数重试 */
 function aiShouldRetryBare(status, text){
   return status === 400 && /temperature|top_p|presence_penalty|frequency_penalty|invalid_request/i.test(String(text || ''));
 }
-/* 统一的 OpenAI 兼容请求：部分推理模型（如 Kimi K2/K3 思考模式）不接受 temperature/top_p，
-   命中此类 400 时自动去掉采样参数重试一次，避免"模型名对了但参数被拒"而用不了 */
-function aiRequest(cfg, body, allowRetry){
+/* 服务端临时故障（429 引擎过载 / 5xx）自动退避重试：失败请求不计 token，重试不多扣费 */
+const AI_RETRY_MAX = 3;
+const AI_RETRY_WAIT = [1200, 2500, 4000];
+function aiSleep(ms){ return new Promise(res => setTimeout(res, ms)); }
+/* 统一的 OpenAI 兼容请求：① 部分推理模型（如 Kimi K2/K3 思考模式）不接受 temperature/top_p，
+   命中此类 400 时自动去掉采样参数重试一次；② 引擎过载/5xx 自动退避重试，避免"引擎繁忙"直接判失败 */
+function aiRequest(cfg, body, allowRetry, opt){
+  const o = opt || {};
   const key = cfg.key || '', base = (cfg.base || '').replace(/\/+$/, '');
+  const tries = o.tries || 0;
   return fetch(base + '/chat/completions', {
     method:'POST',
     headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + key },
@@ -13022,11 +13061,16 @@ function aiRequest(cfg, body, allowRetry){
       if (allowRetry && aiShouldRetryBare(r.status, t)) {
         const bare = { model: body.model, messages: body.messages };
         if (body.max_tokens != null) bare.max_tokens = body.max_tokens;
-        return aiRequest(cfg, bare, false);
+        return aiRequest(cfg, bare, false, { tries: tries, onStatus: o.onStatus, retry: o.retry });
+      }
+      if (o.retry !== false && aiIsRetriable(r.status, t) && tries < AI_RETRY_MAX) {
+        const wait = AI_RETRY_WAIT[tries] || 4000;
+        if (o.onStatus) o.onStatus('⏳ 引擎繁忙，' + (wait / 1000).toFixed(1) + ' 秒后自动重试（第 ' + (tries + 1) + '/' + AI_RETRY_MAX + ' 次）…');
+        return aiSleep(wait).then(() => aiRequest(cfg, body, allowRetry, { tries: tries + 1, onStatus: o.onStatus, retry: o.retry }));
       }
       throw new Error(aiErrMsg(r.status, t));
     });
-  });
+  }, e => { throw new Error(aiNetErrMsg(e)); });
 }
 /* ===== AI 输出清洗：去掉提示词残留 / 套话 / 重复句，保证结果可直接复制粘贴 ===== */
 const AI_OUT_RULE = '【输出铁律】只输出可直接复制使用的正文；不要输出任何说明、开场白、标题套话（如「以下是」「好的」「根据数据」）；不要复述上面提示里的任何要求或规则；不要出现重复的句子或段落；不要使用 Markdown 标记。';
@@ -13406,7 +13450,7 @@ function openAISettings(){
     + '<div id="aiTestRes" class="ai-test-res"></div>'
     + '<div class="row" style="margin:10px 0;gap:8px;align-items:center"><button class="btn ghost sm" type="button" onclick="aiCacheClear()">🧹 清空 AI 结果缓存</button>'
     + '<span class="muted" style="font-size:12px">同一学生 + 同一功能，24 小时内直接复用上次结果（不再重复消耗额度）；每个生成窗口都有「🔄 重新生成」可强制刷新。</span></div>'
-    + '<div class="hint">密钥仅存储在本机浏览器 localStorage，直接从你的浏览器请求厂商接口；请妥善保管，勿在公共电脑勾选启用。模型会随厂商迭代改名，若报「模型不存在」，点上面的「拉取可用模型」重新选一个即可。</div>';
+    + '<div class="hint">密钥仅存储在本机浏览器 localStorage，直接从你的浏览器请求厂商接口；请妥善保管，勿在公共电脑勾选启用。模型会随厂商迭代改名，若报「模型不存在」，点上面的「拉取可用模型」重新选一个即可。若报「引擎繁忙 / 接口异常」，系统已自动退避重试 3 次，仍失败多为厂商侧临时过载（不扣费），等 1-2 分钟再测或换个模型。</div>';
   openModal('🤖 AI 大模型设置', body, `<button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveAISettings()">保存并关闭</button>`, 460);
   ui._aiPrevProv = p;   // 记录打开时的厂商，避免打开时覆盖已保存的自定义地址/模型
   ui._aiModelIds = [];
@@ -13441,7 +13485,7 @@ function fetchAIModels(){
       if (btn) { btn.disabled = false; btn.textContent = '📥 拉取可用模型'; }
     })
     .catch(function(err){
-      box.innerHTML = '<span class="ai-test-err">❌ 获取失败：' + esc((err && err.message) || '网络错误') + '</span>';
+      box.innerHTML = '<span class="ai-test-err">❌ 获取失败：' + esc(aiNetErrMsg(err)) + '</span>';
       if (btn) { btn.disabled = false; btn.textContent = '📥 拉取可用模型'; }
     });
 }
@@ -13493,9 +13537,17 @@ function testAIConn(){
   if (!tKey) { res.innerHTML = '<span class="ai-test-err">❌ 请先填写 API Key</span>'; return; }
   if (!tBase || !tModel) { res.innerHTML = '<span class="ai-test-err">❌ 接口地址和模型名不能为空</span>'; return; }
   btn.disabled = true; btn.textContent = '⏳ 测试中…';
-  res.innerHTML = '<span class="ai-test-run">正在连接 ' + esc(tModel) + ' …</span>';
+  function setRun(txt){ res.innerHTML = '<span class="ai-test-run">' + esc(txt) + '</span>'; }
+  function setErr(msg, note){
+    res.innerHTML = '<span class="ai-test-err">❌ ' + esc(msg) + '</span>'
+      + (note ? '<div class="hint" style="margin-top:4px">' + note + '</div>' : '')
+      + '<div class="ai-test-extra"><button type="button" class="btn ghost" onclick="testAIConn()">🔄 重试</button>'
+      + '<button type="button" class="btn ghost" onclick="fetchAIModels()">📥 拉取可用模型</button></div>';
+  }
+  setRun('正在连接 ' + tModel + ' …');
   aiRequest({ base:tBase, key:tKey, model:tModel },
-            { model:tModel, messages:[{ role:'user', content:'你好，请只回复 ok' }], max_tokens:64 }, true)
+            { model:tModel, messages:[{ role:'user', content:'你好，请只回复 ok' }], max_tokens:64 }, true,
+            { onStatus: setRun })
     .then(function(j){
       if (!aiPickText(j)) throw new Error('接口已连通，但模型返回了空内容，建议换一个模型名再测');
       var name = (j && j.model) || tModel;
@@ -13504,10 +13556,34 @@ function testAIConn(){
     })
     .catch(function(err){
       var msg = (err && err.message) || '网络错误';
-      var extra = /模型名不存在|无权访问/.test(msg)
-        ? '<div class="ai-test-extra"><button type="button" class="btn ghost" onclick="fetchAIModels()">📥 拉取可用模型</button></div>'
-        : '';
-      res.innerHTML = '<span class="ai-test-err">❌ 连接失败：' + esc(msg) + '</span>' + extra;
+      /* 引擎繁忙 / 5xx / 网络直连失败 → 再做一次 /models 探活：
+         只要模型列表能拉到，说明 Key 与模型名都有效，失败只是服务端临时忙，不该判成"配置错误" */
+      if (aiIsTempFail(msg)) {
+        setRun('⚠️ ' + msg + '（正在核对 Key 与模型是否有效…）');
+        fetch(tBase + '/models', { headers:{ 'Authorization':'Bearer ' + tKey } })
+          .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+          .then(function(j){
+            var ids = ((j && j.data) || []).map(function(m){ return m && m.id; }).filter(Boolean);
+            var node = document.getElementById('aiTestRes');
+            if (!node) { restore(); return; }
+            if (ids.indexOf(tModel) >= 0) {
+              node.innerHTML = '<span class="ai-test-ok">🟡 配置没问题：<b>' + esc(tModel) + '</b> 在可用模型列表里，Key 也有效。刚才失败只是厂商引擎临时繁忙（' + esc(msg.slice(0, 60)) + '），等 1-2 分钟再点「🔄 重试」，或换一个模型即可。</span>'
+                + '<div class="ai-test-extra"><button type="button" class="btn ghost" onclick="testAIConn()">🔄 重试</button>'
+                + '<button type="button" class="btn ghost" onclick="fetchAIModels()">📥 换一个模型</button></div>';
+            } else if (ids.length) {
+              setErr(msg, '已拉到 ' + ids.length + ' 个可用模型，但当前填写的 <b>' + esc(tModel) + '</b> 不在其中，建议点「📥 拉取可用模型」重新选一个。');
+            } else {
+              setErr(msg, '');
+            }
+            restore();
+          })
+          .catch(function(){
+            setErr(msg, '模型列表也拉取失败，确认 Key 与接口地址是否匹配（国内站/国外站不通用）。');
+            restore();
+          });
+        return;
+      }
+      setErr(msg, /模型名不存在|无权访问/.test(msg) ? '建议点「📥 拉取可用模型」自动填入厂商当前模型名。' : '');
       restore();
     });
 }
