@@ -665,6 +665,17 @@ tfoot td{background:var(--surface-alt);font-weight:800;font-size:12.5px;border-t
 .hw-full-btn b{font-size:14.5px;font-weight:800}
 .hw-full-btn:hover{background:var(--accent-light);color:var(--accent)}
 .hw-full-gear{color:var(--accent-dark)!important;font-weight:800}
+/* 每日满分标准面板 */
+.df-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.df-in{width:88px;padding:5px 8px}
+.df-scroll{max-height:330px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+.df-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.df-tbl th,.df-tbl td{border-bottom:1px solid var(--border);padding:6px 9px;text-align:left}
+.df-tbl th{position:sticky;top:0;background:var(--accent-light);color:var(--accent-dark);font-size:12.5px;font-weight:800;z-index:1}
+.df-tbl td.c,.df-tbl th.c{text-align:center}
+.df-tbl tr:hover td{background:var(--accent-light)}
+.df-tag{display:inline-block;padding:1px 6px;border-radius:999px;background:var(--accent-light);color:var(--accent-dark);font-size:11px;font-weight:800}
+.df-tag.mut{background:#F3F4F6;color:var(--text-muted)}
 .hw-det-btn{width:28px;height:28px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:13px;line-height:1;transition:.15s}
 .hw-det-btn:hover{border-color:var(--accent);background:var(--accent-light)}
 .hw-det-btn.on{background:var(--accent-light);border-color:var(--accent)}
@@ -2328,7 +2339,14 @@ function num(v){
   return isNaN(n) ? null : n;
 }
 function fmt1(n){ return (Math.round(n * 10) / 10).toFixed(1); }
-function scoreClass(v){ if (v === null) return ''; return v >= 8 ? 's-g' : v >= 6 ? 's-y' : 's-r'; }
+/* 作业着色：按「当天满分」换算百分比（≥80% 绿 / ≥60% 黄 / 其余红）；不传 full 时按全局默认满分 */
+function scoreClass(v, full){
+  if (v === null) return '';
+  const f = (full > 0) ? full : (state.hwScale || 10);
+  if (!(f > 0)) return '';
+  const pct = v / f * 100;
+  return pct >= 80 ? 's-g' : pct >= 60 ? 's-y' : 's-r';
+}
 /* 进门小测「满分 / 等级阈值」按班级独立（c.quizScale / c.quizThresholds）；未设置则回退全局 state，再回退默认值 */
 function quizScaleOf(c){ c = c || activeClass(); if (c && typeof c.quizScale === 'number' && c.quizScale > 0) return c.quizScale; return state.quizScale ? state.quizScale : 100; }
 /* 等级阈值语义：占「小测满分」的百分比（0-100）。默认 优≥80% / 良≥60% / 中≥50% */
@@ -2344,9 +2362,10 @@ function quizThMigrate(t){
 /* 达标线（用于预警 / 及格率）：阈值是百分比，换算回该班级满分下的实际分值 */
 function quizPassLine(c){ const t = quizThresholdsOf(c), s = quizScaleOf(c); return (t && t.pass != null) ? s * t.pass / 100 : s * 0.6; }
 /* 进门小测着色：按「满分 quizScale」换算百分比，与等级线阈值一致，返回 4 档独立配色类（优绿/良蓝/中琥珀/差红） */
-function quizRatio(v, c){ const s = quizScaleOf(c); return (v === null || v === undefined) ? null : v / s; }
-function quizScoreClass(v, c){
-  const r = quizRatio(v, c); if (r === null) return '';
+/* full 可传入「当天满分」：日常表 / 统计卡等按天场景必须传，否则会拿班级默认满分去算百分比 */
+function quizRatio(v, c, full){ const s = (full > 0) ? full : quizScaleOf(c); return (v === null || v === undefined) ? null : v / s; }
+function quizScoreClass(v, c, full){
+  const r = quizRatio(v, c, full); if (r === null) return '';
   const t = quizThresholdsOf(c), pct = r * 100;
   if (pct >= t.excellent) return 'q-exc';
   if (pct >= t.good) return 'q-good';
@@ -2362,7 +2381,7 @@ function hwCellView(r, d){
   const raw = String(r.homework || '').trim();
   if (!raw) return { cls:'', html:'—' };
   const n = num(r.homework);
-  if (n !== null) return { cls: scoreClass(n), html: `${n}<span class="hw-full">/${hwFullFor(d, r)}</span>` };
+  if (n !== null) return { cls: scoreClass(n, hwFullFor(d, r)), html: `${n}<span class="hw-full">/${hwFullFor(d, r)}</span>` };
   return { cls:'', html: esc(raw) };
 }
 function valClass(v){ if (v === null) return ''; return v >= 8 ? 'v-g' : v >= 6 ? 'v-y' : 'v-r'; }
@@ -2471,6 +2490,7 @@ function normalizeState(){
     c.extraPracticeEx = c.extraPracticeEx || {}; // 加练名单排除表（规则命中但老师手动移出）：{ [date]: { [sid]: true } }
   c.checkins = c.checkins || {};             // 打卡登记：{ [date]: { [sid]: { st:'done'|'makeup', at, m, n, f } } }
   c.archived = c.archived || [];             // 已删除（退班）学生的出勤归档：出勤统计继续统计其历史出勤
+  c.dayFull = c.dayFull || {};               // 每日满分标准：{ [date]: { quiz: n, hw: n } }，每天独立、互不影响
   c.checkinOff = c.checkinOff || {};         // 每日打卡：免打卡日（休息日，独立于日常反馈）：{ [date]: true }
   c.attendanceOff = c.attendanceOff || {};   // 日常反馈：休息日（不做考勤要求、不计入积分等统计）：{ [date]: true }
   c.checkinDocs = c.checkinDocs || {};       // 当日打卡内容（班级级）：{ [date]: [ {id,title,fileKey,fileName,size,type,date} ] }
@@ -3454,8 +3474,8 @@ function renderMain(){
 /* 分值 → 百分比：小测按 quizScale，作业按本次满分（日期级 → 个别 → 全局基准）。区别于 scorePct(s,date,subj)（趋势分析用） */
 function pctOf(v, field, r, d){
   if (v === null || v === undefined) return null;
-  if (field === 'quiz') return v / quizScaleOf() * 100;
-  return v / hwFullFor(d, r) * 100;
+  if (field === 'quiz') { const f = dayQuizFull(d, r); return f > 0 ? v / f * 100 : null; }
+  const f = hwFullFor(d, r); return f > 0 ? v / f * 100 : null;
 }
 /* 学生某时间窗口内的有效成绩百分比均分（小测+作业取平均，休息日跳过；无有效数据返回 null） */
 function studentWindowAvg(s, cls, fromD, toD){
@@ -3464,7 +3484,7 @@ function studentWindowAvg(s, cls, fromD, toD){
     if (d < fromD || d > toD) return;
     if (attIsRest(cls, d)) return;
     const r = s.records[d];
-    const q = pctOf(num(r.quiz), 'quiz');
+    const q = pctOf(num(r.quiz), 'quiz', r, d);
     const h = pctOf(hwEffective(r), 'homework', r, d);
     if (q !== null) { sum += q; n++; }
     if (h !== null) { sum += h; n++; }
@@ -3618,7 +3638,7 @@ function classTrendData(cls, days){
     cls.students.forEach(s => {
       const r = recRaw(s, dd); if (!r) return;
       const q = num(r.quiz);
-      if (q !== null) { qSum += q; qN++; }
+      if (q !== null) { const f = dayQuizFull(dd, r); if (f > 0) { qSum += q / f * 100; qN++; } }
       if (state.hwMode === 'done') {
         hTotal++;
         if (r.hwDone === true) hDone++;
@@ -3627,7 +3647,7 @@ function classTrendData(cls, days){
         if (eff !== null) { const f = hwFullFor(dd, r); if (f > 0) { hSum += eff / f * 100; hN++; } }
       }
     });
-    const qPct = qN ? qSum / qN / (quizScaleOf()) * 100 : null;
+    const qPct = qN ? qSum / qN : null;
     const hPct = state.hwMode === 'done' ? (hTotal ? hDone / hTotal * 100 : null) : (hN ? hSum / hN : null);
     out.push({ d: dd, quiz: qPct, hw: hPct, quizN: qN, hwN: hN });
   }
@@ -3805,18 +3825,19 @@ function buildReportText(cls, days){
     if (a === 'present') present++; else if (a === 'late') late++;
     else if (a === 'leave') leave++; else if (a === 'absent') absent++;
   }));
-  /* 小测：均分 / 最高 / 及格率（以达标线 pass 为及格） */
-  const pass = quizPassLine(cls);
+  /* 小测：各天满分可能不同 → 统一折算成「得分率 %」再统计均分 / 最高 / 达标率 */
+  const t = quizThresholdsOf(cls);
+  const passPct = (t && t.pass != null) ? +t.pass : 60;
   const qVals = [];
   cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => {
     if (dd < fromD || dd > d) return;
     if (attIsRest(cls, dd)) return;
     const q = num(s.records[dd].quiz);
-    if (q !== null) qVals.push(q);
+    if (q !== null) { const f = dayQuizFull(dd, s.records[dd], cls); if (f > 0) qVals.push(q / f * 100); }
   }));
   const qAvg = qVals.length ? qVals.reduce((a, b) => a + b, 0) / qVals.length : null;
   const qMax = qVals.length ? Math.max(...qVals) : null;
-  const qPass = qVals.length ? qVals.filter(v => v >= pass).length / qVals.length * 100 : null;
+  const qPass = qVals.length ? qVals.filter(v => v >= passPct).length / qVals.length * 100 : null;
   /* 作业：完成率（done 模式按 hwDone；分数模式按有分比例） */
   let hwDoneN = 0, hwTotal = 0;
   cls.students.forEach(s => Object.keys(s.records || {}).forEach(dd => {
@@ -3836,7 +3857,7 @@ function buildReportText(cls, days){
   L.push(`📋 ${cls.name}${days >= 30 ? ' 月度' : ' 周度'}学习简报（${daysStr}）`);
   L.push('');
   L.push(`👥 出勤：上课 ${attDays.length} 天｜出勤 ${present} 人次、迟到 ${late}、请假 ${leave}、缺勤 ${absent}`);
-  L.push(`📊 小测：${qVals.length} 人次｜均分 ${qAvg != null ? fmt1(qAvg) + ' / ' + (quizScaleOf()) : '—'}｜最高 ${qMax != null ? qMax : '—'}｜达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}`);
+  L.push(`📊 小测：${qVals.length} 人次｜平均得分率 ${qAvg != null ? fmt1(qAvg) + '%' : '—'}｜最高 ${qMax != null ? fmt1(qMax) + '%' : '—'}｜达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}`);
   if (hwRate !== null) L.push(`📚 作业：完成率 ${hwRate}%`);
   L.push('');
   if (pg.up.length) L.push('🚀 进步最快：' + pg.up.map(x => `${x.s.name}（▲${Math.abs(x.delta).toFixed(1)}）`).join('、'));
@@ -3852,7 +3873,7 @@ function buildReportText(cls, days){
   L.push('—— 由「班级自主管理工作台」自动生成');
   L2.push(`📋 ${cls.name}${days >= 30 ? ' 月度' : ' 周度'}学习简报（${daysStr}）`);
   L2.push(`👥 出勤：上课 ${attDays.length} 天，出勤 ${present} 人次、迟到 ${late}、请假 ${leave}、缺勤 ${absent}。`);
-  L2.push(`📊 小测（满分 ${quizScaleOf()}）：共 ${qVals.length} 人次，均分 ${qAvg != null ? fmt1(qAvg) : '—'}，最高 ${qMax != null ? qMax : '—'}，达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}。`);
+  L2.push(`📊 小测（各天满分可能不同，按得分率统计）：共 ${qVals.length} 人次，平均得分率 ${qAvg != null ? fmt1(qAvg) + '%' : '—'}，最高 ${qMax != null ? fmt1(qMax) + '%' : '—'}，达标率 ${qPass != null ? fmt1(qPass) + '%' : '—'}。`);
   if (hwRate !== null) L2.push(`📚 作业完成率：${hwRate}%。`);
   if (pg.up.length) L2.push(`🚀 进步明显：${pg.up.map(x => x.s.name).join('、')}。`);
   if (pg.down.length) L2.push(`📉 近期需加油：${pg.down.map(x => x.s.name).join('、')}。`);
@@ -4150,8 +4171,8 @@ function openExtraPractice(){
 }
 
 /* 进门小测等级判定（按满分 quizScale 换算百分比后与阈值比较），返回 {key, cls}；按班级独立取阈值 */
-function quizLevelOf(score, c){
-  const r = quizRatio(score, c);
+function quizLevelOf(score, c, full){
+  const r = quizRatio(score, c, full);
   const t = quizThresholdsOf(c);
   if (r === null) return { key:'—', cls:'' };
   const pct = r * 100;
@@ -4274,6 +4295,7 @@ function qlvAutosave(){
 function statRowHtml(cls, d){
   const view = ui.quizView || 'range';
   const recs = cls.students.map(s => ({ s, v: num(rec(s, d).quiz) })).filter(x => x.v !== null);
+  const _df = dayQuizFull(d, null, cls);   /* 当天满分（每天可不同）→ 着色/等级都按它算 */
   const tgl = `<span class="qo-toggle">
       <button class="${view === 'range' ? 'on' : ''}" onclick="setQuizView('range')">成绩范围</button>
       <button class="${view === 'level' ? 'on' : ''}" onclick="setQuizView('level')">等级</button>
@@ -4285,12 +4307,12 @@ function statRowHtml(cls, d){
   } else if (view === 'range') {
     const vals = recs.map(x => x.v);
     const min = Math.min(...vals), max = Math.max(...vals);
-    body = `<div class="qo-range">分数 ${fmt1(min)} ~ ${fmt1(max)} 分（满分 ${quizScaleOf(cls)}） · 共 ${recs.length} 人有记录</div>
-      <div class="qo-chips">${recs.map(x => `<span class="qo-chip ${quizScoreClass(x.v, cls)}">${esc(x.s.name)}<b>${x.v}</b></span>`).join('')}</div>`;
+    body = `<div class="qo-range">分数 ${fmt1(min)} ~ ${fmt1(max)} 分（满分 ${_df}） · 共 ${recs.length} 人有记录</div>
+      <div class="qo-chips">${recs.map(x => `<span class="qo-chip ${quizScoreClass(x.v, cls, _df)}">${esc(x.s.name)}<b>${x.v}</b></span>`).join('')}</div>`;
   } else {
     const dist = { '优':0, '良':0, '中':0, '差':0 };
-    recs.forEach(x => { dist[quizLevelOf(x.v, cls).key]++; });
-    const _t = quizThresholdsOf(cls), _s = quizScaleOf(cls);
+    recs.forEach(x => { dist[quizLevelOf(x.v, cls, _df).key]++; });
+    const _t = quizThresholdsOf(cls), _s = _df;
     const _lineOf = k => {
       if (k === '差') return '低于 ' + qlvScoreOf(_t.pass, _s) + ' 分';
       const p = k === '优' ? _t.excellent : (k === '良' ? _t.good : _t.pass);
@@ -4353,7 +4375,7 @@ function renderHwCell(s, r, h){
   const isNum = num(r.homework) !== null;
   const fullTxt = isNum
     ? `<button class="hw-full-btn" title="本次作业满分 ${fv} 分 · 点击修改（全班同步）" onclick="editHwFull()">/<b>${fv}</b></button>` : '';
-  return `<span class="hw-score-wrap"><input class="score-in ${scoreClass(num(r.homework))}" id="in-homework-${s.id}" value="${esc(r.homework)}"
+  return `<span class="hw-score-wrap"><input class="score-in ${scoreClass(num(r.homework), fv)}" id="in-homework-${s.id}" value="${esc(r.homework)}"
         placeholder="可填分数或文字"
         oninput="setScore(${s.id},'homework',this.value)" onchange="renderMain()" onkeydown="rosterKeyNav(event)">${fullTxt}</span>${detBtn}${badge}`;
 }
@@ -4398,8 +4420,8 @@ function renderRoster(){
              onclick="setAttendance(${s.id},'${o.key}')">${o.label}</button>`).join('')}
         </span>`}
       </td>
-      <td class="c"><input class="score-in ${quizScoreClass(q, activeClass())}" id="in-quiz-${s.id}" value="${esc(r.quiz)}"
-          inputmode="decimal" max="${quizScaleOf(activeClass())}" placeholder="-"
+      <td class="c"><input class="score-in ${quizScoreClass(q, activeClass(), dayQuizFull(d, r, cls))}" id="in-quiz-${s.id}" value="${esc(r.quiz)}"
+          inputmode="decimal" max="${dayQuizFull(d, r, cls)}" placeholder="-"
           oninput="setScore(${s.id},'quiz',this.value)" onchange="renderMain()" onkeydown="rosterKeyNav(event)"></td>
       <td class="c">${renderHwCell(s, r, h)}</td>
       <td>${multiBtnHtml(s, d, 'behavior')}</td>
@@ -4467,7 +4489,9 @@ function renderRoster(){
         <th class="c" style="width:56px">排名</th>
         <th style="width:96px">学生姓名</th>
         <th class="c" style="width:150px">出勤</th>
-        <th class="c" style="width:80px"><span class="th-label" onclick="openLabelEditor('quiz')" title="点击修改列名">📝 ${esc(LBL('quiz'))}</span></th>
+        <th class="c" style="width:112px"><span class="th-label" onclick="openLabelEditor('quiz')" title="点击修改列名">📝 ${esc(LBL('quiz'))}</span>
+          <button class="th-gear hw-full-gear" onclick="editQuizFull()" title="设置当天小测满分（只影响这一天）">满分${curQuizFull()}</button>
+        </th>
         <th class="c" style="width:120px"><span class="th-label" onclick="openLabelEditor('homework')" title="点击修改列名">📚 ${esc(LBL('homework'))}</span>
           <button class="th-gear hw-full-gear" onclick="editHwFull()" title="设置本次作业满分（全班同步，仅对数字分值生效）">满分${curHwFull()}</button>
           <button class="th-gear" onclick="copyUnfinishedHw()" title="复制今日未交作业名单">📋</button>
@@ -4581,12 +4605,12 @@ function renderBatchTable(cls, d){
     const r = rec(s, d); const q = num(r.quiz); const h = hwEffective(r);
     const attSel = `<select class="inp batch-inp" onchange="setAttendance(${s.id},this.value)" onkeydown="${BATCH_NAV}">${ATTENDANCE_OPTS.map(o =>
       `<option value="${o.key}" ${r.attendance === o.key ? 'selected' : ''}>${o.label}</option>`).join('')}</select>`;
-    const hwInput = `<input class="score-in batch-inp ${scoreClass(num(r.homework))}" value="${esc(r.homework)}" placeholder="可填分数或文字"
+    const hwInput = `<input class="score-in batch-inp ${scoreClass(num(r.homework), dayHwFull(d, r, cls))}" value="${esc(r.homework)}" placeholder="可填分数或文字"
          oninput="setScore(${s.id},'homework',this.value)" onchange="renderMain()" onkeydown="${BATCH_NAV}">`;
     return `<tr>
       <td class="bnm"><button class="stu-link" onclick="openStudentCard(${s.id})">${esc(s.name)}</button></td>
       <td class="c">${attSel}</td>
-      <td class="c"><input class="score-in batch-inp ${quizScoreClass(q, activeClass())}" value="${esc(r.quiz)}" inputmode="decimal" max="${quizScaleOf(activeClass())}"
+      <td class="c"><input class="score-in batch-inp ${quizScoreClass(q, activeClass(), dayQuizFull(d, r, cls))}" value="${esc(r.quiz)}" inputmode="decimal" max="${dayQuizFull(d, r, cls)}"
         oninput="setScore(${s.id},'quiz',this.value)" onchange="renderMain()" onkeydown="${BATCH_NAV}"></td>
       <td class="c">${hwInput}</td>
     </tr>`;
@@ -4706,11 +4730,11 @@ function buildGrowthFeed(s, cls){
     const att = r.attendance;
     if (att && att !== 'present') chips.push({ ico:'🚩', cls:'gf-att', txt: ({ late:'迟到', leave:'请假', absent:'缺勤', makeup:'补课' }[att] || att) });
     const q = num(r.quiz);
-    if (q !== null) chips.push({ ico:'📝', cls: quizScoreClass(q, activeClass()), txt: LBL('quiz') + ' ' + q + ' 分' });
+    if (q !== null) chips.push({ ico:'📝', cls: quizScoreClass(q, activeClass(), dayQuizFull(dd, r)), txt: LBL('quiz') + ' ' + q + ' 分' });
     {
       const h = hwEffective(r);
       const raw = String(r.homework || '').trim();
-      if (raw !== '') chips.push({ ico:'📚', cls: (h !== null ? scoreClass(h) : 'gf-txt'),
+      if (raw !== '') chips.push({ ico:'📚', cls: (h !== null ? scoreClass(h, dayHwFull(dd, r)) : 'gf-txt'),
         txt: (h !== null ? '作业 ' + h + ' 分' : '作业：' + raw) });
     }
     const d2 = r.hwDetail;
@@ -4846,8 +4870,9 @@ function openStudentCard(sid, readOnly){
     });
     Object.entries(s.records || {}).forEach(([d, r]) => {
       if (!(attIsRest(c, d))) {
-        const q = num(r.quiz); if (q !== null) { qSum += q; qN++; }
-        const h = hwEffective(r); if (h !== null) { hSum += h; hN++; }
+        /* 各天满分不同 → 先折算成得分率再累计 */
+        const q = num(r.quiz); if (q !== null) { const f = dayQuizFull(d, r, c); if (f > 0) { qSum += q / f * 100; qN++; } }
+        const h = hwEffective(r); if (h !== null) { const f = dayHwFull(d, r, c); if (f > 0) { hSum += h / f * 100; hN++; } }
       }
       timeline.push([d, r]);
     });
@@ -4885,8 +4910,8 @@ function openStudentCard(sid, readOnly){
   const hAvg = hN ? hSum / hN : null;
   const radarM = {
     attend: rate,
-    quiz: qAvg != null ? Math.round(qAvg / (quizScaleOf()) * 100) : 0,
-    homework: hAvg != null ? Math.round(hAvg / (state.hwScale || 10) * 100) : 0,
+    quiz: qAvg != null ? Math.round(qAvg) : 0,      /* qAvg 已是得分率 % */
+    homework: hAvg != null ? Math.round(hAvg) : 0,
     checkin: ckRate,
   };
   /* 班级定位（B3）：小测/作业均分在全班的排名与百分位 */
@@ -4898,7 +4923,7 @@ function openStudentCard(sid, readOnly){
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
         ${studentRadar(radarM)}
         <div class="sc-radar-metrics">
-          <div><span>📊 小测均分</span><b>${qAvg != null ? fmt1(qAvg) + ' / ' + (quizScaleOf()) : '—'}</b>${qRank ? `<span class="sc-rank">班内第 ${qRank.rank} 名 · 超 ${qRank.pct}% 同学</span>` : ''}</div>
+          <div><span>📊 小测平均得分率</span><b>${qAvg != null ? fmt1(qAvg) + '%' : '—'}</b>${qRank ? `<span class="sc-rank">班内第 ${qRank.rank} 名 · 超 ${qRank.pct}% 同学</span>` : ''}</div>
           <div><span>📚 作业均分</span><b>${hAvg != null ? fmt1(hAvg) + ' / ' + (state.hwScale || 10) : '—'}</b>${hRank ? `<span class="sc-rank">班内第 ${hRank.rank} 名 · 超 ${hRank.pct}% 同学</span>` : ''}</div>
           <div><span>📈 出勤率</span><b>${rate}%</b></div>
           <div><span>✅ 打卡率</span><b>${ckRate}%</b></div>
@@ -4941,7 +4966,7 @@ function openStudentCard(sid, readOnly){
     return `
     <tr${rest ? ' class="sc-rest"' : ''}>
       <td class="c">${mdShort(d)}${rest ? ' <span class="sc-rest-tag">休</span>' : ''}</td>
-      <td class="c ${quizScoreClass(num(r.quiz), activeClass())}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
+      <td class="c ${quizScoreClass(num(r.quiz), activeClass(), dayQuizFull(d, r))}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
       <td class="c ${hwCellView(r, d).cls}">${hwCellView(r, d).html}</td>
       <td class="c muted">${rest ? '不计入' : dayPoints(r)}</td>
     </tr>`;
@@ -5015,11 +5040,11 @@ function openStudentCard(sid, readOnly){
           const rest = restSet.has(d);
           const att = r.attendance === 'present' ? '出勤' : r.attendance === 'late' ? '迟到' : r.attendance === 'leave' ? '请假' : r.attendance === 'absent' ? '缺勤' : '出勤';
           const hv = String(r.homework || '').trim() || '—';
-          const hCls = num(r.homework) !== null ? scoreClass(num(r.homework)) : '';
+          const hCls = num(r.homework) !== null ? scoreClass(num(r.homework), dayHwFull(d, r)) : '';
           return `<tr${rest ? ' class="sc-rest"' : ''}>
             <td class="c">${mdShort(d)}${rest ? ' <span class="sc-rest-tag">休</span>' : ''}</td>
             <td class="c">${att}</td>
-            <td class="c ${quizScoreClass(num(r.quiz), activeClass())}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
+            <td class="c ${quizScoreClass(num(r.quiz), activeClass(), dayQuizFull(d, r))}">${num(r.quiz) != null ? num(r.quiz) : '—'}</td>
             <td class="c ${hCls}">${esc(hv)}</td>
           </tr>`;
         }).join('')}</tbody></table></div></div>` : ''}
@@ -5834,10 +5859,11 @@ function openReportCard(sid){
     });
     Object.entries(s.records || {}).forEach(([d, r]) => {
       if (!(attIsRest(c, d))) {
-        const q = num(r.quiz); if (q !== null) { qSum += q; qN++; }
-        const h = hwEffective(r); if (h !== null) { hSum += h; hN++; }
+        /* 每天满分可能不同：统一折算成「得分率 %」再平均，避免不同满分的原始分直接相加 */
+        const q = num(r.quiz); if (q !== null) { const f = dayQuizFull(d, r, c); if (f > 0) { qSum += q / f * 100; qN++; } }
+        const h = hwEffective(r); if (h !== null) { const f = dayHwFull(d, r, c); if (f > 0) { hSum += h / f * 100; hN++; } }
       }
-      recs.push({ d, r });
+      recs.push({ d, r, c });
     });
     const es = (c.examScores && c.examScores[id]) || {};
     EXAM_PERIODS.forEach(pp => { if (es[pp] && (es[pp].mathScore || es[pp].totalScore)) examRows.push({ pp, m: es[pp].mathScore, tot: es[pp].totalScore }); });
@@ -5853,13 +5879,14 @@ function openReportCard(sid){
   const school = p.school || '';
   const clsTxt = p.class || clsName || '';
   const sorted = recs.slice().sort((a, b) => a.d.localeCompare(b.d));
-  const rowsHtml = sorted.length ? sorted.map(({ d, r }) => {
+  const rowsHtml = sorted.length ? sorted.map(x => {
+    const d = x.d, r = x.r;
     const att = r.attendance === 'present' ? '出勤' : r.attendance === 'late' ? '迟到' : r.attendance === 'leave' ? '请假' : r.attendance === 'absent' ? '缺勤' : '出勤';
     const q = num(r.quiz);
-    const qTxt = q !== null ? q + ' / ' + (quizScaleOf()) : '—';
+    const qTxt = q !== null ? q + ' / ' + dayQuizFull(d, r, x.c) : '—';   /* 按「当天」满分显示 */
     const hTxt = state.hwMode === 'done'
       ? (r.hwDone ? '✓' : (r.hwDone === false ? '✕' : '—'))
-      : (() => { const h = num(r.homework); return h !== null ? h + ' / ' + hwFullFor(d, r) : '—'; })();
+      : (() => { const h = num(r.homework); return h !== null ? h + ' / ' + hwFullFor(d, r, x.c) : '—'; })();
     return `<tr><td class="c">${d}</td><td class="c">${att}</td><td class="c">${qTxt}</td><td class="c">${hTxt}</td><td class="c">${dayPoints(r)}</td></tr>`;
   }).join('') : '<tr><td colspan="5" class="empty" style="padding:14px">暂无记录</td></tr>';
   const examHtml = examRows.length ? `
@@ -5882,8 +5909,8 @@ function openReportCard(sid){
       </div>
       <div class="rc-stats">
         <div class="rc-stat"><i>📈</i><b>${rate}%</b><span>出勤率</span></div>
-        <div class="rc-stat"><i>📊</i><b>${qAvg != null ? fmt1(qAvg) : '—'}</b><span>小测均分 / ${quizScaleOf()}</span></div>
-        <div class="rc-stat"><i>📚</i><b>${hAvg != null ? fmt1(hAvg) : '—'}</b><span>作业均分 / ${state.hwScale || 10}</span></div>
+        <div class="rc-stat"><i>📊</i><b>${qAvg != null ? fmt1(qAvg) + '%' : '—'}</b><span>小测平均得分率</span></div>
+        <div class="rc-stat"><i>📚</i><b>${hAvg != null ? fmt1(hAvg) + '%' : '—'}</b><span>作业平均得分率</span></div>
         <div class="rc-stat"><i>✅</i><b>${qN}</b><span>小测次数</span></div>
       </div>
       <div class="rc-sec"><div class="rc-sec-t">📝 日常记录明细（共 ${sorted.length} 天）</div>
@@ -6046,8 +6073,9 @@ function buildTermReportHtml(sid, scopeDays){
     Object.entries(s.records || {}).forEach(([d, r]) => {
       if (fromD && (d < fromD || d > state.activeDate)) return;
       if (!(attIsRest(c, d))) {
-        const q = num(r.quiz); if (q !== null) { qSum += q; qN++; }
-        const h = hwEffective(r); if (h !== null) { hSum += h; hN++; }
+        /* 同上：按每天的满分折算成得分率后再平均 */
+        const q = num(r.quiz); if (q !== null) { const f = dayQuizFull(d, r, c); if (f > 0) { qSum += q / f * 100; qN++; } }
+        const h = hwEffective(r); if (h !== null) { const f = dayHwFull(d, r, c); if (f > 0) { hSum += h / f * 100; hN++; } }
       }
       if (r.hwDone === false) hwMiss++;
       if (r.hwDetail && r.hwDetail.correct === 'pending') hwNoCorrect++;
@@ -6074,14 +6102,14 @@ function buildTermReportHtml(sid, scopeDays){
   /* 亮点与待改进 */
   const highlights = [], improve = [];
   if (qAvg != null) {
-    const qPct = qAvg / (quizScaleOf()) * 100;
-    if (qPct >= 85) highlights.push(`${LBL('quiz')}均分 ${fmt1(qAvg)}（得分率 ${Math.round(qPct)}%），成绩优异`);
-    else if (qPct < 60) improve.push(`${LBL('quiz')}均分 ${fmt1(qAvg)}（得分率 ${Math.round(qPct)}%），需加强基础`);
+    const qPct = qAvg;                     /* qAvg 已是得分率 %（各天满分不同也能直接比） */
+    if (qPct >= 85) highlights.push(`${LBL('quiz')}平均得分率 ${fmt1(qAvg)}%，成绩优异`);
+    else if (qPct < 60) improve.push(`${LBL('quiz')}平均得分率 ${fmt1(qAvg)}%，需加强基础`);
   }
   if (hAvg != null) {
-    const hPct = hAvg / (state.hwScale || 10) * 100;
-    if (hPct >= 85) highlights.push(`${LBL('homework')}均分 ${fmt1(hAvg)}，作业完成质量高`);
-    else if (hPct < 60) improve.push(`${LBL('homework')}均分 ${fmt1(hAvg)}，作业正确率待提升`);
+    const hPct = hAvg;
+    if (hPct >= 85) highlights.push(`${LBL('homework')}平均得分率 ${fmt1(hAvg)}%，作业完成质量高`);
+    else if (hPct < 60) improve.push(`${LBL('homework')}平均得分率 ${fmt1(hAvg)}%，作业正确率待提升`);
   }
   if (rate >= 95) highlights.push(`出勤率 ${rate}%，全勤表现优秀`);
   else if (rate < 80) improve.push(`出勤率仅 ${rate}%，存在迟到 / 请假情况`);
@@ -6107,11 +6135,11 @@ function buildTermReportHtml(sid, scopeDays){
       </div>
       <h2>📊 学习概况</h2>
       <table>
-        <thead><tr><th class="c">出勤率</th><th class="c">${esc(LBL('quiz'))}均分</th><th class="c">${esc(LBL('homework'))}均分</th><th class="c">考试科目</th></tr></thead>
+        <thead><tr><th class="c">出勤率</th><th class="c">${esc(LBL('quiz'))}平均得分率</th><th class="c">${esc(LBL('homework'))}平均得分率</th><th class="c">考试科目</th></tr></thead>
         <tbody><tr>
           <td class="c">${rate}%</td>
-          <td class="c">${qAvg != null ? fmt1(qAvg) + ' / ' + (quizScaleOf()) : '—'}</td>
-          <td class="c">${hAvg != null ? fmt1(hAvg) + ' / ' + (state.hwScale || 10) : '—'}</td>
+          <td class="c">${qAvg != null ? fmt1(qAvg) + '%' : '—'}</td>
+          <td class="c">${hAvg != null ? fmt1(hAvg) + '%' : '—'}</td>
           <td class="c">${examRows.length} 次</td>
         </tr></tbody>
       </table>
@@ -6132,7 +6160,7 @@ function buildTermReportText(name, clsName, school, rate, qAvg, hAvg, scopeTxt, 
   L.push(`📄 ${name} 学习报告`);
   L.push(`班级：${clsName || '—'} ｜ 学校：${school || '—'} ｜ 范围：${scopeTxt}`);
   L.push('');
-  L.push(`📊 学习概况：出勤率 ${rate}% ｜ ${LBL('quiz')}均分 ${qAvg != null ? fmt1(qAvg) + ' / ' + (quizScaleOf()) : '—'} ｜ ${LBL('homework')}均分 ${hAvg != null ? fmt1(hAvg) + ' / ' + (state.hwScale || 10) : '—'}`);
+  L.push(`📊 学习概况：出勤率 ${rate}% ｜ ${LBL('quiz')}平均得分率 ${qAvg != null ? fmt1(qAvg) + '%' : '—'} ｜ ${LBL('homework')}平均得分率 ${hAvg != null ? fmt1(hAvg) + '%' : '—'}`);
   if (examRows.length) L.push(`🎓 考试成绩：${examRows.map(e => `${e.pp} 数学${e.m ? e.m + '分' : '—'}${e.tot ? '，总分' + e.tot : ''}`).join('；')}`);
   if (cmp) L.push(`📈 进步趋势：近 7 天均分 ${fmt1(cmp.cur)}（前 7 天 ${fmt1(cmp.prev)}），${cmp.delta >= 0 ? '进步 ▲' : '退步 ▼'} ${Math.abs(cmp.delta).toFixed(1)}`);
   L.push('');
@@ -6232,18 +6260,20 @@ function setScore(id, field, val){
   let v;
   if (field === 'quiz') {
     v = String(val).replace(/[^0-9.]/g, '');
-    const MAX = quizScaleOf();
+    const MAX = dayQuizFull(state.activeDate, r);   /* 按「当天」的满分封顶，不看班级默认 */
     if (v !== '' && parseFloat(v) > MAX) v = String(MAX);
+    if (v !== '') ensureDayFull(state.activeDate, 'quiz');
   } else {
     /* 家庭作业：可填写任意字符（分数 / 文字均可），原样保存 */
     v = String(val);
+    if (num(v) !== null) ensureDayFull(state.activeDate, 'hw');
   }
   r[field] = v;
   const el = document.getElementById(`in-${field}-${id}`);
   if (el) {
     el.value = v;
-    if (field === 'quiz') el.className = 'score-in ' + quizScoreClass(num(v), activeClass());
-    else el.className = 'score-in ' + scoreClass(num(v));
+    if (field === 'quiz') el.className = 'score-in ' + quizScoreClass(num(v), activeClass(), dayQuizFull(state.activeDate, r));
+    else el.className = 'score-in ' + scoreClass(num(v), dayHwFull(state.activeDate, r));
   }
   const sr = document.getElementById('statRow');
   if (sr) sr.innerHTML = statRowHtml(activeClass(), state.activeDate);
@@ -6342,73 +6372,225 @@ function quickBarHtml(cls, d){
   return `<div class="quickbar">
     <button class="btn sm" onclick="bulkAttendance('present')" title="全班今日出勤统一设为「出勤」">👥 一键全勤</button>
     <button class="btn sm" onclick="bulkSameScore()" title="为全班填写同一小测/作业分值">🎯 全班同分</button>
+    <button class="btn sm" onclick="openDayFull()" title="逐天设置小测 / 作业满分标准">📅 每日满分</button>
     <button class="btn sm qb-danger" onclick="clearDayRecords()" title="清空今日全部日常记录（可撤销）">🧹 清空今日</button>
     ${dayRest ? '<span class="muted" style="font-size:12px">今日休息日，批量操作已停用</span>' : ''}
   </div>`;
 }
-/* ===== 本次作业满分（班级统一、全班同步显示）：优先日期级满分，其次该生个别满分，最后全局基准 ===== */
-function hwFullFor(d, r){
-  const m = state.hwFullOfDate || {};
-  if (m[d]) return +m[d];
+/* ==================================================================
+   每日满分标准：按「班级 + 日期」独立
+   - 每天一套标准：改某一天不影响其他天，改班级默认也不影响已固化的天
+   - 存储：cls.dayFull['YYYY-MM-DD'] = { quiz: n, hw: n }
+   - 兼容旧数据：state.quizFullOfDate / state.hwFullOfDate（全局按天）继续作为兜底
+   ================================================================== */
+function dayFullMap(cls){
+  cls = cls || activeClass();
+  if (!cls) return null;
+  if (!cls.dayFull || typeof cls.dayFull !== 'object') cls.dayFull = {};
+  return cls.dayFull;
+}
+/* 某天某项「自定义标准」；没有则返回 null */
+function dayFullRaw(d, kind, cls){
+  if (!d) return null;
+  const m = dayFullMap(cls);
+  if (m && m[d] && m[d][kind] > 0) return +m[d][kind];
+  const g = kind === 'quiz' ? (state.quizFullOfDate || {}) : (state.hwFullOfDate || {});
+  if (g[d] > 0) return +g[d];
+  return null;
+}
+/* 最终生效标准：当天标准 → 记录级个别满分 → 班级默认 */
+function dayQuizFull(d, r, cls){
+  const s = dayFullRaw(d, 'quiz', cls);
+  if (s) return s;
+  if (r && r.quizFull > 0) return +r.quizFull;
+  return quizScaleOf(cls);
+}
+function dayHwFull(d, r, cls){
+  const s = dayFullRaw(d, 'hw', cls);
+  if (s) return s;
   return hwFullOf(r);
 }
-/* 当前日期「本次作业满分」：日期级 → 当天首位有记录学生的个别满分 → 全局基准 */
-function curHwFull(){
-  const d = state.activeDate;
-  const m = state.hwFullOfDate || {};
-  if (m[d]) return +m[d];
-  const cls = activeClass();
-  if (cls) for (const s of cls.students) { const r = recRaw(s, d); if (r) return hwFullOf(r); }
+/* 某天「当前正在显示」的标准（固化时用它，保证与界面一致）：当天自定义 → 当天首位有记录学生的个别满分 → 班级默认 */
+function curQuizFullOf(d, cls){
+  const s = dayFullRaw(d, 'quiz', cls); if (s) return s;
+  cls = cls || activeClass();
+  if (cls) for (const s2 of (cls.students || [])) { const r = recRaw(s2, d); if (r && r.quizFull > 0) return +r.quizFull; }
+  return quizScaleOf(cls);
+}
+function curHwFullOf(d, cls){
+  const s = dayFullRaw(d, 'hw', cls); if (s) return s;
+  cls = cls || activeClass();
+  if (cls) for (const s2 of (cls.students || [])) { const r = recRaw(s2, d); if (r) return hwFullOf(r); }
   return state.hwScale || 10;
 }
+/* 固化：把当天正在用的标准写进 dayFull，之后改班级默认不再影响这一天 */
+function ensureDayFull(d, kind){
+  const cls = activeClass(); if (!cls || !d) return;
+  if (dayFullRaw(d, kind, cls)) return;              // 已有自定义 / 旧全局标准，不覆盖
+  const m = dayFullMap(cls);
+  m[d] = m[d] || {};
+  m[d][kind] = kind === 'quiz' ? curQuizFullOf(d, cls) : curHwFullOf(d, cls);
+}
+/* 设置 / 清除某天某项标准（留空或 ≤0 = 恢复默认） */
+function setDayFull(d, kind, v){
+  const cls = activeClass(); if (!cls || !d) return;
+  const n = parseFloat(v);
+  const m = dayFullMap(cls);
+  const g = kind === 'quiz' ? (state.quizFullOfDate || {}) : (state.hwFullOfDate || {});
+  if (isNaN(n) || n <= 0){ if (m[d]) delete m[d][kind]; delete g[d]; }
+  else { m[d] = m[d] || {}; m[d][kind] = n; delete g[d]; }
+  save();
+}
+/* ===== 本次作业满分：当天标准 → 该生个别满分 → 全局基准 ===== */
+function hwFullFor(d, r, cls){
+  const s = dayFullRaw(d, 'hw', cls);
+  if (s) return s;
+  return hwFullOf(r);
+}
+/* 当前日期「本次作业满分」：当天标准 → 当天首位有记录学生的个别满分 → 全局基准 */
+function curHwFull(){ return curHwFullOf(state.activeDate); }
 /* 设置 / 清除某天全班作业满分（保存后所有统计按新满分折算） */
 function setHwFull(v){
   const n = parseFloat(v);
-  state.hwFullOfDate = state.hwFullOfDate || {};
-  if (isNaN(n) || n <= 0) delete state.hwFullOfDate[state.activeDate];
-  else state.hwFullOfDate[state.activeDate] = n;
-  save(); closeModal(); renderMain();
+  setDayFull(state.activeDate, 'hw', v);
+  closeModal(); renderMain();
   toast(isNaN(n) || n <= 0 ? '已恢复默认满分' : '本次作业满分已设为 ' + n + ' 分（全班同步）');
 }
 /* 满分设置弹窗：点作业列表头「满分」按钮或任意单元格的 /满分 均可打开 */
 function editHwFull(){
   const cur = curHwFull();
+  const d = state.activeDate;
   const body = `
-    <div class="hint">设置 <b>${state.activeDate}</b> 家庭作业的全班满分（如 10 / 100 / 120）。改动后<b>全班当日作业统一按新满分显示与折算</b>，均分 / 趋势 / 统计自动重算。</div>
+    <div class="hint">设置 <b>${d}</b> 家庭作业的全班满分（如 10 / 100 / 120）。只影响<b>这一天</b>，其他日期不受影响。</div>
     <div class="form-row"><label>本次满分</label>
       <input class="inp" id="hwFullInput" type="number" min="1" step="0.5" value="${cur}" placeholder="如 10 / 100 / 120"></div>
-    <div class="muted" style="font-size:12.5px;margin-top:4px">清空输入可恢复全局默认满分（${state.hwScale || 10} 分）。</div>`;
-  openModal('📐 本次作业满分 · ' + state.activeDate, body,
+    <div class="muted" style="font-size:12.5px;margin-top:4px">清空输入可恢复全局默认满分（${state.hwScale || 10} 分）。</div>
+    <div class="row" style="margin-top:10px"><button class="btn sm" onclick="openDayFull()">📅 管理全部日期的满分标准</button></div>`;
+  openModal('📐 本次作业满分 · ' + d, body,
     `<button class="btn" onclick="closeModal()">取消</button>
      <button class="btn primary" onclick="setHwFull((document.getElementById('hwFullInput')||{}).value)">保存</button>`, 420);
 }
-/* ===== 进门小测「当天满分」：支持按日期单独设定（趋势图按各自满分折算，不同满分可比） ===== */
-function curQuizFull(){
-  const d = state.activeDate;
-  const m = state.quizFullOfDate || {};
-  if (m[d]) return +m[d];
-  return quizScaleOf();
-}
+/* ===== 进门小测「当天满分」：每天可单独设定（趋势图按各自满分折算，不同满分可比） ===== */
+function curQuizFull(){ return curQuizFullOf(state.activeDate); }
 /* 设置 / 清除某天全班小测满分（保存后着色、评级、趋势图均按新满分折算） */
 function setQuizFull(v){
   const n = parseFloat(v);
-  state.quizFullOfDate = state.quizFullOfDate || {};
-  if (isNaN(n) || n <= 0) delete state.quizFullOfDate[state.activeDate];
-  else state.quizFullOfDate[state.activeDate] = n;
-  save(); closeModal(); renderMain();
+  setDayFull(state.activeDate, 'quiz', v);
+  closeModal(); renderMain();
   toast(isNaN(n) || n <= 0 ? '已恢复班级默认满分' : '当天小测满分已设为 ' + n + ' 分');
 }
 function editQuizFull(){
   const cur = curQuizFull();
+  const d = state.activeDate;
   const body = `
-    <div class="hint">设置 <b>${state.activeDate}</b> 进门小测的全班满分（如 16 / 20 / 100）。当天成绩按此满分着色、评级并折算到趋势图；<b>留空则沿用班级默认满分 ${quizScaleOf()}</b>。</div>
+    <div class="hint">设置 <b>${d}</b> 进门小测的全班满分（如 16 / 20 / 100）。只影响<b>这一天</b>；当天成绩按此满分着色、评级并折算到趋势图，<b>留空则沿用班级默认满分 ${quizScaleOf()}</b>。</div>
     <div class="form-row"><label>当天满分</label>
       <input class="inp" id="quizFullInput" type="number" min="1" step="0.5" value="${cur}" placeholder="如 16 / 20 / 100" oninput="quizFullPreview()"></div>
     <div id="quizFullPreview">${qlvPreviewHtml(cur, quizThresholdsOf().excellent, quizThresholdsOf().good, quizThresholdsOf().pass)}</div>
-    <div class="muted" style="font-size:12.5px;margin-top:4px">清空输入可恢复班级默认满分（${quizScaleOf()} 分）。</div>`;
-  openModal('📐 当天小测满分 · ' + state.activeDate, body,
+    <div class="muted" style="font-size:12.5px;margin-top:4px">清空输入可恢复班级默认满分（${quizScaleOf()} 分）。</div>
+    <div class="row" style="margin-top:10px"><button class="btn sm" onclick="openDayFull()">📅 管理全部日期的满分标准</button></div>`;
+  openModal('📐 当天小测满分 · ' + d, body,
     `<button class="btn" onclick="closeModal()">取消</button>
-     <button class="btn primary" onclick="setQuizFull((document.getElementById('quizFullInput')||{}).value)">保存</button>`, 420);
+     <button class="btn primary" onclick="setQuizFull((document.getElementById('quizFullInput')||{}).value)">保存</button>`, 460);
+}
+/* ==================================================================
+   📅 每日满分标准：一眼看完这个月每天的满分，逐天改
+   ================================================================== */
+function dfMonth(){ return ui.dfMonth || (state.activeDate || todayStr()).slice(0, 7); }
+function dfShiftMonth(n){
+  const [y, m] = dfMonth().split('-');
+  const dt = new Date(+y, (+m - 1) + n, 1);
+  ui.dfMonth = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
+  openDayFull();
+}
+function dfDays(){
+  const [y, m] = dfMonth().split('-');
+  const last = new Date(+y, +m, 0).getDate();
+  const out = [];
+  for (let i = 1; i <= last; i++) out.push(`${y}-${m}-${String(i).padStart(2, '0')}`);
+  return out;
+}
+function clsDayHasRec(cls, d){
+  if (!cls) return false;
+  return (cls.students || []).some(s => recRaw(s, d));
+}
+function setDayFullCell(d, kind, v){
+  setDayFull(d, kind, v);
+  if (clsDayHasRec(activeClass(), d)) renderMain();
+  openDayFull();
+}
+/* 某一天恢复默认（小测与作业一起清） */
+function dfResetDay(d){
+  setDayFull(d, 'quiz', ''); setDayFull(d, 'hw', '');
+  if (clsDayHasRec(activeClass(), d)) renderMain();
+  openDayFull();
+}
+function dfBulkApply(){
+  const cls = activeClass(); if (!cls) return;
+  const q = num((document.getElementById('dfBulkQuiz') || {}).value);
+  const h = num((document.getElementById('dfBulkHw') || {}).value);
+  if (q === null && h === null) return toast('请先填入要统一设置的小测或作业满分');
+  const days = dfDays().filter(d => !attIsRest(cls, d));
+  days.forEach(d => {
+    if (q !== null) setDayFull(d, 'quiz', q);
+    if (h !== null) setDayFull(d, 'hw', h);
+  });
+  renderMain(); openDayFull();
+  toast(`已把本月 ${days.length} 个上课日的满分统一设置`);
+}
+function dfClearMonth(){
+  const cls = activeClass(); if (!cls) return;
+  if (!confirm('确定清除本月所有「自定义满分」吗？这些日期将恢复沿用班级默认满分。')) return;
+  const m = dayFullMap(cls);
+  dfDays().forEach(d => { if (m[d]) delete m[d]; delete (state.quizFullOfDate || {})[d]; delete (state.hwFullOfDate || {})[d]; });
+  save(); renderMain(); openDayFull();
+  toast('已清除本月自定义满分');
+}
+function openDayFull(){
+  const cls = activeClass();
+  if (!cls) return toast('请先选择班级');
+  const days = dfDays();
+  const qDef = quizScaleOf(cls), hDef = state.hwScale || 10;
+  const mon = dfMonth();
+  let custom = 0;
+  const rows = days.map(d => {
+    const q = dayFullRaw(d, 'quiz', cls), h = dayFullRaw(d, 'hw', cls);
+    if (q || h) custom++;
+    const rest = attIsRest(cls, d);
+    const has = clsDayHasRec(cls, d);
+    const wd = DOW_NAME[new Date(d + 'T00:00:00').getDay()];
+    return `<tr>
+      <td>${d.slice(8)} 日 <span class="muted">${wd}</span>${d === state.activeDate ? ' <span class="df-tag">今天</span>' : ''}</td>
+      <td class="c">${rest ? '<span class="df-tag mut">休息</span>' : (has ? '<span class="df-tag">已录</span>' : '<span class="muted">—</span>')}</td>
+      <td class="c"><input class="inp df-in" type="number" min="1" step="0.5" value="${q || ''}" placeholder="${qDef}" onchange="setDayFullCell('${d}','quiz',this.value)"></td>
+      <td class="c"><input class="inp df-in" type="number" min="1" step="0.5" value="${h || ''}" placeholder="${hDef}" onchange="setDayFullCell('${d}','hw',this.value)"></td>
+      <td class="c"><button class="btn sm" onclick="dfResetDay('${d}')" title="该天恢复默认">↺</button></td>
+    </tr>`;
+  }).join('');
+  const body = `
+    <div class="hint">每天一套满分标准：<b>改哪天只影响哪天</b>，与其他日期、其他班级互不影响。留空＝沿用班级默认（小测 ${qDef} 分 / 作业 ${hDef} 分）。已录入的日期会自动记住当时的标准，之后改班级默认也不会被改掉。</div>
+    <div class="df-bar">
+      <button class="btn sm" onclick="dfShiftMonth(-1)">‹ 上月</button>
+      <b style="font-size:15px">${mon.replace('-', ' 年 ')} 月</b>
+      <button class="btn sm" onclick="dfShiftMonth(1)">下月 ›</button>
+      <span class="muted" style="font-size:12.5px">本月已自定义 ${custom} 天</span>
+      <span style="flex:1"></span>
+      <button class="btn sm" onclick="dfClearMonth()">🧹 清除本月自定义</button>
+    </div>
+    <div class="df-bar">
+      <span class="ta-label">批量</span>
+      <input class="inp df-in" id="dfBulkQuiz" type="number" min="1" step="0.5" placeholder="小测 ${qDef}">
+      <input class="inp df-in" id="dfBulkHw" type="number" min="1" step="0.5" placeholder="作业 ${hDef}">
+      <button class="btn sm primary" onclick="dfBulkApply()">本月上课日统一设为</button>
+    </div>
+    <div class="df-scroll">
+      <table class="df-tbl">
+        <thead><tr><th>日期</th><th class="c">状态</th><th class="c">📝 小测满分</th><th class="c">📚 作业满分</th><th class="c">默认</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  openModal('📅 每日满分标准 · ' + cls.name, body,
+    `<button class="btn primary" onclick="closeModal();renderMain()">完成</button>`, 640);
 }
 
 /* ===== 家庭作业详情（得分 / 本次满分 / 完成情况 / 订正 / 备注）===== */
@@ -7404,12 +7586,8 @@ function hwScore(r){ return num(r.homework); }
 function hwFullOf(r){ return (r.hwDetail && r.hwDetail.full) ? +r.hwDetail.full : (r.hwFull ? +r.hwFull : (state.hwScale || 10)); }
 /* 每次测试的满分：小测优先「日期级满分」→ 记录快照 → 班级满分；作业走 hwFullOf（详情/记录/全局） */
 function fullOf(key, r, d){
-  if (key === 'quiz') {
-    if (d && state.quizFullOfDate && state.quizFullOfDate[d]) return +state.quizFullOfDate[d];
-    if (r && r.quizFull) return +r.quizFull;
-    return quizScaleOf();
-  }
-  return hwFullOf(r);
+  if (key === 'quiz') return dayQuizFull(d, r);
+  return dayHwFull(d, r);
 }
 /* 折线图纵坐标：统一为「得分率 %」（得分 ÷ 该次满分 ×100），满分不同的测试可直接同图对比、不会超出画布 */
 function plotVal(key, r, d){
@@ -7440,11 +7618,11 @@ function scorePct(s, date, subj){
   if (!r) return null;
   if (subj === 'quiz'){
     const v = num(r.quiz); if (v === null) return null;
-    const f = quizScaleOf(); if (!f) return null;
+    const f = dayQuizFull(date, r); if (!f) return null;
     return { pct: v / f * 100, raw: v, full: f };
   } else {
     const v = hwScore(r); if (v === null) return null;
-    const f = hwFullOf(r); if (!f) return null;
+    const f = dayHwFull(date, r); if (!f) return null;
     return { pct: v / f * 100, raw: v, full: f };
   }
 }
@@ -7563,7 +7741,7 @@ function renderRank(){
       <div class="rs"><div class="rs-l">参与人数</div><div class="rs-v">${rows.length}<small>人</small></div></div>
     </div>`;
 
-  const hint = `<div class="hint">得分率 = 实际得分 ÷ 满分 ×100；小测满分 ${quizScaleOf()}，家庭作业按每次记录的实际满分折算。排名范围：${esc(scopeLabel)} · ${mode==='date'?'单次测试 '+(state.rankDate||''):'平均得分'}</div>`;
+  const hint = `<div class="hint">得分率 = 实际得分 ÷ 当日满分 ×100（每天满分可单独设定，故统一按得分率比较）；家庭作业按当天记录的实际满分折算。排名范围：${esc(scopeLabel)} · ${mode==='date'?'单次测试 '+(state.rankDate||''):'平均得分'}</div>`;
 
   return controlCard + summary + `<div class="card"><ul class="rank-list">${list}</ul></div>` + hint;
 }
@@ -7597,9 +7775,9 @@ function renderDist(){
       let pct = null;
       if (subj === 'quiz') {
         const q = num(r.quiz);
-        if (q !== null) { const f = quizScaleOf(); pct = f > 0 ? q / f * 100 : null; }
+        if (q !== null) { const f = dayQuizFull(dd, r); pct = f > 0 ? q / f * 100 : null; }
       } else {
-        const h = hwScore(r); const f = hwFullOf(r);
+        const h = hwScore(r); const f = dayHwFull(dd, r);
         if (h !== null && f > 0) pct = h / f * 100;
       }
       if (pct === null) return;
@@ -7833,7 +8011,7 @@ function renderTrend(){
   const pass = Math.max(0, Math.min(100, +state.trendPass || 60));   // 达标「得分率 %」：纵轴统一为百分比，不再依赖固定满分基准
   const scope = state.trendScope || 'both';
   const allSeries = [
-    { key:'quiz', color:'#0f6e56', label:LBL('quiz') + '（满分 ' + (quizScaleOf()) + '）' },
+    { key:'quiz', color:'#0f6e56', label:LBL('quiz') + '（得分率 %）' },
     { key:'homework', color:'#16a34a', label:LBL('homework') + '（满分 ' + (state.hwScale || 10) + '，或每次实际满分）' },
   ];
   const series = allSeries.filter(se => scope === 'both' || scope === se.key);
@@ -12889,7 +13067,7 @@ function weeklySummaryText(cls, days){
   const warns = buildWarnings(cls);
   let txt = '班级：' + cls.name + '\n统计区间：' + fromD + ' ~ ' + d + '（共 ' + days + ' 天）\n';
   txt += '上课天数：' + attDays.length + ' 天\n出勤：出勤 ' + present + ' / 迟到 ' + late + ' / 请假 ' + leave + ' / 缺勤 ' + absent + ' 人次\n';
-  txt += '小测：共 ' + qVals.length + ' 人次，均分 ' + (qAvg != null ? fmt1(qAvg) : '—') + '（满分 ' + (quizScaleOf()) + '），最高 ' + (qMax != null ? qMax : '—') + '，达标率 ' + (qPass != null ? fmt1(qPass) + '%' : '—') + '\n';
+  txt += '小测：共 ' + qVals.length + ' 人次，平均得分率 ' + (qAvg != null ? fmt1(qAvg) + '%' : '—') + '（各天满分可能不同，已按当天满分折算为得分率），最高 ' + (qMax != null ? fmt1(qMax) + '%' : '—') + '，达标率 ' + (qPass != null ? fmt1(qPass) + '%' : '—') + '\n';
   if (hwRate !== null) txt += '作业完成率：' + hwRate + '%\n';
   if (pg.up.length) txt += '进步最快：' + pg.up.map(x => x.s.name + '（▲' + Math.abs(x.delta).toFixed(1) + '）').join('、') + '\n';
   if (pg.down.length) txt += '退步明显：' + pg.down.map(x => x.s.name + '（▼' + Math.abs(x.delta).toFixed(1) + '）').join('、') + '\n';
@@ -12932,7 +13110,10 @@ function genTermSummaryByAI(sid, cb){
     if (firstName === null) firstName = s.name;
     Object.keys(s.records || {}).forEach(d => { if (attIsRest(c, d)) return; days++; const st = attStatus(s, d); if (st === 'present') present++; else if (st === 'late') late++; else if (st === 'leave') leave++; else if (st === 'makeup') makeup++; });
     Object.entries(s.records || {}).forEach(([d, r]) => {
-      if (!(attIsRest(c, d))) { const q = num(r.quiz); if (q !== null) { qSum += q; qN++; } const h = hwEffective(r); if (h !== null) { hSum += h; hN++; } }
+      if (!(attIsRest(c, d))) {
+        const q = num(r.quiz); if (q !== null) { const f = dayQuizFull(d, r, c); if (f > 0) { qSum += q / f * 100; qN++; } }
+        const h = hwEffective(r); if (h !== null) { const f = dayHwFull(d, r, c); if (f > 0) { hSum += h / f * 100; hN++; } }
+      }
       if (r.hwDone === false) hwMiss++;
       if (r.remark && String(r.remark).trim()) remarks.push({ d: d, txt: String(r.remark).trim() });
     });
@@ -12943,8 +13124,8 @@ function genTermSummaryByAI(sid, cb){
   let txt = '学生姓名：' + name + '\n';
   if (inClass) {
     txt += '出勤率：' + rate + '%（出勤' + present + ' / 迟到' + late + ' / 请假' + leave + ' / 补课' + makeup + '，共' + days + '天）\n';
-    txt += '小测均分：' + (qAvg != null ? fmt1(qAvg) + '（满分' + (quizScaleOf()) + '）' : '数据不足') + '\n';
-    txt += '作业均分：' + (hAvg != null ? fmt1(hAvg) + '（满分' + (state.hwScale || 10) + '）' : '数据不足') + '\n';
+    txt += '小测平均得分率：' + (qAvg != null ? fmt1(qAvg) + '%' : '数据不足') + '（各天满分可能不同，已按当天满分折算）\n';
+    txt += '作业平均得分率：' + (hAvg != null ? fmt1(hAvg) + '%' : '数据不足') + '\n';
     txt += '未完成作业次数：' + hwMiss + '\n';
   } else { txt += '（该生未编入班级，仅档案信息）\n'; }
   if (remarks.length) txt += '近期教师评语记录：' + remarks.slice(0, 6).map(x => x.d + '：' + x.txt).join('；') + '\n';
@@ -13181,18 +13362,20 @@ function genDiagByAI(sid, cb){
   const s = cls && cls.students.find(x => String(x.id) === id);
   if (!s) { cb(null, new Error('未找到学生')); return; }
   const ds = smartDates(cls), recent = ds.slice(-Math.min(14, ds.length));
+  /* 各天满分不同 → 全部折算为得分率 % 再统计 */
   const qVals = [];
-  recent.forEach(d => { const q = num(s.records[d] && s.records[d].quiz); if (q != null) qVals.push(q); });
+  recent.forEach(d => { const r = s.records[d]; const q = num(r && r.quiz); if (q != null) { const f = dayQuizFull(d, r, cls); if (f > 0) qVals.push(q / f * 100); } });
   const qAvgV = qVals.length ? (qVals.reduce((a, b) => a + b, 0) / qVals.length) : null;
-  const pass = quizPassLine(cls);
-  const lowQ = recent.filter(d => { const q = num(s.records[d] && s.records[d].quiz); return q != null && q < pass; }).length;
+  const t = quizThresholdsOf(cls); const passPct = (t && t.pass != null) ? +t.pass : 60;
+  const pass = passPct;
+  const lowQ = recent.filter(d => { const r = s.records[d]; const q = num(r && r.quiz); if (q == null) return false; const f = dayQuizFull(d, r, cls); return f > 0 && (q / f * 100) < passPct; }).length;
   const exam = cls.examScores[s.id] || {};
   const examTxt = Object.keys(exam).filter(k => k !== 'zhongkao').map(k => k + ':' + (exam[k].mathScore || exam[k].math || '?')).join('、') || '无';
   const zk = exam.zhongkao ? ('中考数学 ' + (exam.zhongkao['数学'] || '?')) : '';
   let hwMiss = 0;
   recent.forEach(d => { const r = s.records[d]; if (!r) return; if (state.hwMode === 'done') { if (r.hwDone === false) hwMiss++; } else { const h = hwEffective(r); if (h === null || ((state.hwScale || 10) > 0 && h / (state.hwScale || 10) < 0.6)) hwMiss++; } });
   let txt = '学生姓名：' + (p.name || s.name) + '\n';
-  txt += '近14天小测均分：' + (qAvgV != null ? fmt1(qAvgV) + '（满分' + (quizScaleOf()) + '，低于达标线' + fmt1(pass) + ' 的有 ' + lowQ + ' 次）' : '数据不足') + '\n';
+  txt += '近14天小测平均得分率：' + (qAvgV != null ? fmt1(qAvgV) + '%（各天满分可能不同，已按当天满分折算；低于达标线 ' + fmt1(pass) + '% 的有 ' + lowQ + ' 次）' : '数据不足') + '\n';
   txt += '考试成绩：' + examTxt + (zk ? '；' + zk : '') + '\n';
   txt += '近14天作业偏低/未完成次数：' + hwMiss + '\n';
   // 错题知识点快捷标签（老师在录入小测/作业时点选标注，累积越久 AI 诊断越精准）
@@ -13311,9 +13494,13 @@ function genQuizByAI(){
   const cls = activeClass();
   if (cls && basis === 'class') {
     const ds = smartDates(cls), recent = ds.slice(-14);
-    let sum = 0, cnt = 0, low = 0; const pass = quizPassLine(cls);
-    cls.students.forEach(s => recent.forEach(d => { const q = num(s.records[d] && s.records[d].quiz); if (q != null) { sum += q; cnt++; if (q < pass) low++; } }));
-    scope = '本班近期小测：均分 ' + (cnt ? fmt1(sum / cnt) : '—') + '（满分' + (quizScaleOf()) + '），' + low + ' 人次低于达标线，请针对班级整体薄弱方向出题';
+    let sum = 0, cnt = 0, low = 0; const t = quizThresholdsOf(cls); const passPct = (t && t.pass != null) ? +t.pass : 60;
+    cls.students.forEach(s => recent.forEach(d => {
+      const r = s.records[d]; const q = num(r && r.quiz); if (q == null) return;
+      const f = dayQuizFull(d, r, cls); if (!(f > 0)) return;
+      const pct = q / f * 100; sum += pct; cnt++; if (pct < passPct) low++;
+    }));
+    scope = '本班近期小测：平均得分率 ' + (cnt ? fmt1(sum / cnt) + '%' : '—') + '（各天满分可能不同，已按当天满分折算），' + low + ' 人次低于达标线 ' + passPct + '%，请针对班级整体薄弱方向出题';
   } else if (basis === 'student') {
     const sid = (document.getElementById('qgSid') || {}).value; const f = sid ? findStudentById(sid) : null;
     if (f) scope = '学生「' + f.s.name + '」的薄弱点（可结合其近期小测/作业表现推断）';
