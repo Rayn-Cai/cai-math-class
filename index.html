@@ -1936,7 +1936,7 @@ th.atc-d.we-sun small{color:var(--red)}
 .sc-ta-wrap{position:relative;border-radius:var(--radius-md);overflow:hidden}
 .sc-ta-wrap::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3.5px;border-radius:3px 0 0 3px;background:linear-gradient(180deg,var(--accent),#14b8a6);opacity:.6;z-index:1}
 .sc-ta-wrap.ai-generated::before{background:linear-gradient(180deg,#0f8a6e,#14b8a6);opacity:.8}
-.sc-ta-wrap .sm-ta{min-height:110px;padding:14px 14px 10px 18px;font-size:13.5px;line-height:1.8;border:1.5px solid var(--border);border-radius:var(--radius-md);background:var(--surface-alt);color:var(--text);resize:vertical}
+.sc-ta-wrap .sm-ta{min-height:152px;padding:14px 14px 10px 18px;font-size:13.5px;line-height:1.8;border:1.5px solid var(--border);border-radius:var(--radius-md);background:var(--surface-alt);color:var(--text);resize:vertical}
 .sc-ta-wrap.ai-generated .sm-ta{border-color:rgba(15,138,110,.3);background:linear-gradient(135deg,rgba(15,184,166,.04),rgba(20,184,166,.04))}
 .sc-ai-badge{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 10px;border-radius:999px;letter-spacing:.5px;margin-top:6px}
 .sc-ai-badge-tpl{background:var(--surface-alt);color:var(--text-muted);border:1px solid var(--border)}
@@ -12950,7 +12950,7 @@ function sendToParent(sid){
 function aiParentMsg(sid, el){
   if (!aiReady() || !state.ai.enabled){ openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
   const gen = function(_sid, cb){ aiWechatAI(_sid, state.ai.scene, function(t, e){ cb(t, e); }); };
-  const hit = aiCached(sid, 'wechat:' + (state.ai.scene || '') + ':' + (ui.smartStyle || 'calm'), gen, function(t, err, cached){
+  const hit = aiCached(sid, 'wechat:v2:' + (state.ai.scene || '') + ':' + (ui.smartStyle || 'calm'), gen, function(t, err, cached){
     aiBtnUnlock(el);
     if (err || !t){ toast('AI 生成失败：' + (err && err.message ? err.message : '请检查配置')); return; }
     const ta = document.getElementById('pmText'); if (ta) ta.value = t;
@@ -12964,7 +12964,7 @@ function genCommentByAI(force){
   ui.aiStatus = 'loading'; renderMain();
   const style = ui.smartStyle || 'calm';
   const gen = function(_sid, cb){ genCommentAI(_sid, state.ai.scene, function(t, e){ cb(t, e); }); };
-  aiCached(sid, 'comment:' + (state.ai.scene || '') + ':' + style, gen, function(text, err, cached){
+  aiCached(sid, 'comment:v2:' + (state.ai.scene || '') + ':' + style, gen, function(text, err, cached){
     if (err || !text) {
       var rawMsg = null;
       try { if (err && err.message) rawMsg = err.message; else if (err) rawMsg = String(err); } catch(e) { rawMsg = null; }
@@ -13274,10 +13274,15 @@ function aiCommentPrompt(sid, scene, extra){
   const at = topOf(amap); if (at.length) L.push('课堂吸收高频：' + at.join('、'));
   L.push('可用积分：' + pts + ' 分；课时剩余：' + (hs && hs.left != null ? hs.left : 0) + ' 节');
   const user = L.join('\n');
-  const system = '你是经验丰富的初中数学老师，写给家长看的学情反馈。'
-    + '只写【一段话】的正文，60-110 字，不分段、不要小标题、不要项目符号、不要 Markdown、不要列点。'
-    + '必须点名「' + s.name + '」本人，并引用上文给出的至少 2 个具体数据（得分、得分率、天数、知识点均可），让家长一看就知道说的是自己孩子。'
-    + '不编造上文没有的信息；先肯定真实亮点，再给一条具体可操作的建议，结尾正向收束。最多用 1 个 emoji。'
+  const system = '你是带班多年的初中数学老师，正在给家长写一段学情反馈（场景：' + sceneName + '，语气：' + styleName + '）。'
+    + '写【一整段连贯正文】，150-220 字，不分段、不用小标题、不用项目符号、不用 Markdown、不要列点、不要写「首先/其次/最后」这类标记。'
+    + '要求表达完整，把下面三件事自然融进一段话里：'
+    + '① 先肯定「' + s.name + '」近期的真实亮点——结合课堂表现、答题状态或进步趋势说具体些，不空夸；'
+    + '② 再结合上面的数据讲你的观察与分析——不要只是把数字念一遍，要说清这组数据反映出什么、背后可能是什么原因、对孩子后续学习会有什么影响，让家长读懂数字背后的信息；'
+    + '③ 最后给出 1-2 条家长在家就能配合做的具体建议（越具体越好，如每天固定多久练什么、怎么检查订正），并用一句鼓励的话正向收束，肯定潜力、给出孩子够得着的期待。'
+    + '必须点名「' + s.name + '」本人，至少引用 3 个上文给出的具体数据（得分、得分率、天数、次数、知识点均可），让家长一看就知道说的是自己孩子。'
+    + '即使数据不理想，也要先找到真实存在的亮点，指出问题时对事不对人、语气不指责，整体以鼓励和建设性为主。'
+    + '只写正文，不编造上文没有的信息，正文里不要出现「数据」「指标」「分析如下」这类词。最多用 1 个 emoji。'
     + (extra ? ('补充要求：' + extra) : '');
   return { system, user };
 }
@@ -13288,6 +13293,8 @@ const CMT_LIST_MARK = /(^\s*[-•·*+]\s+)|(^\s*\d+[.、)]\s+)|(^\s*#{1,6}\s)|(\
 /* 思考过程 / 任务复述特征（思考型模型把推理当正文返回时会出现，必须拦在面板之外） */
 const CMT_SELF_TALK = /((用户|家长|客户|老师)(需要|要求|想要|希望|让我|想让我|让我来))|(我(需要|要|应该|必须|来|先)(写|生成|输出|分析|看|整理|做|帮))|(需要我(写|生成|提供|输出))|(让(我|我来)(写|生成|来))|(首先(我|，?我))|(下面我|接下来我)|(作为(一名|一个)?(AI|人工智能|助手|初中数学老师|老师))|(任务(是|要求|目标))|(题目要求)|(按照(上述|以上|下面)?要求)|(这(个|是)一(个|项)(任务|要求))|(思考(一下|：|:))|(我(来|先)(分析|梳理|回顾))|(根据(上述|以上|所给)(数据|信息|要求)?(，|,)?我(来|将|需要))/;
 const CMT_EMOJI_RE = /(?:[\uD800-\uDBFF][\uDC00-\uDFFF]|\uFE0F|\u200D|[\u2190-\u2BFF\u2460-\u24FF\u2600-\u27BF])+/g;
+/* 鼓励/正向收束词（老师视角的反馈必须有肯定或期待，不能只挑问题） */
+const CMT_ENCOURAGE = /(相信|加油|期待|保持|继续|潜力|看好|进步|提升|不错|很棒|表扬|肯定|值得|有信心|会更好|再接再厉|为你|鼓励|希望|认真|积极|专注|坚持|努力|扎实|亮点|优势|踏实|聪明|机灵|有基础|加把劲|看好你|没问题|可以做到|一定能)/;
 function cmtSplitTitle(t){
   const lines = String(t || '').split('\n').map(x => x.trim()).filter(Boolean);
   if (lines.length && /^【[^】]{2,30}】$/.test(lines[0])) return { title: lines[0], body: lines.slice(1).join('\n') };
@@ -13366,10 +13373,12 @@ function commentLooksOk(t, ctx){
   if (CMT_BAD_WORD.test(txt)) return { ok:false, why:'含提示词残留' };
   if (CMT_SELF_TALK.test(body)) return { ok:false, why:'是模型的思考过程/任务复述，不是评语正文' };
   const n = txt.replace(/\s/g, '').length;      // 中文不是 \w，不能用 \W 过滤
-  if (n < 20) return { ok:false, why:'内容过短（' + n + ' 字）' };
-  if (n > 200) return { ok:false, why:'内容过长（' + n + ' 字）' };
-  /* 评语必须落到具体数据上：既没数字也没「全勤/满分」这类量化词，且篇幅偏短 → 判为没有依据的泛泛之谈 */
-  if (c.hasData !== false && n < 90 && !/\d/.test(txt) && !/(全勤|满分)/.test(txt)) return { ok:false, why:'没有引用任何具体数据（未按学生本人数据生成）' };
+  if (n < 90) return { ok:false, why:'内容偏短（' + n + ' 字，需要 150-220 字的完整反馈）' };
+  if (n > 360) return { ok:false, why:'内容过长（' + n + ' 字）' };
+  /* 评语必须落到具体数据上：既没数字也没「全勤/满分」这类量化词 → 判为没有依据的泛泛之谈 */
+  if (c.hasData !== false && !/\d/.test(txt) && !/(全勤|满分)/.test(txt)) return { ok:false, why:'没有引用任何具体数据（未按学生本人数据生成）' };
+  /* 教师视角的反馈要有鼓励与正向收束：仅首次尝试校验，最多多花一次重试，避免反复扣额度 */
+  if (c.attempt === 0 && !CMT_ENCOURAGE.test(txt) && !CMT_EMOJI_RE.test(txt)) return { ok:false, why:'缺少肯定或鼓励的话（只指出问题、没有正向收束）' };
   if (c.name && c.name.length >= 2 && txt.indexOf(c.name) < 0) return { ok:false, why:'未出现所选学生姓名，疑似跑题' };
   return { ok:true, why:'' };
 }
@@ -13393,14 +13402,15 @@ function commentGenerate(sid, scene, cb, opt){
     const pr = aiCommentPrompt(sid, scene, extra);
     if (!pr) { cb(null, new Error('请选择学生')); return; }
     ctx.hasData = commentHasData(pr.user);
+    ctx.attempt = attempt;
     /* noClean：评语走自己的「入库前筛选」链路（aiTextClean 会把换行吃掉，影响排版规范化的按行清洗） */
     /* 思考型模型会把输出预算花在「思考」上导致正文为空 → 预算给足（未用到的额度不计费） */
-    aiChat(pr.system, pr.user, { maxTokens: attempt === 0 ? 700 : 1200, noClean: true }).then(function(raw){
-      const nm = commentNormalize(raw, { maxLen: o.maxLen || 110, emoji: o.emoji == null ? 1 : o.emoji });
+    aiChat(pr.system, pr.user, { maxTokens: attempt === 0 ? 1100 : 1800, noClean: true }).then(function(raw){
+      const nm = commentNormalize(raw, { maxLen: o.maxLen || 240, emoji: o.emoji == null ? 1 : o.emoji });
       const chk = commentLooksOk(nm.text, ctx);
       if (chk.ok) { cb(nm.text, null, nm); return; }
       attempt++;
-      if (attempt < 2) { once('上次产出被判为「' + chk.why + '」已作废。请把推理留在心里，只输出一段 60-110 字正文，点名 ' + ctx.name + '，并至少写进 2 个具体数据。'); return; }
+      if (attempt < 2) { once('上次产出被判为「' + chk.why + '」已作废。请把推理留在心里，只输出一段 150-220 字的完整正文，点名 ' + ctx.name + '，先肯定亮点，再结合数据说清你的观察分析，最后给具体建议并鼓励收尾，至少写进 3 个具体数据。'); return; }
       cb(null, new Error('AI 输出未通过可用性校验（' + chk.why + '）'));
     }).catch(function(e){ cb(null, e); });
   }
@@ -13467,7 +13477,7 @@ function aiWechatBtn(el){
   const sid = ui.smartSid; if (!sid) return toast('请先选择学生');
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
   const gen = function(_s, cb){ aiWechatAI(_s, state.ai.scene, function(t, e){ cb(t, e); }); };
-  const hit = aiCached(sid, 'wechat:' + (state.ai.scene || '') + ':' + (ui.smartStyle || 'calm'), gen, function(text, err, cached){
+  const hit = aiCached(sid, 'wechat:v2:' + (state.ai.scene || '') + ':' + (ui.smartStyle || 'calm'), gen, function(text, err, cached){
     aiBtnUnlock(el);
     if (err || !text) { toast('AI 微信生成失败：' + (err && err.message ? err.message : '请检查配置')); return; }
     copyText(text); toast(cached ? '✅ AI 微信文案已生成并复制（24 小时内缓存）' : '✅ AI 微信文案已生成并复制');
