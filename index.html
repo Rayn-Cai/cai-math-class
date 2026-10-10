@@ -2585,6 +2585,9 @@ function normalizeState(){
   if (!state.ai.model) state.ai.model = '';
   if (!state.ai.baseUrl) state.ai.baseUrl = '';
   if (!state.ai.scene) state.ai.scene = 'weekly';
+  /* 思考型模型适配：thinkMode = auto（按功能智能选择）/ off（全部关闭深度思考）/ on（全部保留思考） */
+  if (state.ai.thinkMode !== 'off' && state.ai.thinkMode !== 'on' && state.ai.thinkMode !== 'auto') state.ai.thinkMode = 'auto';
+  if (!state.ai.boost || typeof state.ai.boost !== 'object') state.ai.boost = { model:'', tok:0 };
   /* 老配置里的模型可能已被厂商下线（如 moonshot-v1-8k / deepseek-chat），自动迁移到现役模型并留提示 */
   if (state.ai.model && AI_RETIRED_MODELS[state.ai.model]) {
     const _old = state.ai.model, _new = AI_RETIRED_MODELS[_old];
@@ -13204,6 +13207,47 @@ function aiCached(sid, tag, gen, cb, force){
   gen(sid, function(t, err){ if (!err && t) aiCacheSet(sid, tag, t); cb(t, err, false); });
   return false;
 }
+/* ===== 思考型模型适配（Kimi K2.6/K3、DeepSeek-R1 等）=====
+   背景：思考型模型先推理再作答，推理内容同样占用 max_tokens，且被截断的思考照样计费；
+   官方文档把「Empty response」的常见原因直接列为 max_tokens too low。
+   策略（用户已确认「关思考＋放宽额度」）：
+   ① 短文案优先「关闭深度思考」——Kimi K2.5/K2.6 支持 thinking:{type:'disabled'}，一次出结果、思考 token 归零；
+   ② 关不掉的模型（K3 / 代码模型）改用 reasoning_effort:'low' 降低思考量；
+   ③ 输出额度逐级放大（base → ≥4096 → 12000），成功后记住该模型所需额度，下次直接给足，不再白烧一轮。 */
+const AI_TOKEN_LADDER = [4096, 12000];
+const AI_LOW_EFFORT = 'low';
+function aiThinkMode(){ return (state.ai && state.ai.thinkMode) || 'auto'; }
+/* 本次请求是否尝试「关闭思考」：全局设为 on/off 时强制生效；auto 时按调用点 opt.think 决定（默认关） */
+function aiWantNoThink(opt){
+  const g = aiThinkMode();
+  if (g === 'on') return false;         // 全局强制保留思考
+  if (g === 'off') return true;         // 全局强制关闭思考
+  const t = opt && opt.think;
+  return t !== 'keep';                  // auto：短文案关、长文（keep）保留
+}
+/* 该模型上次成功所需的输出额度（成功后记住，下次直接从这一档起步） */
+function aiBoostOf(model){
+  const b = state.ai && state.ai.boost;
+  return (b && b.model === model && b.tok > 0) ? b.tok : 0;
+}
+function aiRememberBoost(model, tok){
+  if (!model || !tok) return;
+  const b = state.ai.boost || {};
+  if (b.model === model && b.tok >= tok) return;
+  state.ai.boost = { model: model, tok: tok };
+  save();
+}
+function aiBoostTipText(){
+  const b = (state.ai && state.ai.boost) || {};
+  return (b.tok > 0)
+    ? ('当前模型 ' + b.model + ' 已记住需要 ' + b.tok + ' 输出额度（下次自动给足，不再先失败一次）')
+    : '当前模型按默认额度请求；一旦遇到思考占满，会自动加大额度并记住该模型所需值';
+}
+function aiBoostReset(){
+  state.ai.boost = { model:'', tok:0 }; save();
+  const el = document.getElementById('aiBoostTip'); if (el) el.textContent = aiBoostTipText();
+  toast('✅ 已重置思考额度记忆，下次按默认额度请求');
+}
 function aiChat(systemText, userText, opt){
   const c = aiCfg();
   if (!c.key || !c.base || !c.model) throw new Error('AI 未配置');
@@ -13212,23 +13256,47 @@ function aiChat(systemText, userText, opt){
   if (!o.force && _aiPending[pk]) return _aiPending[pk];   // 同一请求正在进行 → 复用，不再扣一次费
   const msgs = [ { role:'system', content: systemText },
                  { role:'user', content: aiUserWithRule(userText, o.raw) } ];
-  const baseTok = (o.maxTokens != null ? o.maxTokens : 600);
-  function aiOnce(tokens, grew){
-    const body = { model: c.model, messages: msgs,
-      temperature: (o.temperature != null ? o.temperature : 0.7),
-      max_tokens: tokens };
-    return aiRequest(c, body, true).then(j => {
-      const m = aiPickMsg(j);
-      if (m.reasonOnly && !grew) {   // 思考型模型常见坑：预算被「思考」吃光 → 加大预算重试一次（未用到的额度不计费）
-        return aiOnce(Math.max(Math.round(baseTok * 3), 1500), true);
+  const wantTok = (o.maxTokens != null ? o.maxTokens : 600);
+  const firstTok = Math.max(wantTok, aiBoostOf(c.model));  // 该模型上次成功所需的额度，直接就给足
+  const ladder = [firstTok];
+  AI_TOKEN_LADDER.forEach(function(t){ if (t > ladder[ladder.length - 1]) ladder.push(t); });
+  let noThinkOk = aiWantNoThink(o);
+  let li = 0;
+  /* 发一次请求；厂商不认识 thinking / reasoning_effort 时（400）自动去掉该参数原样重发（被拒请求不计费） */
+  function send(tokens, mode){
+    const temp = (o.temperature != null ? o.temperature : 0.7);
+    const body = { model: c.model, messages: msgs, temperature: temp, max_tokens: tokens };
+    if (mode === 'nothink') body.thinking = { type: 'disabled' };
+    if (mode === 'low') body.reasoning_effort = AI_LOW_EFFORT;
+    return aiRequest(c, body, true, { onStatus: o.onStatus }).catch(function(e){
+      const msg = String((e && e.message) || '');
+      if (mode !== 'plain' && /HTTP 400/.test(msg)) {
+        if (mode === 'nothink') noThinkOk = false;   // 该厂商/模型不支持关闭思考 → 后续档不再尝试
+        return aiRequest(c, { model: c.model, messages: msgs, temperature: temp, max_tokens: tokens }, true, { onStatus: o.onStatus });
       }
-      if (!m.text) throw new Error(m.reasonOnly
-        ? '模型只输出了思考过程、没给出结果（输出额度被思考占满）。请点「🔄 重新生成」，或到「⚙️ AI 设置」换用非思考型模型。'
-        : 'AI 返回空内容，请检查模型名是否正确');
-      return (o.raw || o.noClean) ? m.text : aiTextClean(m.text);   // 统一清洗：去提示词残留 / 套话 / 重复句
+      throw e;
     });
   }
-  const p = aiOnce(baseTok, false);
+  function run(){
+    const tokens = ladder[li];
+    const isLast = (li === ladder.length - 1);
+    /* 优先关思考；关不掉时，最后一档改用「低思考量」把额度留给正文 */
+    const mode = noThinkOk ? 'nothink' : (isLast ? 'low' : 'plain');
+    li++;
+    return send(tokens, mode).then(function(j){
+      const m = aiPickMsg(j);
+      if (m.text) {
+        if (tokens > wantTok) aiRememberBoost(c.model, tokens);   // 记住这个模型需要多大额度
+        return (o.raw || o.noClean) ? m.text : aiTextClean(m.text);
+      }
+      if (m.reasonOnly) {
+        if (li < ladder.length) return run();                    // 额度被「思考」吃光 → 升档重试
+        throw new Error('思考型模型把输出额度全用在推理上、没写出正文。已自动加大额度仍未成功：请在「⚙️ AI 设置」把模型换成非思考型（如 kimi-k2-0905-preview），或把「思考模式」改为「关闭」。');
+      }
+      throw new Error('AI 返回空内容，请检查模型名是否正确');
+    });
+  }
+  const p = run();
   _aiPending[pk] = p;
   const clear = function(){ if (_aiPending[pk] === p) delete _aiPending[pk]; };
   p.then(clear, clear);
@@ -13405,7 +13473,7 @@ function commentGenerate(sid, scene, cb, opt){
     ctx.attempt = attempt;
     /* noClean：评语走自己的「入库前筛选」链路（aiTextClean 会把换行吃掉，影响排版规范化的按行清洗） */
     /* 思考型模型会把输出预算花在「思考」上导致正文为空 → 预算给足（未用到的额度不计费） */
-    aiChat(pr.system, pr.user, { maxTokens: attempt === 0 ? 1100 : 1800, noClean: true }).then(function(raw){
+    aiChat(pr.system, pr.user, { maxTokens: attempt === 0 ? 1100 : 1800, noClean: true, think: 'off' }).then(function(raw){
       const nm = commentNormalize(raw, { maxLen: o.maxLen || 240, emoji: o.emoji == null ? 1 : o.emoji });
       const chk = commentLooksOk(nm.text, ctx);
       if (chk.ok) { cb(nm.text, null, nm); return; }
@@ -13464,7 +13532,7 @@ function genWeeklyByAI(days){
   const btn = document.getElementById('wrAiBtn');
   if (btn) { btn.disabled = true; btn.textContent = '🤖 生成中…'; }
   const sys = '你是经验丰富的初中数学老师，负责向家长同步班级学习情况。请基于以下班级学习数据，为家长撰写一份温暖、真实、具体、约 220-300 字的学习简报（可直接发送），只输出正文。不要编造数据之外的信息，对进步/退步学生给出具体鼓励，对需关注项给出可操作的家校配合建议。';
-  aiChat(sys, weeklySummaryText(cls, +days)).then(t => {
+  aiChat(sys, weeklySummaryText(cls, +days), { maxTokens: 1500, think: 'keep' }).then(t => {
     const ta = document.getElementById('wrText'); if (ta) ta.value = t;
     if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 生成'; }
     toast('✅ AI 周报已生成');
@@ -13515,7 +13583,7 @@ function genTermSummaryByAI(sid, cb){
   } else { txt += '（该生未编入班级，仅档案信息）\n'; }
   if (remarks.length) txt += '近期教师评语记录：' + remarks.slice(0, 6).map(x => x.d + '：' + x.txt).join('；') + '\n';
   const sys = '你是经验丰富的初中数学老师。请基于以下学生数据，生成三部分内容：1) 学习亮点（2-3条）；2) 待改进之处（1-2条）；3) 一段面向该生的教师评语（约60-100字，温暖鼓励、具体建议）。请严格使用以下格式输出：\n【学习亮点】\n- ...\n【待改进】\n- ...\n【教师评语】\n...';
-  aiChat(sys, txt).then(t => cb(t, null)).catch(e => cb(null, e));
+  aiChat(sys, txt, { maxTokens: 2000, think: 'keep' }).then(t => cb(t, null)).catch(e => cb(null, e));
 }
 function aiTermSummaryBtn(sid, force){
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
@@ -13555,7 +13623,7 @@ function genAnalysisByAI(sid, cb){
   if (issues.length) txt += issues.slice(0, 15).map(x => '  · ' + x).join('\n') + '\n';
   else txt += '  （暂无明显低分 / 未完成 / 缺勤记录，整体表现良好）\n';
   const sys = '你是初中数学老师。请基于以下学生近期学习问题，生成一段面向该生的针对性学情分析与辅导建议（约 120-200 字），语气鼓励、具体可操作，可直接用于一对一沟通或家长反馈。只输出正文。';
-  aiChat(sys, txt).then(t => cb(t, null)).catch(e => cb(null, e));
+  aiChat(sys, txt, { maxTokens: 2000, think: 'keep' }).then(t => cb(t, null)).catch(e => cb(null, e));
 }
 function openAnalysisAI(sid, force){
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
@@ -13633,6 +13701,14 @@ function openAISettings(){
     + '<button class="btn ghost" type="button" onclick="fetchAIModels()" id="aiModelBtn">📥 拉取可用模型</button>'
     + '<div id="aiModelList" class="ai-test-res"></div>'
     + '<div class="form-row"><label>启用 AI 生成</label><label class="toggle-sw"><input id="aiOn" type="checkbox" '+(state.ai.enabled?'checked':'')+'><span class="toggle-sl"></span></label></div>'
+    + '<div class="form-row"><label>思考模式</label><select id="aiThink" class="inp">'
+    +   '<option value="auto"'+(aiThinkMode()==='auto'?' selected':'')+'>自动（推荐：短文案关思考，长文保留）</option>'
+    +   '<option value="off"'+(aiThinkMode()==='off'?' selected':'')+'>全部关闭深度思考（最省、最快）</option>'
+    +   '<option value="on"'+(aiThinkMode()==='on'?' selected':'')+'>全部保留深度思考（质量优先、最费）</option>'
+    + '</select></div>'
+    + '<div class="hint">思考型模型（Kimi K2.6/K3 等）会先推理再作答，推理同样占用输出额度，且被截断的部分照样计费——这就是「模型只输出了思考过程」报错的来源。默认「自动」＝评语/微信/家长信等短文案直接关掉深度思考（一次出结果、思考 token 归零），学情诊断/学期总结/个性化作业等长文保留思考并把额度放宽到 4096→12000。</div>'
+    + '<div class="row" style="margin:8px 0;gap:8px;align-items:center"><button class="btn ghost sm" type="button" onclick="aiBoostReset()">♻️ 重置额度记忆</button>'
+    + '<span class="muted" id="aiBoostTip" style="font-size:12px">' + esc(aiBoostTipText()) + '</span></div>'
     + '<button class="btn ghost" type="button" onclick="testAIConn()" id="aiTestBtn">🔗 测试连接</button>'
     + '<div id="aiTestRes" class="ai-test-res"></div>'
     + '<div class="row" style="margin:10px 0;gap:8px;align-items:center"><button class="btn ghost sm" type="button" onclick="aiCacheClear()">🧹 清空 AI 结果缓存</button>'
@@ -13705,6 +13781,8 @@ function saveAISettings(){
   state.ai.baseUrl = (document.getElementById('aiBase')||{}).value || '';
   state.ai.model = model;
   state.ai.enabled = !!(document.getElementById('aiOn')||{}).checked;
+  const tmEl = document.getElementById('aiThink');
+  if (tmEl && (tmEl.value === 'auto' || tmEl.value === 'off' || tmEl.value === 'on')) state.ai.thinkMode = tmEl.value;
   delete state.ai.migratedFrom; delete state.ai.migratedTo;   // 已保存即无需再提示
   save(); closeModal(); renderMain();
   if (fixed) return toast('⚠️ ' + fixed + ' 已下线，已自动改用 ' + model);
@@ -13732,9 +13810,9 @@ function testAIConn(){
       + '<button type="button" class="btn ghost" onclick="fetchAIModels()">📥 拉取可用模型</button></div>';
   }
   setRun('正在连接 ' + tModel + ' …');
-  aiRequest({ base:tBase, key:tKey, model:tModel },
-            { model:tModel, messages:[{ role:'user', content:'你好，请只回复 ok' }], max_tokens:64 }, true,
-            { onStatus: setRun })
+  var tBody = { model:tModel, messages:[{ role:'user', content:'你好，请只回复 ok' }], max_tokens: 256 };
+  if (aiWantNoThink({})) tBody.thinking = { type:'disabled' };   // 思考型模型：测试连接也别把额度花在推理上
+  aiRequest({ base:tBase, key:tKey, model:tModel }, tBody, true, { onStatus: setRun })
     .then(function(j){
       if (!aiPickText(j)) throw new Error('接口已连通，但模型返回了空内容，建议换一个模型名再测');
       var name = (j && j.model) || tModel;
@@ -13809,7 +13887,7 @@ function genDiagByAI(sid, cb){
   if (p.strength) txt += '老师档案标注优势：' + p.strength + '\n';
   if (p.remark) txt += '老师备注：' + p.remark + '\n';
   const sys = '你是资深初中数学老师与中考教研专家。请基于以下学生数学学习数据，做一份精炼的学情诊断：1) 指出 2-3 个最薄弱的知识点方向（结合分数偏低、考试与作业表现推断；若数据中提供了「老师档案标注薄弱点/优势/备注」或「错题知识点标注」，应优先结合这些信息，使诊断更贴合该生；若数据无法支撑具体章节级知识点，请使用「基础运算/概念理解/应用题」等宽泛类别，不得虚构「统计概率」「三角形性质」等数据中未提及的具体知识点）；2) 针对每项给出具体可操作的补弱练习方向；3) 用一句话总结该生当前状态与下一步重点。请严格使用「【薄弱点】/【补弱建议】/【总结】」三段格式输出，总计约 180-260 字。';
-  aiChat(sys, txt).then(t => cb(t, null)).catch(e => cb(null, e));
+  aiChat(sys, txt, { maxTokens: 2000, think: 'keep' }).then(t => cb(t, null)).catch(e => cb(null, e));
 }
 function openTrendDiag(force){
   const cls = activeClass(); if (!cls) return;
@@ -13853,7 +13931,7 @@ function genRemarkByAI(sid, cb){
     + '要求：第一句是不超过 18 字的核心短评；其后补 1-2 句具体表现（用数据说话，如出勤、小测、作业、课堂表现）；最后给一条可操作建议。'
     + '评语必须与数据一致：若小测均分低或作业完成差，不得使用「优秀」「进步大」「表现很好」等与数据矛盾的褒义表述，应先肯定真实亮点，再客观指出可改进点；'
     + '若提供了「今日错题知识点」，应点出其中最需要巩固的方向。只输出评语正文，不要标题、不要引号、不要编号、不要重复句子。';
-  aiChat(sys, txt).then(t => cb((t || '').trim(), null)).catch(e => cb(null, e));
+  aiChat(sys, txt, { maxTokens: 900, think: 'off' }).then(t => cb((t || '').trim(), null)).catch(e => cb(null, e));
 }
 /* AI 评语弹窗：全文可直接复制，也可只把首句填入当日评语 */
 function aiRemarkModal(sid, t, cached){
@@ -13908,7 +13986,7 @@ function aiPhraseBank(){
   const sys = '你是初中数学老师。请针对课堂评价，生成 6 条简洁、积极、具体的课堂评语（每条不超过18字），用于老师快速点选。只输出短语，每行一条，不要编号和解释。';
   const user = '当前已有评语库：' + PHRASES().join('、') + '\n请补充 6 条不同的、实用的课堂评语短语。';
   openModal('🤖 AI 推荐评语', '<div id="aipbOut"><div class="muted">正在生成推荐评语…</div></div><div class="modal-actions"><button class="btn ghost" onclick="closeModal()">关闭</button></div>', null, 460);
-  aiChat(sys, user).then(t => {
+  aiChat(sys, user, { maxTokens: 700, think: 'off' }).then(t => {
     const out = document.getElementById('aipbOut'); if (!out) return;
     const lines = (t || '').split('\n').map(x => x.replace(/^[\d\u3000\s\.\、\-]+/, '').trim()).filter(x => x && x.length <= 20).slice(0, 6);
     const added = lines.filter(x => !PHRASES().includes(x));
@@ -13948,7 +14026,7 @@ function aiWarnParent(sid, force){
   };
   const hit = force ? null : aiCacheGet(sid, 'warn');
   if (hit != null) return render(hit, true);
-  aiChat(sys, user).then(t => { aiCacheSet(sid, 'warn', t); render(t, false); })
+  aiChat(sys, user, { maxTokens: 1200, think: 'off' }).then(t => { aiCacheSet(sid, 'warn', t); render(t, false); })
     .catch(e => { const out = document.getElementById('awpOut'); if (out) out.innerHTML = '<div class="err">' + esc((e && e.message) || '生成失败') + '</div>'; });
 }
 /* AI 智能出题 / 组卷 */
@@ -13987,7 +14065,7 @@ function genQuizByAI(el){
   const out = document.getElementById('qgOut'); if (out) out.innerHTML = '<div class="muted">🤖 正在生成 ' + n + ' 道' + diff + '题目…</div>';
   _quizBusy = true; aiBtnLock(el, '🤖 生成中…');
   const fin = function(){ _quizBusy = false; aiBtnUnlock(el); };
-  aiChat(sys, user, { temperature: 0.8, maxTokens: 1600 }).then(t => {
+  aiChat(sys, user, { temperature: 0.8, maxTokens: 1600, think: 'keep' }).then(t => {
     fin();
     if (out) out.innerHTML = '<div class="ai-quiz-box"><pre class="ai-summary-pre">' + esc(t) + '</pre>'
       + '<div class="sc-actions"><button class="btn sm" onclick="copyText(this.parentElement.previousElementSibling.innerText)">📋 复制题目</button></div></div>';
@@ -14008,7 +14086,7 @@ function genHwByAI(sid, diagText, cb){
   let txt = '学生姓名：' + s.name + '\n近14天出勤率：' + attRate + '%，小测均分 ' + (qa != null ? fmt1(qa) : '—') + '，作业偏低/未完成 ' + hwMiss + ' 次\n';
   txt += '已有学情诊断：\n' + (diagText || '（无，请直接基于上述数据诊断并生成）') + '\n';
   const sys = '你是资深初中数学老师与中考教研专家。请基于学生的学情诊断与近期数据，制定一份【个性化作业/练习计划】，帮助学生针对性补弱。请严格使用以下格式输出：\n【练习目标】\n（一句话目标）\n【分知识点练习】\n（按薄弱点列出 2-4 项，每项格式：知识点 — 建议练习方向 — 题量/时长）\n【打卡与完成方式】\n（建议如何在日常打卡/作业中落实，具体可操作）\n【巩固建议】\n（家长/学生可做的配合）\n总计约 220-320 字，具体、可操作，不空洞。';
-  aiChat(sys, txt, { temperature: 0.7, maxTokens: 1000 }).then(t => cb(t, null)).catch(e => cb(null, e));
+  aiChat(sys, txt, { temperature: 0.7, maxTokens: 2000, think: 'keep' }).then(t => cb(t, null)).catch(e => cb(null, e));
 }
 function genHwFromDiag(sid, el, force){
   if (!aiReady() || !state.ai.enabled) { openAISettings(); return toast('请先在「⚙️ AI 设置」中配置并启用 AI'); }
